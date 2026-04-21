@@ -3,13 +3,15 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Demand } from '@/types';
+import { Demand, User } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
 import { Calendar, Clock, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUIStore } from '@/store/useUIStore';
 
 interface KanbanCardProps {
   demand: Demand;
+  users?: User[];
   isOverlay?: boolean;
 }
 
@@ -25,6 +27,13 @@ const tagColorMap: Record<string, string> = {
   baixa: 'text-zinc-400 bg-zinc-400/10',
 };
 
+const priorityColorMap: Record<string, string> = {
+  urgente: 'bg-red-500',
+  alta: 'bg-orange-500',
+  media: 'bg-yellow-500',
+  baixa: 'bg-zinc-500',
+};
+
 const priorityLabelMap: Record<string, string> = {
   urgente: 'URGENTE',
   alta: 'ALTA PRIORIDADE',
@@ -36,13 +45,20 @@ function getTagColor(tag: string): string {
   return tagColorMap[tag.toLowerCase()] ?? 'text-zinc-400 bg-zinc-400/10';
 }
 
-export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, isOverlay }) => {
+export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOverlay }) => {
+  const { openDemanda } = useUIStore();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: demand.id });
 
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
+  };
+
+  const handleCardClick = () => {
+    // Evitar abrir se estiver arrastando
+    if (isDragging) return;
+    openDemanda(demand.id, 'view');
   };
 
   if (isDragging) {
@@ -63,6 +79,9 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, isOverlay }) => 
   const isInProgress = demand.status === 'em_progresso';
   const isOverdue = demand.deadline && new Date(demand.deadline) < new Date();
 
+  // Color bar logic
+  const priorityColor = priorityColorMap[demand.priority.toLowerCase()] ?? 'bg-zinc-700';
+
   const tagLabel = demand.tags[0]
     ? demand.tags[0].toUpperCase()
     : (priorityLabelMap[demand.priority] ?? demand.priority.toUpperCase());
@@ -77,27 +96,32 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, isOverlay }) => 
       style={style}
       {...attributes}
       {...listeners}
+      onClick={handleCardClick}
       className={cn(
-        'group cursor-grab active:cursor-grabbing',
-        'bg-[#1a1a1a] hover:bg-[#1e1e1e] border border-white/[0.06] hover:border-white/[0.12]',
-        'rounded-xl p-4 flex flex-col gap-3',
-        'transition-all duration-150',
-        isOverlay && 'shadow-2xl border-secondary/40 rotate-1 scale-[1.02]'
+        'group cursor-grab active:cursor-grabbing relative overflow-hidden',
+        'border-gradient border-gradient-hover',
+        'rounded-3xl p-5 flex flex-col gap-4',
+        'transition-all duration-300',
+        'bg-gradient-to-br from-bg-surface to-bg-surface group-hover:from-bg-surface group-hover:to-secondary/5',
+        isOverlay && 'shadow-2xl scale-[1.02] z-50'
       )}
     >
-      <div className="flex items-center justify-between">
+      {/* Priority Bar Indicator */}
+      <div className={cn("absolute left-0 top-0 bottom-0 w-1", priorityColor)} />
+
+      <div className="flex items-center justify-between pl-1">
         <span className={cn('text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded', tagColor)}>
           {tagLabel}
         </span>
         <span className="text-[10px] font-mono text-zinc-500">{demand.code}</span>
       </div>
 
-      <h4 className="text-sm font-semibold text-white leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
+      <h4 className="text-sm font-semibold text-white leading-snug line-clamp-2 group-hover:text-secondary transition-colors pl-1">
         {demand.title}
       </h4>
 
       {isInProgress && (
-        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden ml-1">
           <div
             className="h-full bg-gradient-to-r from-secondary to-secondary rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
@@ -105,17 +129,22 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, isOverlay }) => 
         </div>
       )}
 
-      <div className="flex items-center justify-between mt-auto pt-0.5">
-        <div className="flex -space-x-1.5">
+      <div className="flex items-center justify-between mt-auto pt-0.5 pl-1">
+        <div className="flex -space-x-1.5 focus-within:z-10">
           {demand.assignees.length > 0 ? (
-            demand.assignees.slice(0, 3).map((assigneeId) => (
-              <Avatar
-                key={assigneeId}
-                size="xs"
-                className="border border-[#1a1a1a] w-6 h-6"
-                fallback={assigneeId.substring(0, 1).toUpperCase()}
-              />
-            ))
+            demand.assignees.slice(0, 3).map((assigneeId) => {
+              const user = users.find((u) => u.uid === assigneeId);
+              return (
+                <Avatar
+                  key={assigneeId}
+                  src={user?.photoURL}
+                  size="xs"
+                  className="border border-[#1a1a1a] w-6 h-6 hover:translate-y-[-2px] hover:z-20 transition-transform"
+                  fallback={user?.name?.substring(0, 1).toUpperCase() || '?'}
+                  title={user?.name}
+                />
+              );
+            })
           ) : (
             <div className="w-6 h-6 rounded-full border border-dashed border-zinc-600 flex items-center justify-center">
               <span className="text-[8px] text-zinc-600">?</span>

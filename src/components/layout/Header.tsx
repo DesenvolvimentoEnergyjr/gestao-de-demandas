@@ -1,36 +1,97 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDemandStore } from '@/store/useDemandStore';
+import { useUIStore } from '@/store/useUIStore';
 import { Avatar } from '@/components/ui/Avatar';
-import { Bell, Search } from 'lucide-react';
+import { Search, Clock, AlertCircle, Plus, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { signOut } from '@/lib/auth';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/Button';
 
 const tabs = [
-  { name: 'Kanban',     href: '/kanban' },
-  { name: 'Timeline',   href: '/timeline' },
-  { name: 'Sprints',    href: '/sprints' },
+  { name: 'Kanban', href: '/kanban' },
+  { name: 'Timeline', href: '/timeline' },
+  { name: 'Sprints', href: '/sprints' },
   { name: 'Assessores', href: '/assessores' },
 ];
 
 export const Header = () => {
   const { user } = useAuthStore();
-  const { searchQuery, setSearchQuery } = useDemandStore();
+  const { demands } = useDemandStore();
+  const { openNovaDemanda, openDemanda } = useUIStore();
+  const [localSearch, setLocalSearch] = useState('');
+  const [showResults, setShowResults] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+      // Se clicar fora do avatar, fecha o menu do usuário
+      if (showUserMenu && !(event.target as HTMLElement).closest('.user-menu-trigger')) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.push('/auth');
+    } catch (error) {
+      console.error('Erro ao sair:', error);
+    }
+  };
+
+  const filteredDemands = useMemo(() => {
+    if (!localSearch.trim()) return [];
+    return demands
+      .filter((d) =>
+        d.title.toLowerCase().includes(localSearch.toLowerCase()) ||
+        d.code.toLowerCase().includes(localSearch.toLowerCase())
+      )
+      .slice(0, 5);
+  }, [demands, localSearch]);
+
+  const handleResultClick = (demandId: string) => {
+    openDemanda(demandId, 'view');
+    setLocalSearch('');
+    setShowResults(false);
+  };
 
   return (
-    <header className="h-14 border-b border-zinc-800 bg-[#0f0f0f]/80 backdrop-blur-sm flex items-center px-6 sticky top-0 z-40">
-      {/* Left: Page title + tabs */}
-      <div className="flex items-center gap-8 flex-1 min-w-0">
-        <h2 className="text-sm font-bold text-white whitespace-nowrap flex-shrink-0">
-          Gestão de Demandas
-        </h2>
+    <header className="h-20 border-b border-white/[0.05] bg-bg-section/80 backdrop-blur-xl flex items-center px-10 sticky top-0 z-40">
+      {/* Left: Brand */}
+      <div className="flex items-center gap-4 min-w-[240px]">
+        <div className="w-10 h-10 relative">
+          <Image
+            src="/logo-energy.svg"
+            alt="Energy Júnior"
+            fill
+            className="object-contain"
+          />
+        </div>
+        <div className="flex flex-col">
+          <h1 className="text-white font-black text-base leading-none tracking-tight">Energy Júnior</h1>
+          <p className="text-[10px] font-bold text-secondary uppercase tracking-[0.1em] mt-1">Gestão de Demandas</p>
+        </div>
+      </div>
 
-        {/* Tab navigation */}
-        <nav className="flex items-center h-14">
+      {/* Center: Tabs */}
+      <nav className="flex-1 flex justify-center h-full">
+        <div className="flex items-center gap-2">
           {tabs.map((tab) => {
             const isActive = pathname.startsWith(tab.href);
             return (
@@ -38,50 +99,132 @@ export const Header = () => {
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  'px-4 h-full flex items-center text-sm font-medium transition-all relative',
+                  'px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all relative',
                   isActive
-                    ? 'text-secondary'
+                    ? 'bg-secondary/10 text-secondary'
                     : 'text-zinc-500 hover:text-zinc-300'
                 )}
               >
                 {tab.name}
                 {isActive && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-secondary" />
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-secondary rounded-full shadow-[0_0_8px_rgba(11,175,77,1)]" />
                 )}
               </Link>
             );
           })}
-        </nav>
-      </div>
+        </div>
+      </nav>
 
-      {/* Right: search + bell + avatar */}
-      <div className="flex items-center gap-3 flex-shrink-0">
+      {/* Right: Actions */}
+      <div className="flex items-center gap-6 min-w-[400px] justify-end">
+        {/* Nova Demanda Button - Only for Diretores */}
+        {user?.role === 'diretor' && (
+          <Button
+            onClick={() => openNovaDemanda()}
+            className="gap-2 px-5 h-10 shadow-lg shadow-secondary/20"
+          >
+            <Plus className="w-4 h-4" />
+            Nova Demanda
+          </Button>
+        )}
+
         {/* Search */}
-        <div className="relative group">
+        <div className="relative group w-64" ref={searchRef}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600 group-focus-within:text-secondary transition-colors" />
           <input
             type="text"
             placeholder="Buscar demanda..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-48 bg-[#1a1a1a] border border-white/[0.06] rounded-lg py-1.5 pl-8 pr-3 text-xs text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-secondary/50 transition-all"
+            value={localSearch}
+            onFocus={() => setShowResults(true)}
+            onChange={(e) => {
+              setLocalSearch(e.target.value);
+              setShowResults(true);
+            }}
+            className="w-full bg-[#1a1a1a] border border-white/[0.06] rounded-xl py-2 pl-9 pr-3 text-xs text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-secondary/50 transition-all shadow-inner"
           />
+
+          {/* Search Results Dropdown */}
+          {showResults && localSearch.trim() && (
+            <div className="absolute top-full mt-3 right-0 w-80 bg-bg-section border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50 backdrop-blur-xl">
+              <div className="p-2">
+                <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
+                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Resultados</span>
+                  <span className="text-[10px] font-bold text-zinc-600">{filteredDemands.length}</span>
+                </div>
+
+                <div className="mt-1 py-1">
+                  {filteredDemands.length > 0 ? (
+                    filteredDemands.map((demand) => (
+                      <button
+                        key={demand.id}
+                        onClick={() => handleResultClick(demand.id)}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all group flex items-start gap-3"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-white/5 flex items-center justify-center shrink-0 group-hover:border-secondary/30 group-hover:bg-secondary/5 transition-all">
+                          <Clock className="w-4 h-4 text-zinc-600 group-hover:text-secondary" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-zinc-200 group-hover:text-white transition-colors truncate">{demand.title}</p>
+                          <p className="text-[10px] text-zinc-500 font-medium tracking-tight mt-0.5">{demand.code}</p>
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-8 flex flex-col items-center justify-center text-center">
+                      <AlertCircle className="w-6 h-6 text-zinc-700 mb-2" />
+                      <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nada encontrado</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Bell */}
-        <button className="relative w-8 h-8 rounded-lg flex items-center justify-center text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors">
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-secondary rounded-full" />
-        </button>
+        {/* User Menu */}
+        <div className="relative user-menu-trigger">
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="flex items-center gap-3 p-1.5 pr-3 bg-zinc-950 border border-white/5 rounded-2xl hover:bg-zinc-900 transition-all group"
+          >
+            <Avatar
+              src={user?.photoURL}
+              alt={user?.name}
+              fallback={user?.name?.substring(0, 1)}
+              size="sm"
+              className="border border-zinc-800 group-hover:border-secondary transition-all"
+            />
+            <div className="flex flex-col items-start text-left">
+              <span className="text-[11px] font-black text-white leading-tight">{user?.name?.split(' ')[0]}</span>
+              <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{user?.role}</span>
+            </div>
+            <ChevronDown className={cn("ml-1 w-3.5 h-3.5 text-zinc-600 transition-transform duration-300", showUserMenu && "rotate-180")} />
+          </button>
 
-        {/* Avatar */}
-        <Avatar
-          src={user?.photoURL}
-          alt={user?.name}
-          fallback={user?.name?.substring(0, 1)}
-          size="sm"
-          className="border-2 border-secondary/20 cursor-pointer hover:border-secondary/40 transition-colors"
-        />
+          {/* User Dropdown */}
+          {showUserMenu && (
+            <div className="absolute top-full mt-3 right-0 w-56 bg-bg-section border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50 backdrop-blur-xl">
+              <div className="p-2 space-y-1">
+                <Link
+                  href="/configuracoes"
+                  onClick={() => setShowUserMenu(false)}
+                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-all text-xs font-bold"
+                >
+                  <Settings className="w-4 h-4" />
+                  Configurações
+                </Link>
+                <div className="h-px bg-white/5 mx-2" />
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-xs font-bold"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sair do Sistema
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

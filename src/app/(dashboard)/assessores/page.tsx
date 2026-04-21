@@ -87,7 +87,8 @@ export default function AssessoresPage() {
             <Card
               key={user.uid}
               hoverGlow
-              className="p-8 group rounded-[32px] bg-[#0f0f0f] border-white/5 flex flex-col h-full cursor-pointer transition-all active:scale-[0.98]"
+              variant="gradient"
+              className="p-8 group rounded-[32px] flex flex-col h-full cursor-pointer transition-all active:scale-[0.98]"
               onClick={() => setSelectedUser(user)}
             >
 

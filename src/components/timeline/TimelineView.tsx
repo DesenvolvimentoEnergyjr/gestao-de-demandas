@@ -24,6 +24,7 @@ import { useDemandStore } from '@/store/useDemandStore';
 import { ChevronLeft, ChevronRight, Calendar, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useUIStore } from '@/store/useUIStore';
 
 interface TimelineViewProps {
   demands: Demand[];
@@ -32,15 +33,14 @@ interface TimelineViewProps {
 
 type ViewMode = 'dia' | 'semana' | 'ano';
 
-const BAR_COLORS = [
-  'bg-[#0baf4d] text-white shadow-[0_0_20px_-5px_rgba(11,175,77,0.4)]',
-  'bg-[#ffc20e] text-black shadow-[0_0_20px_-5px_rgba(255,194,14,0.4)]',
-  'bg-[#165b3b] text-white shadow-[0_0_20px_-5px_rgba(22,91,59,0.4)]',
-  'bg-[#16a34a] text-white shadow-[0_0_20px_-5px_rgba(22,163,74,0.4)]',
-];
+const PROJECT_COLORS = {
+  Interno: 'bg-gradient-to-r from-[#ffc20e] to-[#ff8c00] text-black shadow-[0_0_25px_-5px_rgba(255,194,14,0.4)] border-2 border-[#b38600]',
+  Externo: 'bg-gradient-to-r from-[#0baf4d] to-[#055a2a] text-white shadow-[0_0_25px_-5px_rgba(11,175,77,0.4)] border-2 border-[#077a35]',
+};
 
 export function TimelineView({ demands, users }: TimelineViewProps) {
   const router = useRouter();
+  const { openDemanda } = useUIStore();
   const { searchQuery } = useDemandStore();
   const [viewMode, setViewMode] = useState<ViewMode>('semana');
   const [referenceDate, setReferenceDate] = useState(new Date());
@@ -69,11 +69,14 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
       }));
     }
     if (viewMode === 'semana') {
-      return Array.from({ length: 8 }, (_, i) => ({
-        date: addWeeks(range.start, i),
-        label: `Semana ${i + 1}`,
-        subLabel: format(addWeeks(range.start, i), 'dd/MM'),
-      }));
+      return Array.from({ length: 8 }, (_, i) => {
+        const date = addWeeks(range.start, i);
+        return {
+          date,
+          label: format(date, 'MMMM', { locale: ptBR }),
+          subLabel: format(date, 'dd/MM'),
+        };
+      });
     }
     return eachMonthOfInterval({ start: range.start, end: range.end }).map((month) => ({
       date: month,
@@ -87,25 +90,67 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
       d.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    return users
-      .map((user) => {
-        const userDemands = filteredDemands.filter(
-          (d) =>
-            d.assignees.includes(user.uid) &&
-            d.status !== 'concluido' &&
-            d.deadline !== null
-        );
-        const visibleDemands = userDemands.filter((d) => {
-          const dStart = d.startDate ?? d.createdAt;
-          const dEnd = d.deadline ?? addDays(dStart, 7);
-          return dStart <= range.end && dEnd >= range.start;
-        });
-        return { user, demands: visibleDemands };
-      })
-      .filter((row) => row.demands.length > 0);
+    return users.map((user) => {
+      const userDemands = filteredDemands.filter(
+        (d) =>
+          d.assignees.includes(user.uid) &&
+          d.status !== 'concluido' &&
+          d.deadline !== null
+      );
+
+      const visibleDemands = userDemands.filter((d) => {
+        const dStart = d.startDate ?? d.createdAt;
+        const dEnd = d.deadline ?? addDays(dStart, 7);
+        return dStart <= range.end && dEnd >= range.start;
+      });
+
+      // Lógica de cálculo de slots para sobreposição
+      const sorted = [...visibleDemands].sort((a, b) => {
+        const aStart = a.startDate ?? a.createdAt;
+        const bStart = b.startDate ?? b.createdAt;
+        return aStart.getTime() - bStart.getTime();
+      });
+
+      const slots: Demand[][] = [];
+      sorted.forEach(demand => {
+        let placed = false;
+        const dStart = demand.startDate ?? demand.createdAt;
+
+        for (let i = 0; i < slots.length; i++) {
+          const lastInSlot = slots[i][slots[i].length - 1];
+          const lastEnd = lastInSlot.deadline ?? addDays(lastInSlot.startDate ?? lastInSlot.createdAt, 7);
+
+          if (dStart > lastEnd) {
+            slots[i].push(demand);
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          slots.push([demand]);
+        }
+      });
+
+      // Mapear cada demanda para seu slot e o total de slots na linha
+      const demandsWithLayout = visibleDemands.map(d => {
+        const slotIndex = slots.findIndex(slot => slot.some(sd => sd.id === d.id));
+        return {
+          ...d,
+          slotIndex,
+          totalSlots: slots.length
+        };
+      });
+
+      return { user, demands: demandsWithLayout };
+    });
   }, [users, demands, range, searchQuery]);
 
-  const getBarProps = (demand: Demand, index: number) => {
+  interface TimelineDemand extends Demand {
+    slotIndex: number;
+    totalSlots: number;
+  }
+
+  const getBarProps = (demand: TimelineDemand) => {
     const dStart = startOfDay(demand.startDate ?? demand.createdAt);
     const dEnd = endOfDay(demand.deadline ?? addDays(dStart, 7));
 
@@ -117,9 +162,20 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
     const widthPercent =
       ((differenceInDays(effectiveEnd, effectiveStart) + 1) / range.totalDays) * 100;
 
+    // Altura e posicionamento vertical baseado nos slots
+    const height = 100 / (demand.totalSlots || 1);
+    const top = (demand.slotIndex || 0) * height;
+
     return {
-      style: { left: `${leftPercent}%`, width: `${widthPercent}%` },
-      colorClass: BAR_COLORS[index % BAR_COLORS.length],
+      style: {
+        left: `${leftPercent}%`,
+        width: `${widthPercent}%`,
+        top: `${top}%`,
+        height: `${height}%`,
+        paddingTop: demand.totalSlots > 1 ? '2px' : '0',
+        paddingBottom: demand.totalSlots > 1 ? '2px' : '0',
+      },
+      colorClass: PROJECT_COLORS[demand.projectType as keyof typeof PROJECT_COLORS] || PROJECT_COLORS.Interno,
     };
   };
 
@@ -137,7 +193,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a] text-white font-sans px-8">
+    <div className="flex flex-col h-full text-white font-sans px-8">
       <PageHeader
         title="Linha do Tempo"
         description="Gestão estratégica e acompanhamento temporal de todas as frentes de trabalho em tempo real."
@@ -190,15 +246,17 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
           <div className="min-w-fit w-full flex flex-col">
 
             {/* Header */}
-            <div className="flex sticky top-0 z-40 bg-[#0a0a0a]">
-              <div className="w-[320px] min-w-[320px] px-8 py-6 border-r border-b border-white/[0.03] flex items-end">
+            <div className="flex sticky top-0 z-40 bg-bg-section">
+              <div className="w-[320px] min-w-[320px] px-8 py-6 border-r border-b border-white/[0.03] flex items-end sticky left-0 bg-bg-section z-50">
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">
                   Assessor Responsável
                 </span>
               </div>
               <div
                 className="flex-1 grid border-b border-white/[0.03]"
-                style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(120px, 1fr))` }}
+                style={{
+                  gridTemplateColumns: `repeat(${columns.length}, minmax(${viewMode === 'ano' ? '300px' : '120px'}, 1fr))`
+                }}
               >
                 {columns.map((col, i) => {
                   const isToday = isSameDay(col.date, new Date()) && viewMode === 'dia';
@@ -243,7 +301,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                     key={row.user.uid}
                     className="flex min-h-[110px] border-b border-white/[0.03] group hover:bg-white/[0.01] transition-all"
                   >
-                    <div className="w-[320px] min-w-[320px] px-8 py-4 flex items-center gap-5 border-r border-white/[0.03] sticky left-0 bg-[#0a0a0a] z-30">
+                    <div className="w-[320px] min-w-[320px] px-8 py-4 flex items-center gap-5 border-r border-white/[0.03] sticky left-0 bg-bg-section z-30">
                       <Avatar src={row.user.photoURL} alt={row.user.name} size="md" className="ring-2 ring-zinc-800 shadow-xl" />
                       <div className="min-w-0">
                         <h3 className="text-sm font-black text-white truncate tracking-tight">{row.user.name}</h3>
@@ -253,7 +311,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                       </div>
                     </div>
 
-                    <div className="flex-1 relative p-6">
+                    <div className="flex-1 relative py-6">
                       <div className="absolute inset-0 flex">
                         {columns.map((_, i) => (
                           <div key={i} className="flex-1 border-r border-white/[0.02] last:border-r-0" />
@@ -261,8 +319,8 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                       </div>
 
                       <div className="relative h-full flex flex-col justify-center gap-3">
-                        {row.demands.map((demand, index) => {
-                          const { style, colorClass } = getBarProps(demand, index);
+                        {row.demands.map((demand) => {
+                          const { style, colorClass } = getBarProps(demand);
                           const startDate = demand.startDate ?? demand.createdAt;
                           const endDate = demand.deadline ?? addDays(startDate, 7);
 
@@ -273,12 +331,16 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                               className={cn(
                                 'absolute h-9 rounded-xl flex items-center px-4 font-black text-[10px] uppercase tracking-wider',
                                 'transition-all hover:scale-[1.02] active:scale-95 cursor-pointer z-10',
-                                'border border-white/10 truncate group/bar',
+                                'truncate group/bar',
                                 colorClass
                               )}
-                              onClick={() =>
-                                demand.sprintId && router.push(`/sprints?id=${demand.sprintId}`)
-                              }
+                              onClick={() => {
+                                if (demand.sprintId) {
+                                  useUIStore.getState().openSprintDetalhes(demand.sprintId);
+                                } else {
+                                  openDemanda(demand.id, 'view');
+                                }
+                              }}
                             >
                               <span className="truncate w-full">{demand.title}</span>
 
@@ -304,10 +366,10 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                   <div
                     className="absolute top-0 bottom-0 w-px bg-secondary shadow-[0_0_15px_rgba(11,175,77,0.5)] z-35 pointer-events-none"
                     style={{
-                      left: `calc(320px + ${(differenceInDays(new Date(), range.start) / range.totalDays) * 100}%)`,
+                      left: `calc(320px + ${((differenceInDays(new Date(), range.start) + 0.5) / range.totalDays) * 100}%)`,
                     }}
                   >
-                    <div className="absolute top-0 -translate-x-1/2 bg-secondary text-black text-[8px] font-black px-1.5 py-0.5 rounded-full">
+                    <div className="absolute top-0 -translate-x-1/2 bg-secondary text-black text-[8px] font-black px-1.5 py-0.5 rounded-full whitespace-nowrap">
                       HOJE
                     </div>
                   </div>
@@ -318,7 +380,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
       </div>
 
       <button
-        className="fixed bottom-10 right-10 w-14 h-14 bg-secondary text-white rounded-2xl flex items-center justify-center shadow-[0_20px_40px_rgba(11,175,77,0.3)] hover:scale-110 active:scale-95 transition-all z-[100]"
+        className="fixed bottom-10 right-10 w-14 h-14 bg-secondary text-white rounded-2xl hidden md:flex items-center justify-center shadow-[0_20px_40px_rgba(11,175,77,0.3)] hover:scale-110 active:scale-95 transition-all z-[100]"
         onClick={() => router.push('/kanban')}
       >
         <LayoutGrid className="w-6 h-6" />

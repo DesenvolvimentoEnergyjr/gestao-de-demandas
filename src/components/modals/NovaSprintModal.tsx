@@ -128,7 +128,7 @@ export const NovaSprintModal = () => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 pt-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-8 pt-6 space-y-6 max-h-[75vh] overflow-y-auto no-scrollbar">
 
           {/* Título */}
           <div className="space-y-3">
@@ -155,7 +155,7 @@ export const NovaSprintModal = () => {
                 rows={3}
                 value={formData.objective}
                 onChange={(e) => setFormData((prev) => ({ ...prev, objective: e.target.value }))}
-                className="w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-10 py-3 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/5 transition-all resize-none"
+                className="w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-10 py-3 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-secondary transition-all resize-none"
                 placeholder="Qual o foco principal dessa entrega?"
               />
               <Target className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-600 pointer-events-none" />
@@ -171,7 +171,7 @@ export const NovaSprintModal = () => {
               rows={2}
               value={formData.description}
               onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-              className="w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/5 transition-all resize-none"
+              className="w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-secondary transition-all resize-none"
               placeholder="Contexto adicional sobre este ciclo..."
             />
           </div>

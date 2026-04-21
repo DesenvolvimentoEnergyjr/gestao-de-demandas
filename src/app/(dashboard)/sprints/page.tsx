@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { getSprints, getDemands } from '@/lib/firestore';
-import { Sprint, Demand } from '@/types';
+import React, { useMemo, useState } from 'react';
+import { Sprint } from '@/types';
 import { Card } from '@/components/ui/Card';
 import { Calendar, Target, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -11,8 +10,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useUIStore } from '@/store/useUIStore';
 import { useSprintStore } from '@/store/useSprintStore';
-import { NovaSprintModal } from '@/components/modals/NovaSprintModal';
-import { SprintDetalhesModal } from '@/components/modals/SprintDetalhesModal';
+import { useDemandStore } from '@/store/useDemandStore';
 
 const FILTERS = [
   { id: 'todas', label: 'Todas' },
@@ -48,29 +46,9 @@ const getSprintStyles = (sprint: Sprint) => {
 export default function SprintsPage() {
   const { user } = useAuthStore();
   const { openNovaSprint, openSprintDetalhes } = useUIStore();
-  const { sprints, setSprints, loading, setLoading } = useSprintStore();
-  const [demands, setDemands] = useState<Demand[]>([]);
+  const { sprints, loading } = useSprintStore();
+  const { demands } = useDemandStore();
   const [activeFilter, setActiveFilter] = useState('todas');
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [sprintsData, demandsData] = await Promise.all([
-          getSprints(),
-          getDemands(),
-        ]);
-        setSprints(sprintsData);
-        setDemands(demandsData);
-      } catch (error) {
-        console.error('Erro ao carregar sprints:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [setLoading, setSprints]);
 
   const filteredSprints = useMemo(() => {
     if (activeFilter === 'concluidas') return sprints.filter((s) => s.status === 'completed');
@@ -92,10 +70,12 @@ export default function SprintsPage() {
         title="Ciclos de Sprints"
         description="Planeje e acompanhe os ciclos de entrega da equipe com foco em metas e resultados."
       >
-        <Button onClick={openNovaSprint} className="gap-2 shadow-lg shadow-secondary/10 px-6 h-11">
-          <Plus className="w-4 h-4" />
-          Nova Sprint
-        </Button>
+        {user?.role === 'diretor' && (
+          <Button onClick={openNovaSprint} className="gap-2 shadow-lg shadow-secondary/10 px-6 h-11">
+            <Plus className="w-4 h-4" />
+            Nova Sprint
+          </Button>
+        )}
       </PageHeader>
 
       <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
@@ -132,7 +112,8 @@ export default function SprintsPage() {
                 return (
                   <Card
                     key={sprint.id}
-                    className="p-7 flex flex-col gap-5 border-l-[6px] transition-all hover:scale-[1.01] hover:bg-white/[0.03]"
+                    variant="gradient"
+                    className="p-7 flex flex-col gap-5 border-l-[6px] transition-all"
                     style={{ borderLeftColor: styles.border }}
                   >
                     <div className="flex justify-between items-start">
@@ -167,7 +148,7 @@ export default function SprintsPage() {
                       </div>
                       <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-secondary shadow-[0_0_12px_rgba(11,175,77,0.4)] transition-all duration-1000 ease-out"
+                           className="h-full bg-secondary shadow-[0_0_12px_rgba(11,175,77,0.4)] transition-all duration-1000 ease-out"
                           style={{ width: `${progressPct}%` }}
                         />
                       </div>
@@ -193,10 +174,6 @@ export default function SprintsPage() {
           </div>
         </div>
       </div>
-
-      {/* Modals fora do container com overflow */}
-      <NovaSprintModal />
-      <SprintDetalhesModal />
     </div>
   );
 }

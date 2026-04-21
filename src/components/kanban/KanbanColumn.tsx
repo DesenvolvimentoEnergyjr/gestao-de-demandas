@@ -6,28 +6,31 @@ import {
   SortableContext,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { Demand, DemandStatus } from '@/types';
+import { Demand, DemandStatus, User } from '@/types';
 import { KanbanCard } from './KanbanCard';
 import { cn } from '@/lib/utils';
 import { Plus } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface KanbanColumnProps {
   id: string;
   title: string;
   color: string;
   demands: Demand[];
+  users?: User[];
 }
 
-export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, demands }) => {
+export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, demands, users = [] }) => {
   const { setNodeRef, isOver } = useDroppable({ id });
   const { openNovaDemanda } = useUIStore();
+  const { user } = useAuthStore();
 
   return (
     <div className={cn(
-      'flex flex-col w-[280px] min-w-[280px] rounded-2xl transition-all duration-200 h-full',
-      'bg-[#141414] border border-white/[0.06]',
-      isOver && 'border-secondary/30 bg-[#161f16]'
+      'flex flex-col w-[280px] min-w-[280px] rounded-[32px] transition-all duration-300 h-full',
+      'bg-[#1a1919] border border-white/5',
+      isOver && 'border-secondary/30 bg-secondary/5'
     )}>
       {/* Column Header */}
       <div className="px-4 py-3.5 flex items-center justify-between">
@@ -42,12 +45,14 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, de
         </div>
 
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => openNovaDemanda(id as DemandStatus)}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-600 hover:text-white hover:bg-white/5 transition-all active:scale-90"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          {user?.role === 'diretor' && (
+            <button
+              onClick={() => openNovaDemanda(id as DemandStatus)}
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/5 transition-all active:scale-90"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -68,13 +73,13 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, de
           strategy={verticalListSortingStrategy}
         >
           {demands.map((demand) => (
-            <KanbanCard key={demand.id} demand={demand} />
+            <KanbanCard key={demand.id} demand={demand} users={users} />
           ))}
         </SortableContext>
 
         {demands.length === 0 && (
           <div className="h-20 flex items-center justify-center">
-            <p className="text-[10px] text-zinc-700 uppercase tracking-widest font-medium">Vazio</p>
+            <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">Vazio</p>
           </div>
         )}
       </div>

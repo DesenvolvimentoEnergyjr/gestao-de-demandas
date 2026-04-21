@@ -31,7 +31,7 @@ export function AssessorHistoryModal({ user, demands, onClose }: AssessorHistory
         onClick={onClose}
       />
       
-      <div className="relative w-full max-w-3xl bg-[#1c1c1c] border border-white/[0.08] rounded-[40px] shadow-[0_0_100px_-20px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in-95 duration-500 flex flex-col max-h-[85vh]">
+      <div className="relative w-full max-w-3xl bg-bg-section border-gradient rounded-[40px] shadow-[0_0_100px_-20px_rgba(11,175,77,0.15)] overflow-hidden animate-in fade-in zoom-in-95 duration-500 flex flex-col max-h-[85vh]">
         
         {/* Header Section */}
         <div className="p-10 pb-6 border-b border-white/[0.03]">

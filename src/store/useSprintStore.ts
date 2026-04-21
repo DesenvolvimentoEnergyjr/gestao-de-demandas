@@ -9,6 +9,7 @@ interface SprintState {
   setActiveSprint: (sprint: Sprint | null) => void;
   addSprint: (sprint: Sprint) => void;
   updateSprint: (id: string, data: Partial<Sprint>) => void;
+  removeSprint: (id: string) => void;
   setLoading: (loading: boolean) => void;
 }
 
@@ -26,6 +27,10 @@ export const useSprintStore = create<SprintState>((set) => ({
   updateSprint: (id, data) =>
     set((state) => ({
       sprints: state.sprints.map((s) => (s.id === id ? { ...s, ...data } : s)),
+    })),
+  removeSprint: (id) =>
+    set((state) => ({
+      sprints: state.sprints.filter((s) => s.id !== id),
     })),
   setLoading: (loading) => set({ loading }),
 }));

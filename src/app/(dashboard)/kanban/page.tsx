@@ -2,27 +2,31 @@
 
 import React, { useEffect } from 'react';
 import { KanbanBoard } from '@/components/kanban/KanbanBoard';
-import { getDemands, getSprints } from '@/lib/firestore';
+import { getDemands, getSprints, getUsers } from '@/lib/firestore';
 import { useDemandStore } from '@/store/useDemandStore';
 import { useSprintStore } from '@/store/useSprintStore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { TrendingUp } from 'lucide-react';
 import Link from 'next/link';
+import { User } from '@/types';
 
 export default function KanbanPage() {
   const { setDemands, setLoading, loading } = useDemandStore();
   const { setSprints } = useSprintStore();
+  const [users, setUsers] = React.useState<User[]>([]);
 
   useEffect(() => {
     const init = async () => {
       setLoading(true);
       try {
-        const [demandsData, sprintsData] = await Promise.all([
+        const [demandsData, sprintsData, usersData] = await Promise.all([
           getDemands(),
           getSprints(),
+          getUsers(true),
         ]);
         setDemands(demandsData);
         setSprints(sprintsData);
+        setUsers(usersData);
       } catch (error) {
         console.error('Erro ao carregar Kanban:', error);
       } finally {
@@ -46,13 +50,13 @@ export default function KanbanPage() {
             <div className="w-8 h-8 border-2 border-secondary/20 border-t-secondary rounded-full animate-spin" />
           </div>
         ) : (
-          <KanbanBoard />
+          <KanbanBoard users={users} />
         )}
       </div>
 
       <Link
         href="/timeline"
-        className="fixed bottom-10 right-10 w-14 h-14 bg-secondary text-white rounded-2xl flex items-center justify-center shadow-[0_20px_40px_rgba(11,175,77,0.3)] hover:scale-110 active:scale-95 transition-all z-[90] group"
+        className="fixed bottom-10 right-10 w-14 h-14 bg-secondary text-white rounded-2xl hidden md:flex items-center justify-center shadow-[0_20px_40px_rgba(11,175,77,0.3)] hover:scale-110 active:scale-95 transition-all z-[90] group"
       >
         <TrendingUp className="w-6 h-6 group-hover:scale-110 transition-transform" />
       </Link>

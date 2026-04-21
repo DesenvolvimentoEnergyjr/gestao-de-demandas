@@ -13,7 +13,7 @@ import {
   DragEndEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { DemandStatus } from '@/types';
+import { DemandStatus, User } from '@/types';
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard } from './KanbanCard';
 import { updateDemand } from '@/lib/firestore';
@@ -27,7 +27,7 @@ const COLUMNS: { id: DemandStatus; title: string; color: string }[] = [
   { id: 'concluido', title: 'Concluído', color: '#0baf4d' },
 ];
 
-export const KanbanBoard = () => {
+export const KanbanBoard = ({ users = [] }: { users?: User[] }) => {
   const { demands, updateDemand: updateStoreDemand, searchQuery } = useDemandStore();
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -75,7 +75,7 @@ export const KanbanBoard = () => {
   const activeDemand = activeId ? demands.find((d) => d.id === activeId) : null;
 
   return (
-    <div className="flex h-full w-full gap-4 overflow-x-auto pb-4">
+    <div className="flex h-full w-full gap-4 overflow-x-auto pb-4 bg-bg-section/40 rounded-[40px] px-4 pt-4 border border-white/5">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -89,11 +89,12 @@ export const KanbanBoard = () => {
             title={column.title}
             color={column.color}
             demands={filteredDemands.filter((d) => d.status === column.id)}
+            users={users}
           />
         ))}
 
         <DragOverlay>
-          {activeDemand ? <KanbanCard demand={activeDemand} isOverlay /> : null}
+          {activeDemand ? <KanbanCard demand={activeDemand} users={users} isOverlay /> : null}
         </DragOverlay>
       </DndContext>
     </div>

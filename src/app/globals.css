@@ -6,30 +6,50 @@
   --color-primary: #ffc20e;
   --color-secondary: #0baf4d;
   --color-secondary-dark: #165b3b;
-  --color-bg-base: #09090b;
-  --color-bg-section: #18181b;
-  --color-bg-surface: rgba(255, 255, 255, 0.02);
-  --color-bg-surface-hover: rgba(255, 255, 255, 0.05);
-  --color-text-main: #fafafa;
-  --color-text-muted: #a1a1aa;
-  --color-border-subtle: rgba(255, 255, 255, 0.05);
+  
+  /* Nuanced Dark Palette - Slate/Zinc hybrid */
+  --color-bg-base: #0a0a0c;       /* Fundo mais profundo */
+  --color-bg-section: #111114;
+  --color-bg-surface: #111114;    /* Padronizado com o cabeçalho */
+  --color-bg-surface-hover: #16161a;
+  
+  --color-text-main: #f4f4f5;
+  --color-text-muted: #71717a;
+  --color-border-subtle: rgba(255, 255, 255, 0.04);
 
   --background: var(--color-bg-base);
   --foreground: var(--color-text-main);
+  
+  /* Gradient Border Utility - More vivid */
+  --grad-green: linear-gradient(135deg, rgba(11, 175, 77, 0.7) 0%, rgba(11, 175, 77, 0.2) 100%);
+  --grad-green-hover: linear-gradient(135deg, rgba(11, 175, 77, 1) 0%, rgba(11, 175, 77, 0.3) 100%);
 }
 
 body {
   background-color: var(--color-bg-base);
   color: var(--color-text-main);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Vibrant green atmospheric glows - Cinematic intensification */
+/* Base utility for premium gradient borders */
+.border-gradient {
+  position: relative;
+  border: 1px solid transparent;
+  background: linear-gradient(var(--color-bg-surface), var(--color-bg-surface)) padding-box,
+              var(--grad-green) border-box;
+  transition: all 0.3s ease;
+}
+
+.border-gradient-hover:hover {
+  background: linear-gradient(var(--color-bg-surface-hover), var(--color-bg-surface-hover)) padding-box,
+              var(--grad-green-hover) border-box;
+}
+
 .app-glow {
   position: relative;
   min-height: 100vh;
   background-color: var(--color-bg-base);
-  overflow-x: hidden;
 }
 
 .app-glow::before {
@@ -39,7 +59,7 @@ body {
   right: -5%;
   width: 900px;
   height: 900px;
-  background: radial-gradient(circle, rgba(11,175,77,0.12) 0%, rgba(11,175,77,0.03) 40%, transparent 70%);
+  background: radial-gradient(circle, rgba(11,175,77,0.12) 0%, transparent 70%);
   filter: blur(100px);
   pointer-events: none;
   z-index: 0;
@@ -52,86 +72,54 @@ body {
   left: -10%;
   width: 1000px;
   height: 1000px;
-  background: radial-gradient(circle, rgba(22,91,59,0.10) 0%, rgba(22,91,59,0.03) 40%, transparent 70%);
+  background: radial-gradient(circle, rgba(11,175,77,0.08) 0%, transparent 70%);
   filter: blur(120px);
   pointer-events: none;
   z-index: 0;
 }
 
-/* Third subtle center-right glow for depth */
-.app-glow-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: 
-    radial-gradient(circle at 80% 40%, rgba(11,175,77,0.05) 0%, transparent 50%),
-    radial-gradient(circle at 20% 70%, rgba(11,175,77,0.04) 0%, transparent 50%);
-}
-
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.01);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(11, 175, 77, 0.2);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
-  transition: background 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(11, 175, 77, 0.4);
+  background: rgba(11, 175, 77, 0.3);
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(11, 175, 77, 0.2);
-  border-radius: 10px;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
+.no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-.scrollbar-hide {
+.no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-/* Input focus styles - optimized to prevent flash */
+/* Input focus styles */
 input:focus, textarea:focus, select:focus {
   outline: none;
-  border-color: var(--color-secondary) !important;
-  box-shadow: 0 0 0 4px rgba(11,175,77,0.1);
-  background-color: #000000 !important;
-  transition: border-color 0.05s ease-out, box-shadow 0.05s ease-out !important;
+  border: 1px solid transparent !important;
+  background: linear-gradient(#000000, #000000) padding-box,
+              var(--grad-green-hover) border-box !important;
+  box-shadow: 0 0 20px rgba(11,175,77,0.15);
 }
 
-/* Premium Select Styling Reset */
+input, textarea, select {
+  transition: all 0.2s ease;
+}
+
 select {
   appearance: none !important;
-  background-image: none !important; /* Managed by component now */
-  background-color: #000000 !important;
-  border: 1px solid rgba(255, 255, 255, 0.03) !important;
-  color: white !important;
-}
-
-select option {
-  background-color: #1c1c1c;
-  color: white;
-}
-
-/* Form field standardized transitions - shortened to prevent white interp */
-input, textarea, select {
-  transition: border-color 0.1s ease-out, box-shadow 0.1s ease-out, background-color 0.2s ease;
+  background-color: #0c0c0e !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
 }

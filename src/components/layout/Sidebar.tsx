@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   Plus,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -26,7 +27,7 @@ const navigation = [
 
 export const Sidebar = () => {
   const pathname = usePathname();
-  const { openNovaDemanda } = useUIStore();
+  const { openNovaDemanda, setSidebarOpen } = useUIStore();
   const { logout } = useAuthStore();
 
   const handleLogout = async () => {
@@ -39,10 +40,17 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-[200px] bg-[#0f0f0f] border-r border-white/[0.06] flex flex-col z-50">
+    <aside className="h-full w-[280px] bg-bg-section border-r border-white/5 flex flex-col z-50">
       {/* Brand */}
-      <div className="px-5 py-5 flex items-center gap-3 border-b border-white/[0.06]">
-        <div className="w-10 h-10 flex items-center justify-center flex-shrink-0 relative">
+      <div className="px-6 py-8 flex flex-col gap-4 relative">
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="absolute top-6 right-4 p-2 text-zinc-500 hover:text-white md:hidden"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="w-12 h-12 relative">
           <Image
             src="/logo-energy.svg"
             alt="Energy Júnior"
@@ -50,14 +58,20 @@ export const Sidebar = () => {
             className="object-contain"
           />
         </div>
-        <h1 className="text-white font-bold text-sm leading-tight">Energy Júnior</h1>
+        <div className="flex flex-col">
+          <h1 className="text-white font-black text-xl leading-none tracking-tight">Energy Júnior</h1>
+          <p className="text-xs font-bold text-secondary uppercase tracking-[0.2em] mt-2">Gestão de Demandas</p>
+        </div>
       </div>
 
       {/* Nova Demanda Button */}
-      <div className="px-3 pt-4">
+      <div className="px-4 pt-4">
         <button
-          onClick={() => openNovaDemanda()}
-          className="w-full h-11 flex items-center justify-center gap-2 px-3 rounded-xl bg-secondary hover:bg-secondary/90 text-white text-[13px] font-bold transition-all shadow-lg shadow-secondary/20 active:scale-[0.97]"
+          onClick={() => {
+            openNovaDemanda();
+            setSidebarOpen(false);
+          }}
+          className="w-full h-12 flex items-center justify-center gap-2 px-4 rounded-xl bg-gradient-to-r from-secondary to-secondary-dark text-white text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-secondary/20 active:scale-[0.97]"
         >
           <Plus className="w-4 h-4" />
           Nova Demanda
@@ -65,17 +79,18 @@ export const Sidebar = () => {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 pt-4 space-y-0.5">
+      <nav className="flex-1 px-4 pt-8 space-y-1">
         {navigation.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => setSidebarOpen(false)}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group',
+                'flex items-center gap-4 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-[0.1em] transition-all group',
                 isActive
-                  ? 'bg-secondary/15 text-secondary'
+                  ? 'bg-secondary/10 text-secondary'
                   : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
               )}
             >
@@ -86,22 +101,20 @@ export const Sidebar = () => {
                 )}
               />
               {item.name}
-              {isActive && (
-                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-secondary" />
-              )}
             </Link>
           );
         })}
       </nav>
 
       {/* Bottom */}
-      <div className="p-3 border-t border-white/[0.06] space-y-0.5">
+      <div className="p-4 border-t border-white/[0.06] space-y-1">
         <Link
           href="/configuracoes"
+          onClick={() => setSidebarOpen(false)}
           className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all group",
+            "flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-[0.1em] transition-all group",
             pathname === '/configuracoes'
-              ? 'bg-secondary/15 text-secondary'
+              ? 'bg-secondary/10 text-secondary'
               : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
           )}
         >
@@ -110,13 +123,10 @@ export const Sidebar = () => {
             pathname === '/configuracoes' ? 'text-secondary' : 'text-zinc-600 group-hover:text-zinc-400'
           )} />
           Configurações
-          {pathname === '/configuracoes' && (
-            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-secondary" />
-          )}
         </Link>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-zinc-500 hover:bg-red-500/10 hover:text-red-400 transition-all group"
+          className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-[0.1em] text-zinc-500 hover:bg-red-500/10 hover:text-red-400 transition-all group"
         >
           <LogOut className="w-[18px] h-[18px] text-zinc-600 group-hover:text-red-400" />
           Sair

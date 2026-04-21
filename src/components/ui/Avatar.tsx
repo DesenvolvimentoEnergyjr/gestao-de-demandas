@@ -7,9 +7,10 @@ interface AvatarProps {
   fallback?: string;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
+  title?: string;
 }
 
-const Avatar: React.FC<AvatarProps> = ({ src, alt, fallback, size = 'md', className }) => {
+const Avatar: React.FC<AvatarProps> = ({ src, alt, fallback, size = 'md', className, title }) => {
   const sizes = {
     xs: 'h-6 w-6 text-[10px]',
     sm: 'h-8 w-8 text-xs',
@@ -18,7 +19,10 @@ const Avatar: React.FC<AvatarProps> = ({ src, alt, fallback, size = 'md', classN
   };
 
   return (
-    <div className={cn('relative flex shrink-0 overflow-hidden rounded-full bg-bg-surface border border-border-subtle', sizes[size], className)}>
+    <div 
+      title={title}
+      className={cn('relative flex shrink-0 overflow-hidden rounded-full bg-bg-surface border border-border-subtle', sizes[size], className)}
+    >
       {src ? (
         <Image 
           src={src} 

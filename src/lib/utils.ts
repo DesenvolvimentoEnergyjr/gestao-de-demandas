@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function cn(...inputs: ClassValue[]) {
@@ -14,4 +14,8 @@ export function formatDate(date: Date | null | undefined): string {
 
 export function formatDateRange(start: Date, end: Date): string {
   return `${format(start, 'dd MMM', { locale: ptBR })} – ${format(end, 'dd MMM, yyyy', { locale: ptBR })}`;
+}
+
+export function formatRelativeTime(date: Date): string {
+  return formatDistanceToNow(date, { addSuffix: true, locale: ptBR });
 }

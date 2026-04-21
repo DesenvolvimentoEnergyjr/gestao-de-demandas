@@ -13,7 +13,7 @@ import {
   runTransaction,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Demand, DemandStatus, Sprint, User } from '@/types';
+import { Demand, DemandStatus, Sprint, User, AppNotification } from '@/types';
 
 const toDate = (val: unknown): Date =>
   val && typeof (val as { toDate?: () => Date }).toDate === 'function'
@@ -24,6 +24,37 @@ const toDateOrNull = (val: unknown): Date | null =>
   val && typeof (val as { toDate?: () => Date }).toDate === 'function'
     ? (val as { toDate: () => Date }).toDate()
     : null;
+
+// NOTIFICATIONS
+
+export const createNotification = async (
+  data: Omit<AppNotification, 'id' | 'createdAt' | 'read'>
+) => {
+  await addDoc(collection(db, 'notifications'), {
+    ...data,
+    read: false,
+    createdAt: serverTimestamp(),
+  });
+};
+
+export const markNotificationAsRead = async (id: string) => {
+  await updateDoc(doc(db, 'notifications', id), {
+    read: true,
+  });
+};
+
+export const markAllNotificationsAsRead = async (userId: string) => {
+  const q = query(
+    collection(db, 'notifications'),
+    where('userId', '==', userId),
+    where('read', '==', false)
+  );
+  const snapshot = await getDocs(q);
+  const batch = snapshot.docs.map((d) => 
+    updateDoc(doc(db, 'notifications', d.id), { read: true })
+  );
+  await Promise.all(batch);
+};
 
 // DEMANDS
 
@@ -80,26 +111,71 @@ export const createDemand = async (
       ? (counterSnap.data().demandCount as number)
       : 0;
     const next = current + 1;
+    const code = `EJ-${String(next).padStart(3, '0')}`;
+    
     transaction.set(counterRef, { demandCount: next }, { merge: true });
 
     const demandRef = doc(collection(db, 'demands'));
     transaction.set(demandRef, {
       ...data,
-      code: `EJ-${String(next).padStart(3, '0')}`,
+      code,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-    return demandRef.id;
+
+    return { id: demandRef.id, code };
   });
 
-  return newId;
+  // Notificar responsáveis
+  if (data.assignees && data.assignees.length > 0) {
+    await Promise.all(
+      data.assignees.map((userId) =>
+        createNotification({
+          userId,
+          title: 'Nova demanda designada',
+          message: `Você foi designado para a demanda ${newId.code}: ${data.title}`,
+          type: 'assignment',
+          link: `/kanban`, // Podemos ajustar o link no futuro
+        })
+      )
+    );
+  }
+
+  return newId.id;
 };
 
 export const updateDemand = async (
   id: string,
   data: Partial<Omit<Demand, 'id' | 'code' | 'createdAt'>>
 ) => {
-  await updateDoc(doc(db, 'demands', id), {
+  const demandDoc = doc(db, 'demands', id);
+  
+  // Se estiver atualizando responsáveis, notificar apenas os NOVOS
+  if (data.assignees) {
+    const oldSnap = await getDoc(demandDoc);
+    if (oldSnap.exists()) {
+      const oldData = oldSnap.data() as Demand;
+      const newAssignees = data.assignees.filter(
+        (uid) => !oldData.assignees?.includes(uid)
+      );
+
+      if (newAssignees.length > 0) {
+        await Promise.all(
+          newAssignees.map((userId) =>
+            createNotification({
+              userId,
+              title: 'Nova designação',
+              message: `Você foi designado para a demanda ${oldData.code}: ${data.title || oldData.title}`,
+              type: 'assignment',
+              link: `/kanban`,
+            })
+          )
+        );
+      }
+    }
+  }
+
+  await updateDoc(demandDoc, {
     ...data,
     updatedAt: serverTimestamp(),
   });
@@ -180,6 +256,10 @@ export const updateSprint = async (
     ...data,
     updatedAt: serverTimestamp(),
   });
+};
+
+export const deleteSprint = async (id: string) => {
+  await deleteDoc(doc(db, 'sprints', id));
 };
 
 // USERS

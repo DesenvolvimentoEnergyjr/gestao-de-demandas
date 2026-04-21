@@ -8,6 +8,19 @@ export type DemandStatus =
   | 'em_revisao'
   | 'concluido';
 
+export type NotificationType = 'assignment' | 'system' | 'mention';
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  read: boolean;
+  link?: string;
+  createdAt: Date;
+}
+
 export interface User {
   uid: string;
   name: string;
@@ -29,6 +42,7 @@ export interface Demand {
   description: string;
   status: DemandStatus;
   priority: Priority;
+  projectType: 'Interno' | 'Externo';
   assignees: string[];
   sprintId: string | null;
   tags: string[];
