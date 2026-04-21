@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getSprints, getDemands } from '@/lib/firestore';
 import { Sprint, Demand } from '@/types';
 import { Card } from '@/components/ui/Card';
@@ -15,135 +15,120 @@ import { NovaSprintModal } from '@/components/modals/NovaSprintModal';
 import { SprintDetalhesModal } from '@/components/modals/SprintDetalhesModal';
 
 const FILTERS = [
-  { id: 'todas', label: 'Todas', color: 'text-zinc-400' },
-  { id: 'concluidas', label: 'Concluídas', color: 'text-white' },
-  { id: 'andamento', label: 'Em andamento', color: 'text-secondary' },
-  { id: 'backlog', label: 'Backlog', color: 'text-zinc-500' },
-  { id: 'minhas', label: 'Minhas Sprints', color: 'text-amber-400' },
+  { id: 'todas', label: 'Todas' },
+  { id: 'andamento', label: 'Em andamento' },
+  { id: 'concluidas', label: 'Concluídas' },
+  { id: 'backlog', label: 'Backlog' },
+  { id: 'minhas', label: 'Minhas Sprints' },
 ];
+
+const getSprintStyles = (sprint: Sprint) => {
+  if (sprint.status === 'planned')
+    return { border: '#52525b', text: 'text-zinc-400', label: 'BACKLOG', bg: 'bg-zinc-800' };
+
+  const isExterno = sprint.tags.some((t) =>
+    ['externo', 'solar', 'vendas', 'projeto'].includes(t.toLowerCase())
+  );
+
+  if (sprint.status === 'active') {
+    return isExterno
+      ? { border: '#0baf4d', text: 'text-[#0baf4d]', label: 'EM ANDAMENTO', bg: 'bg-[#0baf4d]/10' }
+      : { border: '#ffc20e', text: 'text-[#ffc20e]', label: 'EM ANDAMENTO', bg: 'bg-[#ffc20e]/10' };
+  }
+
+  if (sprint.status === 'completed') {
+    return isExterno
+      ? { border: '#166534', text: 'text-[#166534]', label: 'CONCLUÍDA', bg: 'bg-[#166534]/10' }
+      : { border: '#92400e', text: 'text-[#92400e]', label: 'CONCLUÍDA', bg: 'bg-[#92400e]/10' };
+  }
+
+  return { border: '#71717a', text: 'text-zinc-500', label: 'DESCONHECIDO', bg: 'bg-zinc-800' };
+};
 
 export default function SprintsPage() {
   const { user } = useAuthStore();
   const { openNovaSprint, openSprintDetalhes } = useUIStore();
   const { sprints, setSprints, loading, setLoading } = useSprintStore();
   const [demands, setDemands] = useState<Demand[]>([]);
-  const [mounted, setMounted] = useState(false);
   const [activeFilter, setActiveFilter] = useState('todas');
 
   useEffect(() => {
-    setMounted(true);
     const fetchData = async () => {
       setLoading(true);
-      const [sprintsData, demandsData] = await Promise.all([
-        getSprints(),
-        getDemands()
-      ]);
-      setSprints(sprintsData);
-      setDemands(demandsData);
+      try {
+        const [sprintsData, demandsData] = await Promise.all([
+          getSprints(),
+          getDemands(),
+        ]);
+        setSprints(sprintsData);
+        setDemands(demandsData);
+      } catch (error) {
+        console.error('Erro ao carregar sprints:', error);
+      } finally {
+        setLoading(false);
+      }
     };
+
     fetchData();
   }, [setLoading, setSprints]);
 
-
   const filteredSprints = useMemo(() => {
-    let result = [...sprints];
-    if (activeFilter === 'concluidas') {
-      result = result.filter(s => s.status === 'completed');
-    } else if (activeFilter === 'andamento') {
-      result = result.filter(s => s.status === 'active');
-    } else if (activeFilter === 'backlog') {
-      result = result.filter(s => s.status === 'planned');
-    } else if (activeFilter === 'minhas' && user) {
-      result = result.filter(s => {
-        const sprintDemands = demands.filter(d => d.sprintId === s.id);
-        return sprintDemands.some(d => d.assignees.includes(user.uid));
-      });
+    if (activeFilter === 'concluidas') return sprints.filter((s) => s.status === 'completed');
+    if (activeFilter === 'andamento') return sprints.filter((s) => s.status === 'active');
+    if (activeFilter === 'backlog') return sprints.filter((s) => s.status === 'planned');
+    if (activeFilter === 'minhas' && user) {
+      return sprints.filter((s) =>
+        demands
+          .filter((d) => d.sprintId === s.id)
+          .some((d) => d.assignees.includes(user.uid))
+      );
     }
-    return result;
+    return sprints;
   }, [sprints, demands, activeFilter, user]);
-
-  const getSprintColors = (sprint: Sprint) => {
-    const isExterno = sprint.tags.some(t => ['externo', 'solar', 'vendas', 'projeto'].includes(t.toLowerCase()));
-    const isInterno = sprint.tags.some(t => ['interno', 'marketing', 'financeiro', 'compliance', 'processos', 'kickoff'].includes(t.toLowerCase()));
-
-    if (sprint.status === 'planned') return { border: '#52525b', text: 'text-zinc-400', label: 'BACKLOG', bg: 'bg-zinc-800' };
-
-    if (sprint.status === 'active') {
-      if (isExterno) return { border: '#0baf4d', text: 'text-[#0baf4d]', label: 'EM ANDAMENTO', bg: 'bg-[#0baf4d]/10' };
-      if (isInterno) return { border: '#ffc20e', text: 'text-[#ffc20e]', label: 'EM ANDAMENTO', bg: 'bg-[#ffc20e]/10' };
-      return { border: '#0baf4d', text: 'text-secondary', label: 'EM ANDAMENTO', bg: 'bg-secondary/10' };
-    }
-
-    if (sprint.status === 'completed') {
-      if (isExterno) return { border: '#166534', text: 'text-[#166534]', label: 'CONCLUÍDA', bg: 'bg-[#166534]/10' };
-      if (isInterno) return { border: '#92400e', text: 'text-[#92400e]', label: 'CONCLUÍDA', bg: 'bg-[#92400e]/10' };
-      return { border: '#ffffff', text: 'text-white', label: 'CONCLUÍDA', bg: 'bg-white/10' };
-    }
-
-    return { border: '#71717a', text: 'text-zinc-500', label: 'DESCONHECIDO', bg: 'bg-zinc-800' };
-  };
-
-  if (!mounted) {
-    return (
-      <div className="h-full flex flex-col gap-6">
-        <div className="h-10 w-48 bg-white/[0.02] rounded-lg animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-64 bg-white/[0.02] rounded-3xl animate-pulse border border-white/5" />
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="h-full flex flex-col gap-8 px-8">
-      {/* Header */}
       <PageHeader
         title="Ciclos de Sprints"
         description="Planeje e acompanhe os ciclos de entrega da equipe com foco em metas e resultados."
       >
-        <Button
-          onClick={openNovaSprint}
-          className="gap-2 shadow-lg shadow-secondary/10 px-6 h-11"
-        >
+        <Button onClick={openNovaSprint} className="gap-2 shadow-lg shadow-secondary/10 px-6 h-11">
           <Plus className="w-4 h-4" />
           Nova Sprint
         </Button>
       </PageHeader>
 
-      {/* Filter Row */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        {FILTERS.map((filter) => {
-          const isActive = activeFilter === filter.id;
-          return (
-            <button
-              key={filter.id}
-              onClick={() => setActiveFilter(filter.id)}
-              className={cn(
-                "px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border",
-                isActive
-                  ? "bg-white text-black border-white shadow-lg shadow-white/5"
-                  : "bg-[#111111] text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300"
-              )}
-            >
-              {filter.label}
-            </button>
-          );
-        })}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+        {FILTERS.map((filter) => (
+          <button
+            key={filter.id}
+            onClick={() => setActiveFilter(filter.id)}
+            className={cn(
+              'px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border',
+              activeFilter === filter.id
+                ? 'bg-white text-black border-white shadow-lg'
+                : 'bg-[#111111] text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300'
+            )}
+          >
+            {filter.label}
+          </button>
+        ))}
       </div>
 
-      {/* Grid Container */}
-      <div className="flex-1 overflow-y-auto pr-6 custom-scrollbar">
-        <div className="border border-white/5 bg-white/[0.01] rounded-[40px] p-8 mb-10 shadow-inner">
+      <div className="flex-1 overflow-y-auto pr-6 no-scrollbar">
+        <div className="border border-white/5 bg-white/[0.01] rounded-[40px] p-8 mb-10">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {loading ? (
-              [1, 2, 3].map(i => (
+              [1, 2, 3].map((i) => (
                 <div key={i} className="h-64 bg-white/[0.02] rounded-3xl animate-pulse border border-white/5" />
               ))
             ) : filteredSprints.length > 0 ? (
-              filteredSprints.map(sprint => {
-                const styles = getSprintColors(sprint);
+              filteredSprints.map((sprint) => {
+                const styles = getSprintStyles(sprint);
+                const progressPct = sprint.storyPoints.total > 0
+                  ? (sprint.storyPoints.completed / sprint.storyPoints.total) * 100
+                  : 0;
+
                 return (
                   <Card
                     key={sprint.id}
@@ -155,18 +140,18 @@ export default function SprintsPage() {
                         <h3 className="text-xl font-bold text-white">Sprint #{sprint.number}</h3>
                         <p className="text-xs text-zinc-500 mt-1 line-clamp-1">{sprint.title}</p>
                       </div>
-                      <div className={cn("px-2.5 py-1 rounded-md text-[10px] font-black tracking-tighter", styles.bg, styles.text)}>
+                      <div className={cn('px-2.5 py-1 rounded-md text-[10px] font-black tracking-tighter', styles.bg, styles.text)}>
                         {styles.label}
                       </div>
                     </div>
 
                     <div className="space-y-4 py-2">
                       <div className="flex items-center gap-3 text-xs">
-                        <Target className="w-4 h-4 text-secondary/70" />
+                        <Target className="w-4 h-4 text-secondary/70 shrink-0" />
                         <span className="font-medium text-zinc-300 line-clamp-2 leading-relaxed">{sprint.objective}</span>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-zinc-500">
-                        <Calendar className="w-4 h-4" />
+                        <Calendar className="w-4 h-4 shrink-0" />
                         <span className="font-medium tracking-tight">
                           {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
                         </span>
@@ -176,19 +161,21 @@ export default function SprintsPage() {
                     <div className="space-y-3 mt-auto pt-6 border-t border-white/5">
                       <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-zinc-600">
                         <span>Progresso de Pontos</span>
-                        <span className="text-zinc-300 font-black">{sprint.storyPoints.completed} / {sprint.storyPoints.total} PTS</span>
+                        <span className="text-zinc-300 font-black">
+                          {sprint.storyPoints.completed} / {sprint.storyPoints.total} PTS
+                        </span>
                       </div>
                       <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-secondary shadow-[0_0_12px_rgba(11,175,77,0.4)] transition-all duration-1000 ease-out"
-                          style={{ width: `${(sprint.storyPoints.completed / sprint.storyPoints.total) * 100}%` }}
+                          style={{ width: `${progressPct}%` }}
                         />
                       </div>
                     </div>
 
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => openSprintDetalhes(sprint.id)}
                       className="mt-2 w-full text-[10px] font-bold uppercase tracking-widest py-3 hover:bg-white/5 active:scale-95 transition-all"
                     >
@@ -205,9 +192,11 @@ export default function SprintsPage() {
             )}
           </div>
         </div>
-        <NovaSprintModal />
-        <SprintDetalhesModal />
       </div>
+
+      {/* Modals fora do container com overflow */}
+      <NovaSprintModal />
+      <SprintDetalhesModal />
     </div>
   );
 }

@@ -13,60 +13,32 @@ interface KanbanCardProps {
   isOverlay?: boolean;
 }
 
-// Map tags/priority to display labels and colors
 const tagColorMap: Record<string, string> = {
   eficiencia: 'text-blue-400 bg-blue-400/10',
   solar: 'text-yellow-400 bg-yellow-400/10',
   normas: 'text-purple-400 bg-purple-400/10',
   revisao: 'text-orange-400 bg-orange-400/10',
   ambiental: 'text-emerald-400 bg-emerald-400/10',
-  alta: 'text-orange-400 bg-orange-400/10',
-  'alta prioridade': 'text-orange-400 bg-orange-400/10',
   urgente: 'text-red-400 bg-red-400/10',
+  alta: 'text-orange-400 bg-orange-400/10',
   media: 'text-yellow-400 bg-yellow-400/10',
   baixa: 'text-zinc-400 bg-zinc-400/10',
 };
 
+const priorityLabelMap: Record<string, string> = {
+  urgente: 'URGENTE',
+  alta: 'ALTA PRIORIDADE',
+  media: 'MÉDIA',
+  baixa: 'BAIXA',
+};
+
 function getTagColor(tag: string): string {
-  const key = tag.toLowerCase();
-  return tagColorMap[key] || 'text-zinc-400 bg-zinc-400/10';
-}
-
-function getPriorityLabel(priority: string): string {
-  const map: Record<string, string> = {
-    urgente: 'URGENTE',
-    alta: 'ALTA PRIORIDADE',
-    media: 'MÉDIA',
-    baixa: 'BAIXA',
-  };
-  return map[priority] || priority.toUpperCase();
-}
-
-function getPriorityColor(priority: string): string {
-  const map: Record<string, string> = {
-    urgente: 'text-red-400 bg-red-400/10',
-    alta: 'text-orange-400 bg-orange-400/10',
-    media: 'text-yellow-400 bg-yellow-400/10',
-    baixa: 'text-zinc-400 bg-zinc-400/10',
-  };
-  return map[priority] || 'text-zinc-400 bg-zinc-400/10';
-}
-
-function formatDemandId(id: string): string {
-  if (id.startsWith('EJ-')) return id;
-  const num = parseInt(id.replace(/\D/g, '').slice(-3)) || Math.floor(Math.random() * 900 + 100);
-  return `EJ-${num}`;
+  return tagColorMap[tag.toLowerCase()] ?? 'text-zinc-400 bg-zinc-400/10';
 }
 
 export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, isOverlay }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: demand.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: demand.id });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -83,23 +55,21 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, isOverlay }) => 
     );
   }
 
-  // Progress percentage
-  const progress = demand.estimatedHours > 0
-    ? Math.min(100, Math.round((demand.completedHours / demand.estimatedHours) * 100))
-    : 0;
+  const progress =
+    demand.estimatedHours > 0
+      ? Math.min(100, Math.round((demand.completedHours / demand.estimatedHours) * 100))
+      : 0;
 
   const isInProgress = demand.status === 'em_progresso';
   const isOverdue = demand.deadline && new Date(demand.deadline) < new Date();
 
-  // Primary tag info extraction
   const tagLabel = demand.tags[0]
     ? demand.tags[0].toUpperCase()
-    : getPriorityLabel(demand.priority);
+    : (priorityLabelMap[demand.priority] ?? demand.priority.toUpperCase());
+
   const tagColor = demand.tags[0]
     ? getTagColor(demand.tags[0])
-    : getPriorityColor(demand.priority);
-
-  const cardId = formatDemandId(demand.id);
+    : (tagColorMap[demand.priority] ?? 'text-zinc-400 bg-zinc-400/10');
 
   return (
     <div
@@ -115,37 +85,27 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, isOverlay }) => 
         isOverlay && 'shadow-2xl border-secondary/40 rotate-1 scale-[1.02]'
       )}
     >
-      {/* Top row: tag + ID */}
       <div className="flex items-center justify-between">
-        <span className={cn(
-          'text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded',
-          tagColor
-        )}>
+        <span className={cn('text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded', tagColor)}>
           {tagLabel}
         </span>
-        <span className="text-[10px] font-mono text-zinc-500">{cardId}</span>
+        <span className="text-[10px] font-mono text-zinc-500">{demand.code}</span>
       </div>
 
-      {/* Title */}
       <h4 className="text-sm font-semibold text-white leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
         {demand.title}
       </h4>
 
-      {/* Progress bar (only for em_progresso) */}
       {isInProgress && (
-        <div className="space-y-1.5">
-          <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-secondary to-secondary rounded-full transition-all duration-500"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-secondary to-secondary rounded-full transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       )}
 
-      {/* Footer */}
       <div className="flex items-center justify-between mt-auto pt-0.5">
-        {/* Assignee avatars */}
         <div className="flex -space-x-1.5">
           {demand.assignees.length > 0 ? (
             demand.assignees.slice(0, 3).map((assigneeId) => (
@@ -163,7 +123,6 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, isOverlay }) => 
           )}
         </div>
 
-        {/* Right: date or status */}
         <div className="flex items-center gap-2">
           {isInProgress && (
             <span className="text-[10px] text-zinc-500 flex items-center gap-1">
@@ -171,30 +130,30 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, isOverlay }) => 
               {progress}%
             </span>
           )}
-          {demand.comments && demand.comments.length > 0 && (
+          {demand.comments.length > 0 && (
             <span className="text-[10px] text-zinc-500 flex items-center gap-1">
               <MessageSquare className="w-3 h-3" />
               {demand.comments.length}
             </span>
           )}
-          {demand.deadline ? (
+          {demand.deadline && (
             <span className={cn(
               'text-[10px] flex items-center gap-1 font-medium',
               isOverdue ? 'text-red-400' : 'text-zinc-500'
             )}>
               {isOverdue ? (
-                <>
-                  <Clock className="w-3 h-3" />
-                  Atrasado
-                </>
+                <><Clock className="w-3 h-3" />Atrasado</>
               ) : (
                 <>
                   <Calendar className="w-3 h-3" />
-                  {new Date(demand.deadline).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                  {new Date(demand.deadline).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: 'short',
+                  })}
                 </>
               )}
             </span>
-          ) : null}
+          )}
         </div>
       </div>
     </div>

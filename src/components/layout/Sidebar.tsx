@@ -56,7 +56,7 @@ export const Sidebar = () => {
       {/* Nova Demanda Button */}
       <div className="px-3 pt-4">
         <button
-          onClick={openNovaDemanda}
+          onClick={() => openNovaDemanda()}
           className="w-full h-11 flex items-center justify-center gap-2 px-3 rounded-xl bg-secondary hover:bg-secondary/90 text-white text-[13px] font-bold transition-all shadow-lg shadow-secondary/20 active:scale-[0.97]"
         >
           <Plus className="w-4 h-4" />

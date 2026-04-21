@@ -19,6 +19,10 @@ export const useSprintStore = create<SprintState>((set) => ({
   setSprints: (sprints) => set({ sprints, loading: false }),
   setActiveSprint: (activeSprint) => set({ activeSprint }),
   addSprint: (sprint) => set((state) => ({ sprints: [sprint, ...state.sprints] })),
+  getActiveSprint: () => {
+    const state = useSprintStore.getState();
+    return state.sprints.find((s) => s.status === 'active') ?? null;
+  },
   updateSprint: (id, data) =>
     set((state) => ({
       sprints: state.sprints.map((s) => (s.id === id ? { ...s, ...data } : s)),

@@ -1,17 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import {
   SortableContext,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { Demand } from '@/types';
+import { Demand, DemandStatus } from '@/types';
 import { KanbanCard } from './KanbanCard';
 import { cn } from '@/lib/utils';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
-import { DemandStatus } from '@/types';
 
 interface KanbanColumnProps {
   id: string;
@@ -43,7 +42,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, de
         </div>
 
         <div className="flex items-center gap-1">
-          <button 
+          <button
             onClick={() => openNovaDemanda(id as DemandStatus)}
             className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-600 hover:text-white hover:bg-white/5 transition-all active:scale-90"
           >

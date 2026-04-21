@@ -1,10 +1,11 @@
 export type Role = 'diretor' | 'assessor';
+export type UserStatus = 'ativo' | 'desligado';
 export type Priority = 'baixa' | 'media' | 'alta' | 'urgente';
-export type DemandStatus = 
-  | 'backlog' 
-  | 'criando_escopo' 
-  | 'em_progresso' 
-  | 'em_revisao' 
+export type DemandStatus =
+  | 'backlog'
+  | 'criando_escopo'
+  | 'em_progresso'
+  | 'em_revisao'
   | 'concluido';
 
 export interface User {
@@ -13,19 +14,22 @@ export interface User {
   email: string;
   photoURL: string;
   role: Role;
+  status: UserStatus;
   area: string;
   title: string;
   workloadLimit?: number;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Demand {
   id: string;
+  code: string;
   title: string;
   description: string;
   status: DemandStatus;
   priority: Priority;
-  assignees: string[];        // User UIDs
+  assignees: string[];
   sprintId: string | null;
   tags: string[];
   startDate: Date | null;
@@ -72,5 +76,7 @@ export interface Sprint {
   storyPoints: { total: number; completed: number };
   status: 'planned' | 'active' | 'completed';
   demandIds: string[];
+  createdBy: string;
   createdAt: Date;
+  updatedAt: Date;
 }

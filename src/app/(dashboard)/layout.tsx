@@ -19,14 +19,17 @@ export default function DashboardLayout({
   useEffect(() => {
     const unsubscribe = onAuthChange(async (firebaseUser) => {
       if (firebaseUser) {
-        let userData = await getUserDoc(firebaseUser.uid);
-        
-        // If it's a first-time login, create the user document
-        if (!userData) {
-          userData = await createUserDoc(firebaseUser);
+        try {
+          let userData = await getUserDoc(firebaseUser.uid);
+          if (!userData) {
+            userData = await createUserDoc(firebaseUser);
+          }
+          setUser(userData);
+        } catch (error) {
+          console.error('Erro ao carregar usuário:', error);
+          setUser(null);
+          router.push('/auth');
         }
-        
-        setUser(userData);
       } else {
         setUser(null);
         router.push('/auth');

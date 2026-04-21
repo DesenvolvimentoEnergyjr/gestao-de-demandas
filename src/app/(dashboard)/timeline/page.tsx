@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { TimelineView } from '@/components/timeline/TimelineView';
 import { getDemands, getUsers } from '@/lib/firestore';
-import { Demand, User } from '@/types';
+import { useDemandStore } from '@/store/useDemandStore';
+import { useState } from 'react';
+import { User } from '@/types';
 
 export default function TimelinePage() {
-  const [demands, setDemands] = useState<Demand[]>([]);
+  const { demands, setDemands, loading, setLoading } = useDemandStore();
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -16,25 +17,25 @@ export default function TimelinePage() {
       try {
         const [demandsData, usersData] = await Promise.all([
           getDemands(),
-          getUsers()
+          getUsers(true),
         ]);
         setDemands(demandsData);
         setUsers(usersData);
       } catch (error) {
-        console.error(error);
+        console.error('Erro ao carregar Timeline:', error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [setDemands, setLoading]);
 
   return (
     <div className="h-full w-full overflow-hidden">
       {loading ? (
         <div className="h-full flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-secondary/20 border-t-secondary rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-2 border-secondary/20 border-t-secondary rounded-full animate-spin" />
         </div>
       ) : (
         <TimelineView demands={demands} users={users} />
