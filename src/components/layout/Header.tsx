@@ -8,7 +8,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useDemandStore } from '@/store/useDemandStore';
 import { useUIStore } from '@/store/useUIStore';
 import { Avatar } from '@/components/ui/Avatar';
-import { Search, Clock, AlertCircle, Plus, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Clock, AlertCircle, Plus, Settings, LogOut, ChevronDown, Menu } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -23,7 +23,7 @@ const tabs = [
 export const Header = () => {
   const { user } = useAuthStore();
   const { demands } = useDemandStore();
-  const { openNovaDemanda, openDemanda } = useUIStore();
+  const { openNovaDemanda, openDemanda, setSidebarOpen } = useUIStore();
   const [localSearch, setLocalSearch] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -72,10 +72,10 @@ export const Header = () => {
   };
 
   return (
-    <header className="h-20 border-b border-white/[0.05] bg-bg-section/80 backdrop-blur-xl flex items-center px-10 sticky top-0 z-40">
+    <header className="h-16 md:h-20 border-b border-white/[0.05] bg-bg-section/80 backdrop-blur-xl flex items-center px-4 md:px-6 xl:px-10 sticky top-0 z-40 gap-3 md:gap-4">
       {/* Left: Brand */}
-      <div className="flex items-center gap-4 min-w-[240px]">
-        <div className="w-10 h-10 relative">
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="w-8 h-8 md:w-10 md:h-10 relative shrink-0">
           <Image
             src="/logo-energy.svg"
             alt="Energy Júnior"
@@ -84,13 +84,21 @@ export const Header = () => {
           />
         </div>
         <div className="flex flex-col">
-          <h1 className="text-white font-black text-base leading-none tracking-tight">Energy Júnior</h1>
-          <p className="text-[10px] font-bold text-secondary uppercase tracking-[0.1em] mt-1">Gestão de Demandas</p>
+          <h1 className="text-white font-black text-sm md:text-base leading-none tracking-tight">Energy Júnior</h1>
+          <p className="text-[9px] md:text-[10px] font-bold text-secondary uppercase tracking-[0.1em] mt-0.5 md:mt-1">Gestão de Demandas</p>
         </div>
       </div>
 
-      {/* Center: Tabs */}
-      <nav className="flex-1 flex justify-center h-full">
+      {/* Sidebar toggle — visible between md and xl when tabs are hidden */}
+      <button
+        onClick={() => setSidebarOpen(true)}
+        className="xl:hidden p-2 bg-zinc-900/50 border border-white/5 rounded-xl text-zinc-400 hover:text-white transition-all active:scale-95 shrink-0"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      {/* Center: Tabs — only show at xl (1280px+) when there's enough room */}
+      <nav className="hidden xl:flex flex-1 justify-center h-full">
         <div className="flex items-center gap-2">
           {tabs.map((tab) => {
             const isActive = pathname.startsWith(tab.href);
@@ -99,7 +107,7 @@ export const Header = () => {
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  'px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all relative',
+                  'px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all relative whitespace-nowrap',
                   isActive
                     ? 'bg-secondary/10 text-secondary'
                     : 'text-zinc-500 hover:text-zinc-300'
@@ -115,25 +123,28 @@ export const Header = () => {
         </div>
       </nav>
 
+      {/* Spacer for non-xl screens */}
+      <div className="flex-1 xl:hidden" />
+
       {/* Right: Actions */}
-      <div className="flex items-center gap-6 min-w-[400px] justify-end">
+      <div className="flex items-center gap-3 md:gap-4 lg:gap-6 shrink-0">
         {/* Nova Demanda Button - Only for Diretores */}
         {user?.role === 'diretor' && (
           <Button
             onClick={() => openNovaDemanda()}
-            className="gap-2 px-5 h-10 shadow-lg shadow-secondary/20"
+            className="gap-2 px-3 md:px-5 h-9 md:h-10 shadow-lg shadow-secondary/20 text-xs"
           >
             <Plus className="w-4 h-4" />
-            Nova Demanda
+            <span className="hidden sm:inline">Nova Demanda</span>
           </Button>
         )}
 
         {/* Search */}
-        <div className="relative group w-64" ref={searchRef}>
+        <div className="relative group w-40 md:w-52 lg:w-64" ref={searchRef}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600 group-focus-within:text-secondary transition-colors" />
           <input
             type="text"
-            placeholder="Buscar demanda..."
+            placeholder="Buscar..."
             value={localSearch}
             onFocus={() => setShowResults(true)}
             onChange={(e) => {
@@ -145,7 +156,7 @@ export const Header = () => {
 
           {/* Search Results Dropdown */}
           {showResults && localSearch.trim() && (
-            <div className="absolute top-full mt-3 right-0 w-80 bg-bg-section border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50 backdrop-blur-xl">
+            <div className="absolute top-full mt-3 right-0 w-[min(320px,calc(100vw-32px))] bg-bg-section border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50 backdrop-blur-xl">
               <div className="p-2">
                 <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
                   <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Resultados</span>
@@ -185,7 +196,7 @@ export const Header = () => {
         <div className="relative user-menu-trigger">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-3 p-1.5 pr-3 bg-zinc-950 border border-white/5 rounded-2xl hover:bg-zinc-900 transition-all group"
+            className="flex items-center gap-2 md:gap-3 p-1.5 md:pr-3 bg-zinc-950 border border-white/5 rounded-2xl hover:bg-zinc-900 transition-all group"
           >
             <Avatar
               src={user?.photoURL}
@@ -194,11 +205,11 @@ export const Header = () => {
               size="sm"
               className="border border-zinc-800 group-hover:border-secondary transition-all"
             />
-            <div className="flex flex-col items-start text-left">
+            <div className="hidden lg:flex flex-col items-start text-left">
               <span className="text-[11px] font-black text-white leading-tight">{user?.name?.split(' ')[0]}</span>
               <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{user?.role}</span>
             </div>
-            <ChevronDown className={cn("ml-1 w-3.5 h-3.5 text-zinc-600 transition-transform duration-300", showUserMenu && "rotate-180")} />
+            <ChevronDown className={cn("hidden lg:block ml-1 w-3.5 h-3.5 text-zinc-600 transition-transform duration-300", showUserMenu && "rotate-180")} />
           </button>
 
           {/* User Dropdown */}

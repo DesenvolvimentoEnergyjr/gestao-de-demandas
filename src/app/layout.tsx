@@ -7,6 +7,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Energy Júnior - Gestão de Demandas',
   description: 'Sistema interno de gestão de demandas e projetos da Energy Júnior.',
+  icons: {
+    icon: '/logo-energy.svg',
+  },
 };
 
 export default function RootLayout({

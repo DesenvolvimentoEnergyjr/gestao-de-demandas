@@ -35,7 +35,7 @@ const initialFormData = (status: DemandStatus): FormData => ({
   priority: 'media',
   assignees: [],
   sprintId: '',
-  startDate: new Date().toISOString().split('T')[0],
+  startDate: '', // Iniciado vazio para evitar mismatch de hidratação
   deadline: '',
   estimatedHours: 0,
   projectType: 'Interno',
@@ -93,7 +93,10 @@ export const NovaDemandaModal = () => {
       fetchDemand();
     } else {
       setSelectedDemand(null);
-      setFormData(initialFormData(novaDemandaInitialStatus));
+      const initial = initialFormData(novaDemandaInitialStatus);
+      // Set current date only on client
+      initial.startDate = new Date().toISOString().split('T')[0];
+      setFormData(initial);
     }
   }, [novaDemandaOpen, selectedDemandId, demandModalMode, novaDemandaInitialStatus]);
 
@@ -206,19 +209,19 @@ export const NovaDemandaModal = () => {
       />
 
       <div className={cn(
-        "relative w-full max-w-2xl bg-bg-section border-gradient rounded-[32px] shadow-[0_0_50px_-12px_rgba(11,175,77,0.2)] overflow-hidden transition-all duration-500",
+        "relative w-full max-w-2xl bg-bg-section border-gradient rounded-[2rem] md:rounded-[32px] shadow-[0_0_50px_-12px_rgba(11,175,77,0.2)] overflow-hidden transition-all duration-500 flex flex-col max-h-[90vh]",
         "animate-in fade-in zoom-in-95"
       )}>
 
         {/* Header */}
-        <div className="p-8 pb-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-secondary/5 rounded-2xl flex items-center justify-center border border-white/5 shadow-[0_0_20px_rgba(11,175,77,0.1)]">
-              <Image src="/logo-energy.svg" alt="Energy" width={28} height={28} className="object-contain" />
+        <div className="p-6 md:p-8 pb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-secondary/5 rounded-2xl flex items-center justify-center border border-white/5 shadow-[0_0_20px_rgba(11,175,77,0.1)] shrink-0">
+              <Image src="/logo-energy.svg" alt="Energy" width={24} height={24} className="object-contain" />
             </div>
-            <div>
-              <h2 className="text-xl font-black text-white tracking-tight">{modalTitle}</h2>
-              <p className="text-xs text-zinc-500 font-medium uppercase tracking-tighter">
+            <div className="min-w-0">
+              <h2 className="text-lg md:text-xl font-black text-white tracking-tight truncate">{modalTitle}</h2>
+              <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-tighter truncate">
                 Energy Júnior • {isCreate ? 'Nova Solicitação' : 'Gestão de Fluxo'}
               </p>
             </div>
@@ -243,7 +246,7 @@ export const NovaDemandaModal = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 pt-6 space-y-8 max-h-[80vh] overflow-y-auto no-scrollbar">
+        <form onSubmit={handleSubmit} className="p-6 md:p-8 pt-4 md:pt-6 space-y-6 md:space-y-8 flex-1 overflow-y-auto no-scrollbar">
 
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center gap-4">
@@ -332,7 +335,7 @@ export const NovaDemandaModal = () => {
               </div>
 
               {/* Assignees & Status */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                 <div className="space-y-4">
                   <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                     Responsáveis
@@ -409,7 +412,7 @@ export const NovaDemandaModal = () => {
               </div>
 
               {/* Priority & Sprint */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                 {isView ? (
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Prioridade</label>
@@ -462,8 +465,8 @@ export const NovaDemandaModal = () => {
               </div>
 
               {/* Dates & Hours */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Início</label>
                     {isView ? (

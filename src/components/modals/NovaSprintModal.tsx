@@ -22,15 +22,15 @@ interface FormData {
   type: 'Interno' | 'Externo';
 }
 
-const initialFormData: FormData = {
+const initialFormData = (): FormData => ({
   title: '',
   description: '',
   objective: '',
-  startDate: new Date().toISOString().split('T')[0],
+  startDate: '', // Vazio para evitar mismatch
   endDate: '',
   totalPoints: 50,
   type: 'Interno',
-};
+});
 
 export const NovaSprintModal = () => {
   const { novaSprintOpen, closeNovaSprint } = useUIStore();
@@ -38,7 +38,16 @@ export const NovaSprintModal = () => {
   const { user: currentUser } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [formData, setFormData] = useState<FormData>(initialFormData());
+
+  React.useEffect(() => {
+    if (novaSprintOpen) {
+      setFormData(prev => ({
+        ...prev,
+        startDate: new Date().toISOString().split('T')[0]
+      }));
+    }
+  }, [novaSprintOpen]);
 
   if (!novaSprintOpen) return null;
 
@@ -80,7 +89,7 @@ export const NovaSprintModal = () => {
       });
 
       closeNovaSprint();
-      setFormData(initialFormData);
+      setFormData(initialFormData());
     } catch (error) {
       if (error instanceof Error) {
         alert(error.message);
@@ -99,23 +108,23 @@ export const NovaSprintModal = () => {
         onClick={closeNovaSprint}
       />
 
-      <div className="relative w-full max-w-xl bg-[#0f0f0f] border border-white/[0.05] rounded-[32px] shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+      <div className="relative w-full max-w-xl bg-[#0f0f0f] border border-white/[0.05] rounded-[2rem] md:rounded-[32px] shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in-95 duration-500 flex flex-col max-h-[90vh]">
 
         {/* Header */}
-        <div className="p-8 pb-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-secondary/5 rounded-2xl flex items-center justify-center border border-white/5 shadow-[0_0_20px_rgba(11,175,77,0.1)]">
+        <div className="p-6 md:p-8 pb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-secondary/5 rounded-2xl flex items-center justify-center border border-white/5 shadow-[0_0_20px_rgba(11,175,77,0.1)] shrink-0">
               <Image
                 src="/logo-energy.svg"
                 alt="Energy"
-                width={28}
-                height={28}
+                width={24}
+                height={24}
                 className="object-contain"
               />
             </div>
-            <div>
-              <h2 className="text-xl font-black text-white tracking-tight">Novo Ciclo de Sprint</h2>
-              <p className="text-xs text-zinc-500 font-medium uppercase tracking-tighter">
+            <div className="min-w-0">
+              <h2 className="text-lg md:text-xl font-black text-white tracking-tight truncate">Novo Ciclo de Sprint</h2>
+              <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-tighter truncate">
                 Planejamento e Metas • Energy Júnior
               </p>
             </div>
@@ -128,7 +137,7 @@ export const NovaSprintModal = () => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 pt-6 space-y-6 max-h-[75vh] overflow-y-auto no-scrollbar">
+        <form onSubmit={handleSubmit} className="p-6 md:p-8 pt-4 md:pt-6 space-y-6 flex-1 overflow-y-auto no-scrollbar">
 
           {/* Título */}
           <div className="space-y-3">
@@ -177,7 +186,7 @@ export const NovaSprintModal = () => {
           </div>
 
           {/* Datas */}
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
             <div className="space-y-3">
               <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                 Início
@@ -212,7 +221,7 @@ export const NovaSprintModal = () => {
           </div>
 
           {/* Pontos e Tipo */}
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
             <div className="space-y-3">
               <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                 Meta de Pontos

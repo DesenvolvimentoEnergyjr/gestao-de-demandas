@@ -40,12 +40,12 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="h-full w-[280px] bg-bg-section border-r border-white/5 flex flex-col z-50">
+    <aside className="h-full w-[280px] max-w-[calc(100vw-48px)] bg-bg-section border-r border-white/5 flex flex-col z-50">
       {/* Brand */}
       <div className="px-6 py-8 flex flex-col gap-4 relative">
         <button
           onClick={() => setSidebarOpen(false)}
-          className="absolute top-6 right-4 p-2 text-zinc-500 hover:text-white md:hidden"
+          className="absolute top-6 right-4 p-2 text-zinc-500 hover:text-white xl:hidden"
         >
           <X className="w-5 h-5" />
         </button>

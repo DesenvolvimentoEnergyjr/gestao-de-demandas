@@ -193,50 +193,52 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
   };
 
   return (
-    <div className="flex flex-col h-full text-white font-sans px-8">
+    <div className="flex flex-col h-full text-white font-sans px-4 md:px-8">
       <PageHeader
         title="Linha do Tempo"
         description="Gestão estratégica e acompanhamento temporal de todas as frentes de trabalho em tempo real."
       />
 
       {/* Control Bar */}
-      <div className="py-4 flex items-center justify-between bg-zinc-950/40 border border-white/[0.03] rounded-[24px] px-6 mb-6 backdrop-blur-md">
-        <div className="flex items-center gap-6">
+      <div className="py-4 flex flex-col lg:flex-row lg:items-center justify-between bg-zinc-950/40 border border-white/[0.03] rounded-[24px] px-6 mb-6 backdrop-blur-md gap-6 lg:gap-0">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#0baf4d] shadow-[0_0_10px_rgba(11,175,77,0.5)]" />
-            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Serviços Empresa</span>
+            <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#0baf4d] shadow-[0_0_10px_rgba(11,175,77,0.5)]" />
+            <span className="text-[9px] md:text-[10px] font-black text-zinc-400 uppercase tracking-widest">Serviços Empresa</span>
           </div>
           <div className="flex items-center gap-2.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#ffc20e] shadow-[0_0_10px_rgba(255,194,14,0.5)]" />
-            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Projetos Internos</span>
+            <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#ffc20e] shadow-[0_0_10px_rgba(255,194,14,0.5)]" />
+            <span className="text-[9px] md:text-[10px] font-black text-zinc-400 uppercase tracking-widest">Projetos Internos</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 p-1.5 bg-zinc-900/80 rounded-2xl border border-white/5">
-          {(['dia', 'semana', 'ano'] as ViewMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className={cn(
-                'px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
-                viewMode === mode ? 'bg-white text-black shadow-xl' : 'text-zinc-500 hover:text-white'
-              )}
-            >
-              {mode.charAt(0).toUpperCase() + mode.slice(1)}
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex items-center gap-1 md:gap-2 p-1.5 bg-zinc-900/80 rounded-2xl border border-white/5 w-full sm:w-auto justify-center">
+            {(['dia', 'semana', 'ano'] as ViewMode[]).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={cn(
+                  'flex-1 sm:flex-none px-3 md:px-4 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all',
+                  viewMode === mode ? 'bg-white text-black shadow-xl' : 'text-zinc-500 hover:text-white'
+                )}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
+            <button onClick={() => navigateTime('prev')} className="p-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-white/20 transition-all">
+              <ChevronLeft className="w-4 h-4" />
             </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigateTime('prev')} className="p-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-white/20 transition-all">
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button onClick={() => navigateTime('today')} className="px-5 py-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-white/20 text-[10px] font-black uppercase tracking-[0.2em] transition-all">
-            Hoje
-          </button>
-          <button onClick={() => navigateTime('next')} className="p-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-white/20 transition-all">
-            <ChevronRight className="w-4 h-4" />
-          </button>
+            <button onClick={() => navigateTime('today')} className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-white/20 text-[10px] font-black uppercase tracking-[0.2em] transition-all">
+              Hoje
+            </button>
+            <button onClick={() => navigateTime('next')} className="p-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-white/20 transition-all">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -247,9 +249,9 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
 
             {/* Header */}
             <div className="flex sticky top-0 z-40 bg-bg-section">
-              <div className="w-[320px] min-w-[320px] px-8 py-6 border-r border-b border-white/[0.03] flex items-end sticky left-0 bg-bg-section z-50">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">
-                  Assessor Responsável
+              <div className="w-[160px] md:w-[320px] min-w-[160px] md:min-w-[320px] px-4 md:px-8 py-6 border-r border-b border-white/[0.03] flex items-end sticky left-0 bg-bg-section z-50">
+                <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.1em] md:tracking-[0.3em] text-zinc-600 truncate">
+                  Assessor
                 </span>
               </div>
               <div
@@ -301,12 +303,12 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                     key={row.user.uid}
                     className="flex min-h-[110px] border-b border-white/[0.03] group hover:bg-white/[0.01] transition-all"
                   >
-                    <div className="w-[320px] min-w-[320px] px-8 py-4 flex items-center gap-5 border-r border-white/[0.03] sticky left-0 bg-bg-section z-30">
-                      <Avatar src={row.user.photoURL} alt={row.user.name} size="md" className="ring-2 ring-zinc-800 shadow-xl" />
+                    <div className="w-[160px] md:w-[320px] min-w-[160px] md:min-w-[320px] px-4 md:px-8 py-4 flex items-center gap-3 md:gap-5 border-r border-white/[0.03] sticky left-0 bg-bg-section z-30">
+                      <Avatar src={row.user.photoURL} alt={row.user.name} size="sm" className="ring-2 ring-zinc-800 shadow-xl" />
                       <div className="min-w-0">
-                        <h3 className="text-sm font-black text-white truncate tracking-tight">{row.user.name}</h3>
-                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">
-                          {row.user.area || 'Setor Técnico'}
+                        <h3 className="text-xs md:text-sm font-black text-white truncate tracking-tight">{row.user.name}</h3>
+                        <p className="text-[8px] md:text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1 truncate">
+                          {row.user.area || 'Técnico'}
                         </p>
                       </div>
                     </div>
@@ -366,7 +368,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                   <div
                     className="absolute top-0 bottom-0 w-px bg-secondary shadow-[0_0_15px_rgba(11,175,77,0.5)] z-35 pointer-events-none"
                     style={{
-                      left: `calc(320px + ${((differenceInDays(new Date(), range.start) + 0.5) / range.totalDays) * 100}%)`,
+                      left: `calc(${typeof window !== 'undefined' && window.innerWidth < 768 ? '160px' : '320px'} + ${((differenceInDays(new Date(), range.start) + 0.5) / range.totalDays) * 100}%)`,
                     }}
                   >
                     <div className="absolute top-0 -translate-x-1/2 bg-secondary text-black text-[8px] font-black px-1.5 py-0.5 rounded-full whitespace-nowrap">

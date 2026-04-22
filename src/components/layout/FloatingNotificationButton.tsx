@@ -9,11 +9,13 @@ import { useAuthStore } from '@/store/useAuthStore';
 
 export const FloatingNotificationButton = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { notifications, unreadCount } = useNotificationStore();
   const { user } = useAuthStore();
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setMounted(true);
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -35,9 +37,9 @@ export const FloatingNotificationButton = () => {
   };
 
   return (
-    <div className="fixed bottom-10 right-10 z-[100]" ref={containerRef}>
+    <div className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-[100]" ref={containerRef}>
       {isOpen && (
-        <div className="absolute bottom-16 right-0 w-80 bg-bg-section border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200 backdrop-blur-xl mb-4">
+        <div className="absolute bottom-16 right-0 w-[calc(100vw-48px)] sm:w-80 bg-bg-section border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200 backdrop-blur-xl mb-4">
           <div className="p-4 border-b border-white/5 flex items-center justify-between bg-zinc-950/50">
             <div className="flex items-center gap-2">
               <Inbox className="w-4 h-4 text-secondary" />
@@ -86,7 +88,7 @@ export const FloatingNotificationButton = () => {
                           {notif.title}
                         </p>
                         <span className="text-[9px] font-bold text-zinc-600 whitespace-nowrap mt-0.5">
-                          {formatRelativeTime(notif.createdAt)}
+                          {mounted && formatRelativeTime(notif.createdAt)}
                         </span>
                       </div>
                       <p className="text-[10px] text-zinc-500 font-medium leading-relaxed mt-1 line-clamp-2">

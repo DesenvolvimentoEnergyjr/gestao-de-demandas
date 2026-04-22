@@ -65,7 +65,7 @@ export default function SprintsPage() {
   }, [sprints, demands, activeFilter, user]);
 
   return (
-    <div className="h-full flex flex-col gap-8 px-8">
+    <div className="h-full flex flex-col gap-6 md:gap-8 px-4 sm:px-6 lg:px-8">
       <PageHeader
         title="Ciclos de Sprints"
         description="Planeje e acompanhe os ciclos de entrega da equipe com foco em metas e resultados."
@@ -78,7 +78,7 @@ export default function SprintsPage() {
         )}
       </PageHeader>
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+      <div className="flex flex-wrap items-center gap-2 md:gap-3 pb-2">
         {FILTERS.map((filter) => (
           <button
             key={filter.id}
@@ -95,8 +95,8 @@ export default function SprintsPage() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-6 no-scrollbar">
-        <div className="border border-white/5 bg-white/[0.01] rounded-[40px] p-8 mb-10">
+      <div className="flex-1 overflow-y-auto pr-0 md:pr-6 no-scrollbar">
+        <div className="border border-white/5 bg-white/[0.01] rounded-2xl md:rounded-[40px] p-4 md:p-8 mb-10">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {loading ? (
               [1, 2, 3].map((i) => (
@@ -113,7 +113,7 @@ export default function SprintsPage() {
                   <Card
                     key={sprint.id}
                     variant="gradient"
-                    className="p-7 flex flex-col gap-5 border-l-[6px] transition-all"
+                    className="p-6 md:p-7 flex flex-col gap-5 border-l-[6px] transition-all"
                     style={{ borderLeftColor: styles.border }}
                   >
                     <div className="flex justify-between items-start">
@@ -166,9 +166,9 @@ export default function SprintsPage() {
                 );
               })
             ) : (
-              <div className="col-span-full h-80 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[2rem] bg-white/[0.01]">
-                <Search className="w-12 h-12 text-zinc-800 mb-4" />
-                <p className="text-zinc-600 font-medium">Nenhuma sprint encontrada para este filtro.</p>
+              <div className="col-span-full py-20 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[2rem] bg-white/[0.01] px-6 text-center">
+                <Search className="w-10 h-10 md:w-12 md:h-12 text-zinc-800 mb-4" />
+                <p className="text-zinc-600 font-medium text-sm">Nenhuma sprint encontrada para este filtro.</p>
               </div>
             )}
           </div>

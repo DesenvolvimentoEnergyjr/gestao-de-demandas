@@ -75,7 +75,7 @@ export const KanbanBoard = ({ users = [] }: { users?: User[] }) => {
   const activeDemand = activeId ? demands.find((d) => d.id === activeId) : null;
 
   return (
-    <div className="flex h-full w-full gap-4 overflow-x-auto pb-4 bg-bg-section/40 rounded-[40px] px-4 pt-4 border border-white/5">
+    <div className="flex h-full w-full gap-3 md:gap-4 overflow-x-auto pb-6 bg-bg-section/40 rounded-xl md:rounded-[40px] px-2 md:px-4 pt-2 md:pt-4 border border-white/5 snap-x snap-mandatory no-scrollbar">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}

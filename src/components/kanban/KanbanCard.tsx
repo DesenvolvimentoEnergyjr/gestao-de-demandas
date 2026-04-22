@@ -100,7 +100,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
       className={cn(
         'group cursor-grab active:cursor-grabbing relative overflow-hidden',
         'border-gradient border-gradient-hover',
-        'rounded-3xl p-5 flex flex-col gap-4',
+        'rounded-[24px] md:rounded-3xl p-4 md:p-5 flex flex-col gap-3 md:gap-4',
         'transition-all duration-300',
         'bg-gradient-to-br from-bg-surface to-bg-surface group-hover:from-bg-surface group-hover:to-secondary/5',
         isOverlay && 'shadow-2xl scale-[1.02] z-50'

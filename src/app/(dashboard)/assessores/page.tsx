@@ -41,14 +41,14 @@ export default function AssessoresPage() {
   if (!mounted) return null;
 
   return (
-    <div className="h-full flex flex-col gap-10 overflow-y-auto no-scrollbar pb-12 pr-4 lg:pr-8 px-8">
+    <div className="h-full flex flex-col gap-6 md:gap-10 overflow-y-auto no-scrollbar pb-12 px-4 sm:px-6 lg:px-8">
       {/* Header Area */}
       <PageHeader 
         title="Equipe de Assessores" 
         description="Monitore a carga de trabalho, produtividade e disponibilidade dos membros da Energy Júnior em tempo real."
       >
         {/* Quick Stats Summary */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 md:gap-4">
           <div className="px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
               <Target className="w-4 h-4 text-secondary" />
@@ -70,7 +70,7 @@ export default function AssessoresPage() {
         </div>
       </PageHeader>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 pb-10">
         {loading ? (
           [1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} className="h-[420px] bg-white/[0.02] rounded-[32px] animate-pulse border border-white/5" />
@@ -88,14 +88,14 @@ export default function AssessoresPage() {
               key={user.uid}
               hoverGlow
               variant="gradient"
-              className="p-8 group rounded-[32px] flex flex-col h-full cursor-pointer transition-all active:scale-[0.98]"
+              className="p-6 md:p-8 group rounded-[32px] flex flex-col h-full cursor-pointer transition-all active:scale-[0.98]"
               onClick={() => setSelectedUser(user)}
             >
 
               {/* Profile Section */}
               <div className="flex items-center gap-5">
                 <div className="relative">
-                  <Avatar src={user.photoURL} alt={user.name} size="lg" className="border-2 border-white/5 h-20 w-20 shadow-2xl group-hover:scale-105 transition-transform duration-500" />
+                  <Avatar src={user.photoURL} alt={user.name} size="lg" className="border-2 border-white/5 h-16 w-16 md:h-20 md:w-20 shadow-2xl group-hover:scale-105 transition-transform duration-500" />
                   <div className={cn(
                     "absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-[#0f0f0f] flex items-center justify-center transition-all",
                     isOverloaded ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" : "bg-secondary shadow-[0_0_10px_rgba(11,175,77,0.5)]"
@@ -105,7 +105,7 @@ export default function AssessoresPage() {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-xl font-black text-white truncate tracking-tight">{user.name}</h3>
+                  <h3 className="text-lg md:text-xl font-black text-white truncate tracking-tight">{user.name}</h3>
                   <p className="text-[12px] font-black text-secondary uppercase tracking-[0.15em] mt-1.5 leading-none">
                     {user.title || user.role}
                   </p>
@@ -118,27 +118,27 @@ export default function AssessoresPage() {
 
               {/* Stats Grid */}
               <div className="grid grid-cols-3 gap-4 mt-10">
-                <div className="bg-zinc-900/40 rounded-2xl p-4 border border-white/[0.03] text-center group-hover:bg-zinc-900/60 transition-all">
+                <div className="bg-zinc-900/40 rounded-2xl p-3 md:p-4 border border-white/[0.03] text-center group-hover:bg-zinc-900/60 transition-all">
                   <div className="flex justify-center mb-2">
                     <Activity className="w-3.5 h-3.5 text-zinc-700 group-hover:text-zinc-500 transition-colors" />
                   </div>
-                  <div className="text-xl font-black text-white leading-none">{activeDemands}</div>
+                  <div className="text-lg md:text-xl font-black text-white leading-none">{activeDemands}</div>
                   <div className="text-[8px] uppercase font-black text-zinc-600 mt-2 tracking-widest">Ativas</div>
                 </div>
 
-                <div className="bg-zinc-900/40 rounded-2xl p-4 border border-white/[0.03] text-center group-hover:bg-zinc-900/60 transition-all">
+                <div className="bg-zinc-900/40 rounded-2xl p-3 md:p-4 border border-white/[0.03] text-center group-hover:bg-zinc-900/60 transition-all">
                   <div className="flex justify-center mb-2">
                     <Clock className="w-3.5 h-3.5 text-zinc-700 group-hover:text-zinc-500 transition-colors" />
                   </div>
-                  <div className="text-xl font-black text-white leading-none">{totalEstimated}h</div>
+                  <div className="text-lg md:text-xl font-black text-white leading-none">{totalEstimated}h</div>
                   <div className="text-[8px] uppercase font-black text-zinc-600 mt-2 tracking-widest">Horas</div>
                 </div>
 
-                <div className="bg-zinc-900/40 rounded-2xl p-4 border border-white/[0.03] text-center group-hover:bg-zinc-900/60 transition-all">
+                <div className="bg-zinc-900/40 rounded-2xl p-3 md:p-4 border border-white/[0.03] text-center group-hover:bg-zinc-900/60 transition-all">
                   <div className="flex justify-center mb-2">
                     <Layers className="w-3.5 h-3.5 text-zinc-700 group-hover:text-zinc-500 transition-colors" />
                   </div>
-                  <div className="text-xl font-black text-white leading-none">{userDemands.length}</div>
+                  <div className="text-lg md:text-xl font-black text-white leading-none">{userDemands.length}</div>
                   <div className="text-[8px] uppercase font-black text-zinc-600 mt-2 tracking-widest">Entregas</div>
                 </div>
               </div>
@@ -149,7 +149,7 @@ export default function AssessoresPage() {
                   <div className="space-y-1">
                     <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 block">Carga de Trabalho</span>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3">
                     <div 
                       className="flex items-center bg-white/[0.03] border border-white/5 rounded-full px-2 py-1 gap-4 transition-all hover:bg-white/[0.05]"
                       onClick={(e) => e.stopPropagation()} 

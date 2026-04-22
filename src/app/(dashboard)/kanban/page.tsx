@@ -38,7 +38,7 @@ export default function KanbanPage() {
   }, [setDemands, setSprints, setLoading]);
 
   return (
-    <div className="h-full flex flex-col relative px-8">
+    <div className="h-full flex flex-col relative px-4 sm:px-6 lg:px-8">
       <PageHeader
         title="Quadro de Demandas"
         description="Gerencie o fluxo de trabalho e acompanhe o status de cada atividade em tempo real."

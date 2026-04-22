@@ -98,17 +98,17 @@ export default function ConfiguracoesPage() {
   if (!mounted) return null;
 
   return (
-    <div className="h-full flex flex-col gap-8 max-w-4xl mx-auto w-full overflow-y-auto pr-2 no-scrollbar">
+    <div className="h-full flex flex-col gap-8 max-w-4xl mx-auto w-full overflow-y-auto px-4 md:px-0 pb-12 no-scrollbar">
       {/* Header */}
-      <div>
-        <h2 className="text-3xl font-black text-white tracking-tight">Configurações</h2>
+      <div className="mt-4 md:mt-0">
+        <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">Configurações</h2>
         <p className="text-zinc-500 mt-1 text-sm font-medium">Gerencie suas informações de perfil.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch pb-12">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 items-stretch pb-6 md:pb-12">
         {/* Left Col: Preview */}
         <div className="md:col-span-1">
-          <Card variant="gradient" className="p-8 flex flex-col items-center justify-center text-center gap-6 h-full">
+          <Card variant="gradient" className="p-6 md:p-8 flex flex-col items-center justify-center text-center gap-6 h-full">
             <div className="relative group">
               <Avatar
                 src={photoURL}
@@ -131,7 +131,7 @@ export default function ConfiguracoesPage() {
 
         {/* Right Col: Form */}
         <div className="md:col-span-2">
-          <Card variant="gradient" className="p-8 h-full flex flex-col justify-center">
+          <Card variant="gradient" className="p-6 md:p-8 h-full flex flex-col justify-center">
             <form onSubmit={handleSave} className="space-y-6">
               <div className="grid gap-6">
                 <div className="space-y-3">
@@ -226,7 +226,7 @@ export default function ConfiguracoesPage() {
 
       {user?.role === 'diretor' && (
         <div className="pb-20">
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-black text-white tracking-tight">Gestão da Equipe</h2>
               <p className="text-zinc-500 text-xs font-medium uppercase tracking-widest mt-1">Controle de acessos e cargos</p>
@@ -237,26 +237,26 @@ export default function ConfiguracoesPage() {
           <Card className="overflow-hidden border-white/5 rounded-[32px] bg-white/[0.01]">
             <div className="divide-y divide-white/[0.03]">
               {allUsers.map((member) => (
-                <div key={member.uid} className="p-6 flex items-center justify-between hover:bg-white/[0.01] transition-colors group">
+                <div key={member.uid} className="p-4 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-white/[0.01] transition-colors group gap-4">
                   <div className="flex items-center gap-4">
-                    <Avatar src={member.photoURL} alt={member.name} size="md" className="border-2 border-white/5 shadow-xl" />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-white text-sm">{member.name}</span>
+                    <Avatar src={member.photoURL} alt={member.name} size="md" className="border-2 border-white/5 shadow-xl shrink-0" />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-black text-white text-sm truncate">{member.name}</span>
                         {member.status === 'desligado' && (
-                          <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 text-[8px] font-black uppercase tracking-widest border border-red-500/20">
+                          <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 text-[8px] font-black uppercase tracking-widest border border-red-500/20 shrink-0">
                             Pós-Júnior
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-zinc-500 font-medium">{member.email}</p>
+                      <p className="text-xs text-zinc-500 font-medium truncate">{member.email}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6">
                     {/* Role Toggle */}
                     <div className={cn(
-                      "flex p-1 bg-zinc-950 border border-white/5 rounded-xl transition-opacity",
+                      "flex p-1 bg-zinc-950 border border-white/5 rounded-xl transition-opacity flex-1 sm:flex-none",
                       member.status === 'desligado' && "opacity-40 grayscale pointer-events-none"
                     )}>
                       {(['assessor', 'diretor'] as Role[]).map((roleOption) => (
@@ -265,7 +265,7 @@ export default function ConfiguracoesPage() {
                           disabled={member.uid === user.uid}
                           onClick={() => handleUpdateRole(member.uid, roleOption)}
                           className={cn(
-                            "px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] transition-all",
+                            "flex-1 sm:flex-none px-3 md:px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] transition-all",
                             member.role === roleOption 
                               ? "bg-white text-black shadow-lg" 
                               : "text-zinc-600 hover:text-zinc-400"
@@ -280,7 +280,7 @@ export default function ConfiguracoesPage() {
                     {member.uid !== user.uid && member.status !== 'desligado' && (
                       <button 
                         onClick={() => setShowDeactivateConfirm(member)}
-                        className="p-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/10 text-red-500/30 hover:text-red-500 border border-red-500/0 hover:border-red-500/10 transition-all opacity-0 group-hover:opacity-100"
+                        className="p-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/10 text-red-500/30 hover:text-red-500 border border-red-500/0 hover:border-red-500/10 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
                         title="Desligar Membro"
                       >
                         <UserX className="w-4 h-4" />

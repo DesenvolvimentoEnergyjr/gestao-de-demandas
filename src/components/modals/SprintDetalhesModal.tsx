@@ -20,6 +20,7 @@ export const SprintDetalhesModal = () => {
   const { user: currentUser } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // Estado de Edição
   const [isEditMode, setIsEditMode] = useState(false);
@@ -27,6 +28,7 @@ export const SprintDetalhesModal = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (sprintDetalhesOpen) {
       getUsers(true).then(setUsers);
       setIsEditMode(false);
@@ -135,18 +137,18 @@ export const SprintDetalhesModal = () => {
         onClick={closeSprintDetalhes}
       />
 
-      <div className="relative w-full max-w-4xl bg-bg-section border border-white/[0.08] rounded-[40px] shadow-[0_0_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in-95 duration-500 flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-4xl bg-bg-section border border-white/[0.08] rounded-[2rem] md:rounded-[40px] shadow-[0_0_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in-95 duration-500 flex flex-col max-h-[90vh]">
 
         {/* Decorative glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[300px] bg-gradient-to-b from-secondary/5 to-transparent pointer-events-none" />
 
         {/* Header */}
-        <div className="p-10 pb-6 flex items-start justify-between relative z-10">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
+        <div className="p-6 md:p-10 pb-6 flex items-start justify-between relative z-10 gap-4">
+          <div className="space-y-4 min-w-0">
+            <div className="flex items-center gap-2 md:gap-3 flex-wrap">
               <span
                 className={cn(
-                  'px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase border',
+                  'px-3 py-1 rounded-full text-[9px] md:text-[10px] font-black tracking-widest uppercase border',
                   sprint.status === 'active'
                     ? 'bg-secondary/10 text-secondary border-secondary/20'
                     : 'bg-zinc-800 text-zinc-500 border-white/5'
@@ -155,35 +157,35 @@ export const SprintDetalhesModal = () => {
                 {statusLabel}
               </span>
               <span className="text-zinc-600 font-bold text-xs">•</span>
-              <span className="text-zinc-500 font-bold text-xs uppercase tracking-widest">
+              <span className="text-[10px] md:text-xs text-zinc-500 font-bold uppercase tracking-widest">
                 Sprint #{sprint.number}
               </span>
             </div>
-            <div>
+            <div className="min-w-0">
               {isEditMode ? (
                 <div className="space-y-4">
                   <Input
                     value={editFormData.title}
                     onChange={(e) => setEditFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className="text-4xl font-black text-white bg-white/5 border-white/10 h-auto py-2"
+                    className="text-2xl md:text-4xl font-black text-white bg-white/5 border-white/10 h-auto py-2"
                   />
                 </div>
               ) : (
                 <>
-                  <h2 className="text-4xl font-black text-white tracking-tighter leading-tight">
+                  <h2 className="text-2xl md:text-4xl font-black text-white tracking-tighter leading-tight truncate">
                     {sprint.title}
                   </h2>
-                  <div className="flex items-center gap-6 mt-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 mt-4">
                     <div className="flex items-center gap-2 text-zinc-400">
-                      <Calendar className="w-4 h-4 text-zinc-600" />
-                      <span className="text-xs font-bold">
+                      <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-zinc-600" />
+                      <span className="text-[10px] md:text-xs font-bold whitespace-nowrap">
                         {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-zinc-400">
-                      <TrendingUp className="w-4 h-4 text-zinc-600" />
-                      <span className="text-xs font-bold">
-                        {sprint.storyPoints.total} Pontos Planejados
+                      <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-zinc-600" />
+                      <span className="text-[10px] md:text-xs font-bold whitespace-nowrap">
+                        {sprint.storyPoints.total} Pontos
                       </span>
                     </div>
                   </div>
@@ -259,10 +261,10 @@ export const SprintDetalhesModal = () => {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-10 pb-10 space-y-10 no-scrollbar relative z-10">
+        <div className="flex-1 overflow-y-auto px-6 md:px-10 pb-10 space-y-8 md:space-y-10 no-scrollbar relative z-10">
 
           {isEditMode && (
-            <div className="grid grid-cols-2 gap-6 bg-white/[0.02] border border-white/5 rounded-[32px] p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 bg-white/[0.02] border border-white/5 rounded-[32px] p-6 md:p-8">
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                   Início do Ciclo
@@ -300,7 +302,7 @@ export const SprintDetalhesModal = () => {
             currentUser?.role === 'diretor' ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1"
           )}>
             {currentUser?.role === 'diretor' && (
-              <div className="col-span-2 bg-white/[0.02] border border-white/5 rounded-[32px] p-8">
+              <div className="col-span-1 md:col-span-2 bg-white/[0.02] border border-white/5 rounded-[2rem] md:rounded-[32px] p-6 md:p-8">
                 <div className="flex justify-between items-end mb-6">
                   <div className="space-y-1">
                     <h4 className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">
@@ -327,7 +329,7 @@ export const SprintDetalhesModal = () => {
             )}
 
             <div className={cn(
-              "bg-secondary/5 border border-secondary/10 rounded-[32px] p-8 flex flex-col justify-center transition-all",
+              "bg-secondary/5 border border-secondary/10 rounded-[2rem] md:rounded-[32px] p-6 md:p-8 flex flex-col justify-center transition-all",
               isEditMode && "ring-2 ring-secondary",
               currentUser?.role !== 'diretor' && "col-span-1"
             )}>
@@ -411,12 +413,12 @@ export const SprintDetalhesModal = () => {
                   <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl">
                     <div className="text-xl font-black text-red-400">
                       {
-                        sprintDemands.filter(
+                        mounted ? sprintDemands.filter(
                           (d) =>
                             d.deadline &&
                             new Date(d.deadline) < new Date() &&
                             d.status !== 'concluido'
-                        ).length
+                        ).length : 0
                       }
                     </div>
                     <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest mt-1">
@@ -458,6 +460,7 @@ export const SprintDetalhesModal = () => {
                       group.demands.map((demand) => {
                         const isOverdue =
                           demand.deadline &&
+                          mounted &&
                           new Date(demand.deadline) < new Date() &&
                           demand.status !== 'concluido';
 
@@ -528,13 +531,13 @@ export const SprintDetalhesModal = () => {
         </div>
 
         {/* Footer */}
-        <div className="p-8 border-t border-white/5 bg-zinc-950/40 backdrop-blur-md flex items-center justify-between relative z-10">
-          <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-[0.3em]">
+        <div className="p-6 md:p-8 border-t border-white/5 bg-zinc-950/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
+          <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-[0.3em] text-center sm:text-left">
             Energy Júnior • Bate Meta pra Valer
           </p>
           <button
             onClick={closeSprintDetalhes}
-            className="px-8 py-3 bg-secondary text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all"
+            className="w-full sm:w-auto px-8 py-3 bg-secondary text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all"
           >
             Entendido
           </button>
