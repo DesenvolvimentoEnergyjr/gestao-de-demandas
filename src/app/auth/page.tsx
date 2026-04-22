@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { signInWithGoogle, createUserDoc, getUserDoc } from '@/lib/auth';
+import { signInWithGoogle, createUserDoc, getUserDoc, setSessionCookie } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 
 export default function AuthPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
@@ -20,7 +21,13 @@ export default function AuthPage() {
         if (!userData) {
           userData = await createUserDoc(firebaseUser);
         }
-        router.push('/kanban');
+
+        // Set the session cookie for middleware auth
+        await setSessionCookie();
+
+        // Redirect to original destination or /kanban
+        const redirectTo = searchParams.get('redirect') || '/kanban';
+        router.push(redirectTo);
       }
     } catch (error) {
       console.error(error);

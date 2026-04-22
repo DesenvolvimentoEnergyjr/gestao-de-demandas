@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { onAuthChange, getUserDoc, createUserDoc } from '@/lib/auth';
+import { onAuthChange, getUserDoc, createUserDoc, setSessionCookie, clearSessionCookie } from '@/lib/auth';
 import { getDemands, getSprints } from '@/lib/firestore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDemandStore } from '@/store/useDemandStore';
@@ -54,20 +54,26 @@ export default function DashboardLayout({
 
           if (finalUser?.status === 'desligado') {
             console.error('Acesso negado: Membro desligado.');
+            await clearSessionCookie();
             setUser(null);
             router.push('/auth');
             return;
           }
+
+          // Refresh the session cookie on page load / auth state change
+          await setSessionCookie();
 
           setDemands(demandsData);
           setSprints(sprintsData);
           setUser(finalUser);
         } catch (error) {
           console.error('Erro ao carregar dados iniciais:', error);
+          await clearSessionCookie();
           setUser(null);
           router.push('/auth');
         }
       } else {
+        await clearSessionCookie();
         setUser(null);
         router.push('/auth');
         if (unsubscribeNotifications) unsubscribeNotifications();

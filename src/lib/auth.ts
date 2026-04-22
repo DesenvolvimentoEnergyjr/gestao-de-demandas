@@ -16,7 +16,31 @@ export const signInWithGoogle = async () => {
   return result.user;
 };
 
+/**
+ * Sets the session cookie via the API route.
+ * Should be called after successful Firebase authentication.
+ */
+export const setSessionCookie = async () => {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+
+  const idToken = await currentUser.getIdToken();
+  await fetch('/api/auth/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken }),
+  });
+};
+
+/**
+ * Clears the session cookie via the API route.
+ */
+export const clearSessionCookie = async () => {
+  await fetch('/api/auth/session', { method: 'DELETE' });
+};
+
 export const signOut = async () => {
+  await clearSessionCookie();
   await firebaseSignOut(auth);
 };
 
