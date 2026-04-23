@@ -13,6 +13,16 @@ const googleProvider = new GoogleAuthProvider();
 
 export const signInWithGoogle = async () => {
   const result = await signInWithPopup(auth, googleProvider);
+  const email = result.user.email || '';
+
+  // Restricted domains check
+  const isAllowedDomain = email.endsWith('@energyjr.com');
+
+  if (!isAllowedDomain) {
+    await firebaseSignOut(auth);
+    throw new Error('access-denied');
+  }
+
   return result.user;
 };
 

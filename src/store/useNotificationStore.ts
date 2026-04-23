@@ -1,12 +1,12 @@
 import { create } from 'zustand';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot, 
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
   limit,
-  Timestamp 
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AppNotification } from '@/types';
@@ -24,7 +24,7 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   loading: true,
 
   subscribe: (userId: string) => {
-    // Definir limite de 28 dias para a busca inicial (opcional, mas bom para performance)
+    // Set a 28-day limit for initial search
     const twentyEightDaysAgo = new Date();
     twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
 

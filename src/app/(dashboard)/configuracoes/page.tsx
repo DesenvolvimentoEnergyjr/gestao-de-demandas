@@ -1,21 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { updateUser, getUsers } from '@/lib/firestore';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
-import { Camera, Check, Save, Loader2, UserX, AlertCircle } from 'lucide-react';
+import { Camera, Check, Save, Loader2, UserX, AlertCircle, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 import { User, Role } from '@/types';
 import { cn } from '@/lib/utils';
+import { AssessorEditModal } from '@/components/modals/AssessorEditModal';
 
 export default function ConfiguracoesPage() {
   const { user, setUser } = useAuthStore();
   const [name, setName] = useState('');
   const [title, setTitle] = useState('');
   const [area, setArea] = useState('');
+  const [history, setHistory] = useState('');
   const [workloadLimit, setWorkloadLimit] = useState(3);
   const [photoURL, setPhotoURL] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,6 +28,47 @@ export default function ConfiguracoesPage() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [mgmtLoading, setMgmtLoading] = useState(false);
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState<User | null>(null);
+  const [showEditModal, setShowEditModal] = useState<User | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'todos' | 'pos_junior' | 'gestao_atual'>('gestao_atual');
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ 'Gestão Atual': true });
+
+  const toggleGroup = (label: string) => {
+    setExpandedGroups(prev => ({ ...prev, [label]: !prev[label] }));
+  };
+
+  const groupedUsers = useMemo(() => {
+    if (activeFilter !== 'todos') {
+      let list = [...allUsers];
+      if (activeFilter === 'pos_junior') list = list.filter(u => u.status === 'desligado');
+      if (activeFilter === 'gestao_atual') list = list.filter(u => u.status === 'ativo');
+      return [{ label: '', members: list.sort((a, b) => a.name.localeCompare(b.name)) }];
+    }
+
+    const groupsMap: Record<string, User[]> = {};
+    const currentYear = new Date().getFullYear();
+    
+    allUsers.forEach(u => {
+      const startYear = new Date(u.createdAt).getFullYear();
+      const endYear = u.status === 'ativo' ? currentYear : (u.deactivatedAt ? new Date(u.deactivatedAt).getFullYear() : new Date(u.updatedAt).getFullYear());
+      
+      for (let y = startYear; y <= endYear; y++) {
+        // If it's the current year and the user is active, they go to "Gestão Atual"
+        // Otherwise they go to "Time YYYY"
+        const label = (y === currentYear && u.status === 'ativo') ? 'Gestão Atual' : `Time ${y}`;
+        if (!groupsMap[label]) groupsMap[label] = [];
+        // Evitar duplicatas no mesmo grupo (não deve ocorrer pela lógica do loop)
+        groupsMap[label].push(u);
+      }
+    });
+
+    return Object.entries(groupsMap)
+      .map(([label, members]) => ({
+        label,
+        members: members.sort((a, b) => a.name.localeCompare(b.name)),
+        year: label === 'Gestão Atual' ? 9999 : parseInt(label.replace('Time ', ''))
+      }))
+      .sort((a, b) => b.year - a.year);
+  }, [allUsers, activeFilter]);
 
   useEffect(() => {
     setMounted(true);
@@ -33,6 +76,7 @@ export default function ConfiguracoesPage() {
       setName(user.name);
       setTitle(user.title || '');
       setArea(user.area || 'Geral');
+      setHistory(user.history || '');
       setWorkloadLimit(user.workloadLimit || 3);
       setPhotoURL(user.photoURL);
 
@@ -60,8 +104,8 @@ export default function ConfiguracoesPage() {
 
     setLoading(true);
     try {
-      await updateUser(user.uid, { name, title, area, workloadLimit });
-      setUser({ ...user, name, title, area, workloadLimit });
+      await updateUser(user.uid, { name, title, area, history, workloadLimit });
+      setUser({ ...user, name, title, area, history, workloadLimit });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
@@ -86,8 +130,9 @@ export default function ConfiguracoesPage() {
     
     setMgmtLoading(true);
     try {
-      await updateUser(targetUid, { status: 'desligado' });
-      setAllUsers(prev => prev.map(u => u.uid === targetUid ? { ...u, status: 'desligado' } : u));
+      const now = new Date();
+      await updateUser(targetUid, { status: 'desligado', deactivatedAt: now });
+      setAllUsers(prev => prev.map(u => u.uid === targetUid ? { ...u, status: 'desligado', deactivatedAt: now } : u));
       setShowDeactivateConfirm(null);
     } catch (error) {
       console.error('Error deactivating member:', error);
@@ -170,6 +215,16 @@ export default function ConfiguracoesPage() {
                     </div>
                   </div>
                 <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Trajetória (Cargos Anteriores)</label>
+                  <Input
+                    value={history}
+                    onChange={(e) => setHistory(e.target.value)}
+                    placeholder="Ex: Assessor de Dev - Jan/2025 | Gerente - Jan/2026"
+                    className="bg-white/5 border-white/5 h-14 focus:bg-white/[0.08] transition-all rounded-2xl text-sm"
+                  />
+                </div>
+
+                <div className="space-y-3">
                   <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Meta de Demandas Ativas</label>
                   <div className="flex items-center gap-4">
                     <Input
@@ -198,9 +253,10 @@ export default function ConfiguracoesPage() {
                 <Button
                   type="submit"
                   disabled={loading}
+                  variant="primary"
                   className={cn(
-                    "h-12 px-8 min-w-[160px] transition-all gap-2 font-bold",
-                    saved ? "bg-green-600 hover:bg-green-600" : "bg-secondary hover:bg-secondary/90"
+                    "h-12 px-8 min-w-[160px] transition-all gap-2 rounded-2xl font-black uppercase tracking-widest text-[10px]",
+                    saved && "bg-none bg-green-600 shadow-[0_0_20px_rgba(22,163,74,0.3)]"
                   )}
                 >
                   {loading ? (
@@ -231,64 +287,130 @@ export default function ConfiguracoesPage() {
               <h2 className="text-xl font-black text-white tracking-tight">Gestão da Equipe</h2>
               <p className="text-zinc-500 text-xs font-medium uppercase tracking-widest mt-1">Controle de acessos e cargos</p>
             </div>
-            {mgmtLoading && <Loader2 className="w-5 h-5 text-secondary animate-spin" />}
+
+            <div className="flex items-center gap-4">
+              <div className="flex bg-zinc-950/50 border border-white/5 rounded-2xl p-1 gap-1">
+                {(['gestao_atual', 'pos_junior', 'todos'] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setActiveFilter(f)}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
+                      activeFilter === f 
+                        ? "bg-white text-black shadow-lg" 
+                        : "text-zinc-600 hover:text-zinc-400"
+                    )}
+                  >
+                    {f === 'gestao_atual' ? 'Gestão Atual' : f === 'pos_junior' ? 'Pós-Juniores' : 'Todos'}
+                  </button>
+                ))}
+              </div>
+              {mgmtLoading && <Loader2 className="w-5 h-5 text-secondary animate-spin" />}
+            </div>
           </div>
 
           <Card className="overflow-hidden border-white/5 rounded-[32px] bg-white/[0.01]">
-            <div className="divide-y divide-white/[0.03]">
-              {allUsers.map((member) => (
-                <div key={member.uid} className="p-4 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-white/[0.01] transition-colors group gap-4">
-                  <div className="flex items-center gap-4">
-                    <Avatar src={member.photoURL} alt={member.name} size="md" className="border-2 border-white/5 shadow-xl shrink-0" />
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-black text-white text-sm truncate">{member.name}</span>
-                        {member.status === 'desligado' && (
-                          <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 text-[8px] font-black uppercase tracking-widest border border-red-500/20 shrink-0">
-                            Pós-Júnior
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-zinc-500 font-medium truncate">{member.email}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6">
-                    {/* Role Toggle */}
-                    <div className={cn(
-                      "flex p-1 bg-zinc-950 border border-white/5 rounded-xl transition-opacity flex-1 sm:flex-none",
-                      member.status === 'desligado' && "opacity-40 grayscale pointer-events-none"
-                    )}>
-                      {(['assessor', 'diretor'] as Role[]).map((roleOption) => (
-                        <button
-                          key={roleOption}
-                          disabled={member.uid === user.uid}
-                          onClick={() => handleUpdateRole(member.uid, roleOption)}
-                          className={cn(
-                            "flex-1 sm:flex-none px-3 md:px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] transition-all",
-                            member.role === roleOption 
-                              ? "bg-white text-black shadow-lg" 
-                              : "text-zinc-600 hover:text-zinc-400"
-                          )}
-                        >
-                          {roleOption}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Deactivate Button */}
-                    {member.uid !== user.uid && member.status !== 'desligado' && (
+            <div className="flex flex-col">
+              {groupedUsers.map((group, groupIdx) => {
+                const isExpanded = activeFilter !== 'todos' || expandedGroups[group.label] || group.label === 'Gestão Atual';
+                
+                return (
+                  <div key={group.label || 'single'} className={cn(groupIdx > 0 && "border-t border-white/[0.05]")}>
+                    {group.label && (
                       <button 
-                        onClick={() => setShowDeactivateConfirm(member)}
-                        className="p-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/10 text-red-500/30 hover:text-red-500 border border-red-500/0 hover:border-red-500/10 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
-                        title="Desligar Membro"
+                        onClick={() => toggleGroup(group.label)}
+                        className="w-full px-6 py-4 bg-white/[0.02] border-b border-white/[0.03] flex items-center justify-between hover:bg-white/[0.04] transition-colors group/header"
                       >
-                        <UserX className="w-4 h-4" />
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">{group.label}</h3>
+                          <span className="px-2 py-0.5 rounded-full bg-white/5 text-zinc-500 text-[8px] font-black uppercase tracking-widest">
+                            {group.members.length} {group.members.length === 1 ? 'Membro' : 'Membros'}
+                          </span>
+                        </div>
+                        {activeFilter === 'todos' && (
+                          <div className="text-zinc-600 group-hover/header:text-zinc-400 transition-colors">
+                            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                          </div>
+                        )}
                       </button>
                     )}
+                    
+                    {isExpanded && (
+                      <div className="divide-y divide-white/[0.03] animate-in slide-in-from-top-2 duration-300">
+                        {group.members.map((member) => (
+                          <div key={member.uid} className="p-4 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-white/[0.01] transition-colors group gap-4">
+                            <div className="flex items-center gap-4">
+                              <Avatar src={member.photoURL} alt={member.name} size="md" className="border-2 border-white/5 shadow-xl shrink-0" />
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-black text-white text-sm truncate">{member.name}</span>
+                                  {member.status === 'desligado' && (
+                                    <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 text-[8px] font-black uppercase tracking-widest border border-red-500/20 shrink-0">
+                                      Pós-Júnior
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-zinc-500 font-medium truncate">{member.email}</p>
+                                {member.history && (
+                                  <p className="text-[9px] text-zinc-600 font-bold mt-1 uppercase tracking-wider truncate">
+                                    {member.history}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6">
+                              {/* Role Toggle */}
+                              <div className={cn(
+                                "flex p-1 bg-zinc-950 border border-white/5 rounded-xl transition-opacity flex-1 sm:flex-none",
+                                member.status === 'desligado' && "opacity-40 grayscale pointer-events-none"
+                              )}>
+                                {(['assessor', 'diretor'] as Role[]).map((roleOption) => (
+                                  <button
+                                    key={roleOption}
+                                    disabled={member.uid === user.uid}
+                                    onClick={() => handleUpdateRole(member.uid, roleOption)}
+                                    className={cn(
+                                      "flex-1 sm:flex-none px-3 md:px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] transition-all",
+                                      member.role === roleOption 
+                                        ? "bg-white text-black shadow-lg" 
+                                        : "text-zinc-600 hover:text-zinc-400"
+                                    )}
+                                  >
+                                    {roleOption}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Edit Button */}
+                              {member.uid !== user.uid && member.status !== 'desligado' && (
+                                <button 
+                                  onClick={() => setShowEditModal(member)}
+                                  className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-500 hover:text-white border border-white/0 hover:border-white/5 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
+                                  title="Editar Perfil"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              )}
+
+                              {/* Deactivate Button */}
+                              {member.uid !== user.uid && member.status !== 'desligado' && (
+                                <button 
+                                  onClick={() => setShowDeactivateConfirm(member)}
+                                  className="p-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/10 text-red-500/30 hover:text-red-500 border border-red-500/0 hover:border-red-500/10 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
+                                  title="Desligar Membro"
+                                >
+                                  <UserX className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
         </div>
@@ -326,6 +448,18 @@ export default function ConfiguracoesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Assessor Modal */}
+      {showEditModal && (
+        <AssessorEditModal
+          user={showEditModal}
+          isOpen={!!showEditModal}
+          onClose={() => setShowEditModal(null)}
+          onUpdate={(updatedUser) => {
+            setAllUsers(prev => prev.map(u => u.uid === updatedUser.uid ? updatedUser : u));
+          }}
+        />
       )}
     </div>
   );

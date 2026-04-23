@@ -18,13 +18,6 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ status: 'ok' });
 
-    // Set an HttpOnly cookie with the Firebase ID token.
-    // - httpOnly: prevents client-side JS from reading it (XSS protection)
-    // - secure: only sent over HTTPS (Vercel always uses HTTPS)
-    // - sameSite: 'lax' provides CSRF protection while allowing navigation
-    // - maxAge: 5 days (Firebase ID tokens expire in 1h but are auto-refreshed,
-    //   this is a generous session window for the cookie itself)
-    // - path: '/' so the middleware can read it on all routes
     response.cookies.set('__session', idToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

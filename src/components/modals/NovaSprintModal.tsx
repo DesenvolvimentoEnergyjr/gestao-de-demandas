@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { X, ArrowRight, Calendar, Target } from 'lucide-react';
+import { X, ArrowRight, Target } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
 import { useSprintStore } from '@/store/useSprintStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -11,16 +11,11 @@ import { Input } from '@/components/ui/Input';
 import { createSprint } from '@/lib/firestore';
 import { Sprint } from '@/types';
 import { cn } from '@/lib/utils';
+import { sprintSchema, SprintFormData } from '@/lib/schemas';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { toast } from '@/store/useToastStore';
 
-interface FormData {
-  title: string;
-  description: string;
-  objective: string;
-  startDate: string;
-  endDate: string;
-  totalPoints: number;
-  type: 'Interno' | 'Externo';
-}
+type FormData = SprintFormData;
 
 const initialFormData = (): FormData => ({
   title: '',
@@ -39,6 +34,7 @@ export const NovaSprintModal = () => {
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>(initialFormData());
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
   React.useEffect(() => {
     if (novaSprintOpen) {
@@ -54,11 +50,19 @@ export const NovaSprintModal = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.endDate) return;
-    if (new Date(formData.endDate) <= new Date(formData.startDate)) {
-      alert('A data de término deve ser posterior à data de início.');
+    // ── Zod validation ──────────────────────────────────────────────────────
+    const result = sprintSchema.safeParse(formData);
+    if (!result.success) {
+      const fieldErrors: Partial<Record<keyof FormData, string>> = {};
+      result.error.issues.forEach((issue) => {
+        const field = issue.path[0] as keyof FormData;
+        if (field && !fieldErrors[field]) fieldErrors[field] = issue.message;
+      });
+      setFormErrors(fieldErrors);
       return;
     }
+    setFormErrors({});
+    // ────────────────────────────────────────────────────────────────────────
 
     setLoading(true);
     try {
@@ -68,7 +72,7 @@ export const NovaSprintModal = () => {
       const sprintData: Omit<Sprint, 'id' | 'createdAt' | 'updatedAt'> = {
         number: nextNumber,
         title: formData.title,
-        description: formData.description,
+        description: formData.description ?? '',
         objective: formData.objective,
         startDate: new Date(formData.startDate),
         endDate: new Date(formData.endDate),
@@ -88,14 +92,12 @@ export const NovaSprintModal = () => {
         updatedAt: new Date(),
       });
 
+      toast.success('Sprint criada com sucesso!');
       closeNovaSprint();
       setFormData(initialFormData());
     } catch (error) {
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        console.error('Erro ao criar sprint:', error);
-      }
+      console.error('Erro ao criar sprint:', error);
+      toast.error('Ocorreu um erro ao criar a sprint.');
     } finally {
       setLoading(false);
     }
@@ -145,12 +147,17 @@ export const NovaSprintModal = () => {
               Título do Ciclo
             </label>
             <Input
-              required
               value={formData.title}
               onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
               placeholder="Ex: Otimização Operacional Q2"
-              className="bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4"
+              className={cn(
+                'bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4',
+                formErrors.title && 'border-red-500/50 focus:border-red-500'
+              )}
             />
+            {formErrors.title && (
+              <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.title}</p>
+            )}
           </div>
 
           {/* Objetivo */}
@@ -164,11 +171,17 @@ export const NovaSprintModal = () => {
                 rows={3}
                 value={formData.objective}
                 onChange={(e) => setFormData((prev) => ({ ...prev, objective: e.target.value }))}
-                className="w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-10 py-3 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-secondary transition-all resize-none"
+                className={cn(
+                  'w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-10 py-3 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-secondary transition-all resize-none',
+                  formErrors.objective && 'border-red-500/50'
+                )}
                 placeholder="Qual o foco principal dessa entrega?"
               />
               <Target className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-600 pointer-events-none" />
             </div>
+            {formErrors.objective && (
+              <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.objective}</p>
+            )}
           </div>
 
           {/* Descrição (opcional) */}
@@ -192,31 +205,30 @@ export const NovaSprintModal = () => {
                 Início
               </label>
               <div className="relative">
-                <Input
-                  required
-                  type="date"
+                <DatePicker
                   value={formData.startDate}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
-                  className="bg-zinc-950 border-white/[0.03] h-12 text-xs rounded-xl pl-10"
+                  onChange={(date) => setFormData((prev) => ({ ...prev, startDate: date }))}
+                  error={!!formErrors.startDate}
                 />
-                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 pointer-events-none" />
               </div>
+              {formErrors.startDate && (
+                <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.startDate}</p>
+              )}
             </div>
             <div className="space-y-3">
               <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                 Previsão de Término
               </label>
               <div className="relative">
-                <Input
-                  required
-                  type="date"
+                <DatePicker
                   value={formData.endDate}
-                  min={formData.startDate}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))}
-                  className="bg-zinc-950 border-white/[0.03] h-12 text-xs rounded-xl pl-10"
+                  onChange={(date) => setFormData((prev) => ({ ...prev, endDate: date }))}
+                  error={!!formErrors.endDate}
                 />
-                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 pointer-events-none" />
               </div>
+              {formErrors.endDate && (
+                <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.endDate}</p>
+              )}
             </div>
           </div>
 

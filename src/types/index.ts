@@ -1,5 +1,5 @@
 export type Role = 'diretor' | 'assessor';
-export type UserStatus = 'ativo' | 'desligado';
+export type UserStatus = 'ativo' | 'desligado' | 'pos_junior';
 export type Priority = 'baixa' | 'media' | 'alta' | 'urgente';
 export type DemandStatus =
   | 'backlog'
@@ -30,9 +30,11 @@ export interface User {
   status: UserStatus;
   area: string;
   title: string;
+  history?: string;
   workloadLimit?: number;
   createdAt: Date;
   updatedAt: Date;
+  deactivatedAt?: Date;
 }
 
 export interface Demand {

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { signInWithGoogle, createUserDoc, getUserDoc, setSessionCookie } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { toast } from '@/store/useToastStore';
 
 function AuthContent() {
   const router = useRouter();
@@ -22,15 +23,29 @@ function AuthContent() {
           userData = await createUserDoc(firebaseUser);
         }
 
+        // Bloqueio para Pós-Juniores
+        if (userData.status === 'pos_junior') {
+          const { signOut: clearAuth } = await import('@/lib/auth');
+          await clearAuth();
+          toast.error('Acesso restrito apenas aos membros da gestão atual da Energy Júnior');
+          return;
+        }
+
         // Set the session cookie for middleware auth
         await setSessionCookie();
 
         // Redirect to original destination or /kanban
         const redirectTo = searchParams.get('redirect') || '/kanban';
+        toast.success(`Bem-vindo, ${userData.name.split(' ')[0]}!`);
         router.push(redirectTo);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
+      if (error instanceof Error && error.message === 'access-denied') {
+        toast.error('Acesso restrito a membros da Energy Júnior.');
+      } else {
+        toast.error('Erro ao realizar login com Google.');
+      }
     } finally {
       setLoading(false);
     }

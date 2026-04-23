@@ -135,14 +135,18 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
             demand.assignees.slice(0, 3).map((assigneeId) => {
               const user = users.find((u) => u.uid === assigneeId);
               return (
-                <Avatar
-                  key={assigneeId}
-                  src={user?.photoURL}
-                  size="xs"
-                  className="border border-[#1a1a1a] w-6 h-6 hover:translate-y-[-2px] hover:z-20 transition-transform"
-                  fallback={user?.name?.substring(0, 1).toUpperCase() || '?'}
-                  title={user?.name}
-                />
+                <div key={assigneeId} className="relative group/member shrink-0">
+                  <Avatar
+                    src={user?.photoURL}
+                    size="xs"
+                    className="border border-[#1a1a1a] w-6 h-6 hover:translate-y-[-2px] hover:z-20 transition-transform"
+                    fallback={user?.name?.substring(0, 1).toUpperCase() || '?'}
+                  />
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-white/10 rounded-lg opacity-0 group-hover/member:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-2xl">
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{user?.name}</span>
+                  </div>
+                </div>
               );
             })
           ) : (

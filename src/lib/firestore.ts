@@ -50,7 +50,7 @@ export const markAllNotificationsAsRead = async (userId: string) => {
     where('read', '==', false)
   );
   const snapshot = await getDocs(q);
-  const batch = snapshot.docs.map((d) => 
+  const batch = snapshot.docs.map((d) =>
     updateDoc(doc(db, 'notifications', d.id), { read: true })
   );
   await Promise.all(batch);
@@ -112,7 +112,7 @@ export const createDemand = async (
       : 0;
     const next = current + 1;
     const code = `EJ-${String(next).padStart(3, '0')}`;
-    
+
     transaction.set(counterRef, { demandCount: next }, { merge: true });
 
     const demandRef = doc(collection(db, 'demands'));
@@ -126,7 +126,7 @@ export const createDemand = async (
     return { id: demandRef.id, code };
   });
 
-  // Notificar responsáveis
+  // Notify assignees
   if (data.assignees && data.assignees.length > 0) {
     await Promise.all(
       data.assignees.map((userId) =>
@@ -135,7 +135,7 @@ export const createDemand = async (
           title: 'Nova demanda designada',
           message: `Você foi designado para a demanda ${newId.code}: ${data.title}`,
           type: 'assignment',
-          link: `/kanban`, // Podemos ajustar o link no futuro
+          link: `/kanban`,
         })
       )
     );
@@ -149,8 +149,8 @@ export const updateDemand = async (
   data: Partial<Omit<Demand, 'id' | 'code' | 'createdAt'>>
 ) => {
   const demandDoc = doc(db, 'demands', id);
-  
-  // Se estiver atualizando responsáveis, notificar apenas os NOVOS
+
+  // If updating assignees, notify only the new ones
   if (data.assignees) {
     const oldSnap = await getDoc(demandDoc);
     if (oldSnap.exists()) {
@@ -274,8 +274,9 @@ export const getUsers = async (onlyActive = true): Promise<User[]> => {
     ...d.data(),
     createdAt: toDate(d.data().createdAt),
     updatedAt: toDate(d.data().updatedAt),
+    deactivatedAt: toDateOrNull(d.data().deactivatedAt),
   })) as User[];
-};
+}
 
 export const getUserById = async (uid: string): Promise<User | null> => {
   const snap = await getDoc(doc(db, 'users', uid));
@@ -286,6 +287,7 @@ export const getUserById = async (uid: string): Promise<User | null> => {
     ...d,
     createdAt: toDate(d.createdAt),
     updatedAt: toDate(d.updatedAt),
+    deactivatedAt: toDateOrNull(d.deactivatedAt),
   } as User;
 };
 

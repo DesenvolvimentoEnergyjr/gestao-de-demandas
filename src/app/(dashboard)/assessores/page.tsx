@@ -109,9 +109,16 @@ export default function AssessoresPage() {
                   <p className="text-[12px] font-black text-secondary uppercase tracking-[0.15em] mt-1.5 leading-none">
                     {user.title || user.role}
                   </p>
-                  <div className="mt-4 flex items-center gap-2 text-[11px] text-zinc-500 font-bold truncate">
-                    <Mail className="w-3.5 h-3.5 text-zinc-700" />
-                    <span className="truncate">{user.email}</span>
+                  <div className="mt-4 flex flex-col gap-1.5 min-w-0">
+                    <div className="flex items-center gap-2 text-[11px] text-zinc-500 font-bold truncate">
+                      <Mail className="w-3.5 h-3.5 text-zinc-700 shrink-0" />
+                      <span className="truncate">{user.email}</span>
+                    </div>
+                    {user.history && (
+                      <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest truncate pl-5">
+                        {user.history}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

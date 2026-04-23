@@ -18,6 +18,7 @@ import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard } from './KanbanCard';
 import { updateDemand } from '@/lib/firestore';
 import { useDemandStore } from '@/store/useDemandStore';
+import { toast } from '@/store/useToastStore';
 
 const COLUMNS: { id: DemandStatus; title: string; color: string }[] = [
   { id: 'backlog', title: 'Backlog', color: '#71717a' },
@@ -68,7 +69,13 @@ export const KanbanBoard = ({ users = [] }: { users?: User[] }) => {
     const activeDemand = demands.find((d) => d.id === activeDemandId);
     if (activeDemand && activeDemand.status !== newStatus) {
       updateStoreDemand(activeDemandId, { status: newStatus });
-      await updateDemand(activeDemandId, { status: newStatus });
+      try {
+        await updateDemand(activeDemandId, { status: newStatus });
+        toast.success(`Demanda movida para ${COLUMNS.find(c => c.id === newStatus)?.title}`);
+      } catch (error) {
+        console.error('Erro ao atualizar status:', error);
+        toast.error('Erro ao atualizar status da demanda.');
+      }
     }
   };
 

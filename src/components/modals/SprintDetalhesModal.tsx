@@ -10,8 +10,11 @@ import { Avatar } from '@/components/ui/Avatar';
 import { getUsers, updateSprint, deleteSprint } from '@/lib/firestore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { User, Sprint } from '@/types';
-import { differenceInWeeks, addDays } from 'date-fns';
+import { differenceInWeeks, addDays, format } from 'date-fns';
 import { Input } from '@/components/ui/Input';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { sprintUpdateSchema } from '@/lib/schemas';
+import { toast } from '@/store/useToastStore';
 
 export const SprintDetalhesModal = () => {
   const { sprintDetalhesOpen, closeSprintDetalhes, selectedSprintId } = useUIStore();
@@ -26,6 +29,7 @@ export const SprintDetalhesModal = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Sprint>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setMounted(true);
@@ -33,6 +37,7 @@ export const SprintDetalhesModal = () => {
       getUsers(true).then(setUsers);
       setIsEditMode(false);
       setShowDeleteConfirm(false);
+      setFormErrors({});
     }
   }, [sprintDetalhesOpen]);
 
@@ -85,17 +90,35 @@ export const SprintDetalhesModal = () => {
       status: sprint.status,
     });
     setIsEditMode(true);
+    setFormErrors({});
   };
 
   const handleSave = async () => {
     if (!selectedSprintId || !editFormData) return;
+
+    // ── Zod validation ──────────────────────────────────────────────────────
+    const result = sprintUpdateSchema.safeParse(editFormData);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        const field = issue.path[0] as string;
+        if (field && !fieldErrors[field]) fieldErrors[field] = issue.message;
+      });
+      setFormErrors(fieldErrors);
+      return;
+    }
+    setFormErrors({});
+    // ────────────────────────────────────────────────────────────────────────
+
     setLoading(true);
     try {
       await updateSprint(selectedSprintId, editFormData);
       updateStoreSprint(selectedSprintId, editFormData);
+      toast.success('Sprint atualizada com sucesso!');
       setIsEditMode(false);
     } catch (error) {
       console.error('Erro ao atualizar sprint:', error);
+      toast.error('Erro ao atualizar sprint.');
     } finally {
       setLoading(false);
     }
@@ -108,9 +131,11 @@ export const SprintDetalhesModal = () => {
     try {
       await deleteSprint(selectedSprintId);
       removeSprint(selectedSprintId);
+      toast.success('Sprint excluída com sucesso!');
       closeSprintDetalhes();
     } catch (error) {
       console.error('Erro ao excluir sprint:', error);
+      toast.error('Erro ao excluir sprint.');
     } finally {
       setLoading(false);
     }
@@ -163,13 +188,19 @@ export const SprintDetalhesModal = () => {
             </div>
             <div className="min-w-0">
               {isEditMode ? (
-                <div className="space-y-4">
+                <>
                   <Input
                     value={editFormData.title}
                     onChange={(e) => setEditFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className="text-2xl md:text-4xl font-black text-white bg-white/5 border-white/10 h-auto py-2"
+                    className={cn(
+                      "text-2xl md:text-4xl font-black text-white bg-white/5 border-white/10 h-auto py-2",
+                      formErrors.title && "border-red-500/50 focus:border-red-500"
+                    )}
                   />
-                </div>
+                  {formErrors.title && (
+                    <p className="text-[10px] text-red-400 font-semibold ml-1">{formErrors.title}</p>
+                  )}
+                </>
               ) : (
                 <>
                   <h2 className="text-2xl md:text-4xl font-black text-white tracking-tighter leading-tight truncate">
@@ -270,28 +301,30 @@ export const SprintDetalhesModal = () => {
                   Início do Ciclo
                 </label>
                 <div className="relative">
-                  <Input
-                    type="date"
-                    value={editFormData.startDate ? new Date(editFormData.startDate).toISOString().split('T')[0] : ''}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, startDate: new Date(e.target.value) }))}
-                    className="bg-zinc-950 border-white/10 h-12 rounded-xl pl-10"
+                  <DatePicker
+                    value={editFormData.startDate ? format(new Date(editFormData.startDate), 'yyyy-MM-dd') : ''}
+                    onChange={(date) => setEditFormData(prev => ({ ...prev, startDate: new Date(date) }))}
+                    error={!!formErrors.startDate}
                   />
-                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                 </div>
+                {formErrors.startDate && (
+                  <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.startDate}</p>
+                )}
               </div>
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                   Previsão de Término
                 </label>
                 <div className="relative">
-                  <Input
-                    type="date"
-                    value={editFormData.endDate ? new Date(editFormData.endDate).toISOString().split('T')[0] : ''}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, endDate: new Date(e.target.value) }))}
-                    className="bg-zinc-950 border-white/10 h-12 rounded-xl pl-10"
+                  <DatePicker
+                    value={editFormData.endDate ? format(new Date(editFormData.endDate), 'yyyy-MM-dd') : ''}
+                    onChange={(date) => setEditFormData(prev => ({ ...prev, endDate: new Date(date) }))}
+                    error={!!formErrors.endDate}
                   />
-                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                 </div>
+                {formErrors.endDate && (
+                  <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.endDate}</p>
+                )}
               </div>
             </div>
           )}
@@ -343,11 +376,17 @@ export const SprintDetalhesModal = () => {
                 <textarea
                   value={editFormData.objective}
                   onChange={(e) => setEditFormData(prev => ({ ...prev, objective: e.target.value }))}
-                  className="bg-transparent border-none text-sm font-bold text-zinc-300 leading-relaxed focus:ring-0 w-full resize-none h-24 p-0"
+                  className={cn(
+                    "bg-transparent border-none text-sm font-bold text-zinc-300 leading-relaxed focus:ring-0 w-full resize-none h-24 p-0",
+                    formErrors.objective && "text-red-400"
+                  )}
                   placeholder="Qual a meta deste ciclo?"
                 />
               ) : (
                 <p className="text-sm font-bold text-zinc-300 leading-relaxed">{sprint.objective}</p>
+              )}
+              {isEditMode && formErrors.objective && (
+                <p className="text-[10px] text-red-400 font-semibold mt-2">{formErrors.objective}</p>
               )}
             </div>
           </div>
@@ -365,12 +404,20 @@ export const SprintDetalhesModal = () => {
                 </h4>
               </div>
               {isEditMode ? (
-                <textarea
-                  value={editFormData.description}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full bg-white/[0.02] border border-white/5 rounded-2xl p-4 text-sm text-zinc-400 leading-relaxed font-medium focus:border-secondary transition-all resize-none h-32"
-                  placeholder="Detalhes adicionais..."
-                />
+                <>
+                  <textarea
+                    value={editFormData.description}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
+                    className={cn(
+                      "w-full bg-white/[0.02] border border-white/5 rounded-2xl p-4 text-sm text-zinc-400 leading-relaxed font-medium focus:border-secondary transition-all resize-none h-32",
+                      formErrors.description && "border-red-500/50"
+                    )}
+                    placeholder="Detalhes adicionais..."
+                  />
+                  {formErrors.description && (
+                    <p className="text-[10px] text-red-400 font-semibold ml-1">{formErrors.description}</p>
+                  )}
+                </>
               ) : (
                 <p className="text-sm text-zinc-400 leading-relaxed font-medium">
                   {sprint.description ||
@@ -500,18 +547,23 @@ export const SprintDetalhesModal = () => {
                               </div>
                             </div>
 
-                            <div className="flex -space-x-2 shrink-0 ml-4">
-                              {demand.assignees.slice(0, 2).map((uid) => {
+                            <div className="flex -space-x-2 shrink-0 ml-4 overflow-x-auto no-scrollbar max-w-[80px]">
+                              {demand.assignees.map((uid) => {
                                 const u = users.find((user) => user.uid === uid);
                                 return (
-                                  <Avatar
-                                    key={uid}
-                                    src={u?.photoURL}
-                                    alt={u?.name ?? uid}
-                                    size="sm"
-                                    className="border-2 border-[#101010]"
-                                    fallback={uid.substring(0, 1).toUpperCase()}
-                                  />
+                                  <div key={uid} className="relative group shrink-0">
+                                    <Avatar
+                                      src={u?.photoURL}
+                                      alt={u?.name ?? uid}
+                                      size="sm"
+                                      className="border-2 border-[#101010]"
+                                      fallback={uid.substring(0, 1).toUpperCase()}
+                                    />
+                                    {/* Tooltip */}
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-2xl">
+                                      <span className="text-[10px] font-black text-white uppercase tracking-widest">{u?.name ?? uid}</span>
+                                    </div>
+                                  </div>
                                 );
                               })}
                             </div>

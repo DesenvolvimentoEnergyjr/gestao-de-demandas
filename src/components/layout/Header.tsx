@@ -12,6 +12,7 @@ import { Search, Clock, AlertCircle, Plus, Settings, LogOut, ChevronDown, Menu }
 import { signOut } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { toast } from '@/store/useToastStore';
 
 const tabs = [
   { name: 'Kanban', href: '/kanban' },
@@ -49,6 +50,7 @@ export const Header = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
+      toast.info('Sessão encerrada.');
       router.push('/auth');
     } catch (error) {
       console.error('Erro ao sair:', error);

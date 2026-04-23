@@ -31,7 +31,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(authUrl);
   }
 
-  // ─── Authenticated: prevent accessing /auth (redirect to dashboard) ───
+  // ─── Authenticated: prevent accessing /auth (redirect to kanban) ───
   if (sessionCookie && isPublicRoute) {
     return NextResponse.redirect(new URL('/kanban', request.url));
   }

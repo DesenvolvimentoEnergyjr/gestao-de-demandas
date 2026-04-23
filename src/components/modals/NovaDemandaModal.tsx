@@ -12,21 +12,13 @@ import { Select } from '@/components/ui/Select';
 import { Avatar } from '@/components/ui/Avatar';
 import { createDemand, getDemandById, getUsers, updateDemand, deleteDemand } from '@/lib/firestore';
 import { useDemandStore } from '@/store/useDemandStore';
-import { User, Priority, DemandStatus, Demand } from '@/types';
+import { User, Demand, DemandStatus, Priority } from '@/types';
 import { cn } from '@/lib/utils';
+import { demandaSchema, DemandaFormData } from '@/lib/schemas';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { toast } from '@/store/useToastStore';
 
-interface FormData {
-  title: string;
-  description: string;
-  status: DemandStatus;
-  priority: Priority;
-  assignees: string[];
-  sprintId: string;
-  startDate: string;
-  deadline: string;
-  estimatedHours: number;
-  projectType: 'Interno' | 'Externo';
-}
+type FormData = DemandaFormData;
 
 const initialFormData = (status: DemandStatus): FormData => ({
   title: '',
@@ -60,10 +52,12 @@ export const NovaDemandaModal = () => {
   const [formData, setFormData] = useState<FormData>(initialFormData('backlog'));
   const [selectedDemand, setSelectedDemand] = useState<Demand | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
   useEffect(() => {
     if (!novaDemandaOpen) {
       setShowDeleteConfirm(false);
+      setFormErrors({});
       return;
     }
 
@@ -125,13 +119,28 @@ export const NovaDemandaModal = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
+
+    // ── Zod validation ──────────────────────────────────────────────────────
+    const result = demandaSchema.safeParse(formData);
+    if (!result.success) {
+      const fieldErrors: Partial<Record<keyof FormData, string>> = {};
+      result.error.issues.forEach((issue) => {
+        const field = issue.path[0] as keyof FormData;
+        if (field && !fieldErrors[field]) fieldErrors[field] = issue.message;
+      });
+      setFormErrors(fieldErrors);
+      return;
+    }
+    setFormErrors({});
+    // ────────────────────────────────────────────────────────────────────────
+
     setLoading(true);
 
     try {
       if (demandModalMode === 'create') {
         const demandId = await createDemand({
           title: formData.title,
-          description: formData.description,
+          description: formData.description ?? '',
           status: formData.status,
           priority: formData.priority,
           assignees: formData.assignees,
@@ -152,6 +161,7 @@ export const NovaDemandaModal = () => {
         if (createdDemand) {
           addDemand(createdDemand);
         }
+        toast.success('Demanda criada com sucesso!');
       } else if (demandModalMode === 'edit' && selectedDemandId) {
         const updateData = {
           title: formData.title,
@@ -167,12 +177,17 @@ export const NovaDemandaModal = () => {
         };
 
         await updateDemand(selectedDemandId, updateData);
-        updateStoreDemand(selectedDemandId, updateData);
+        const updatedDemand = await getDemandById(selectedDemandId);
+        if (updatedDemand) {
+          updateStoreDemand(selectedDemandId, updatedDemand);
+        }
+        toast.success('Demanda atualizada com sucesso!');
       }
 
       closeNovaDemanda();
     } catch (error) {
       console.error('Erro ao processar demanda:', error);
+      toast.error('Erro ao processar demanda. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -184,9 +199,11 @@ export const NovaDemandaModal = () => {
     try {
       await deleteDemand(selectedDemandId);
       removeDemand(selectedDemandId);
+      toast.success('Demanda excluída com sucesso!');
       closeNovaDemanda();
     } catch (error) {
       console.error('Erro ao excluir demanda:', error);
+      toast.error('Ocorreu um erro ao excluir a demanda.');
     } finally {
       setLoading(false);
     }
@@ -265,13 +282,20 @@ export const NovaDemandaModal = () => {
                     {formData.title}
                   </div>
                 ) : (
-                  <Input
-                    required
-                    value={formData.title}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                    placeholder="Ex: Otimização de Fluxo de Caixa"
-                    className="bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4"
-                  />
+                  <>
+                    <Input
+                      value={formData.title}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                      placeholder="Ex: Otimização de Fluxo de Caixa"
+                      className={cn(
+                        'bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4',
+                        formErrors.title && 'border-red-500/50 focus:border-red-500'
+                      )}
+                    />
+                    {formErrors.title && (
+                      <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.title}</p>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -285,13 +309,21 @@ export const NovaDemandaModal = () => {
                     {formData.description || 'Sem descrição.'}
                   </div>
                 ) : (
-                  <textarea
-                    rows={4}
-                    value={formData.description}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                    className="w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-secondary transition-all resize-none"
-                    placeholder="Descreva os requisitos principais..."
-                  />
+                  <>
+                    <textarea
+                      rows={4}
+                      value={formData.description}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                      className={cn(
+                        'w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-secondary transition-all resize-none',
+                        formErrors.description && 'border-red-500/50 focus:border-red-500'
+                      )}
+                      placeholder="Descreva os requisitos principais..."
+                    />
+                    {formErrors.description && (
+                      <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.description}</p>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -341,17 +373,23 @@ export const NovaDemandaModal = () => {
                     Responsáveis
                   </label>
                   <div className="flex items-center gap-3">
-                    <div className="flex -space-x-2">
+                    <div className="flex -space-x-2 overflow-x-auto no-scrollbar pb-1 max-w-full">
                       {allUsers
                         .filter((u) => formData.assignees.includes(u.uid))
                         .map((u) => (
-                          <div key={u.uid} className="relative group">
+                          <div key={u.uid} className="relative group shrink-0">
                             <Avatar src={u.photoURL} alt={u.name} size="sm" className="border-2 border-[#0f0f0f]" />
+                            
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-2xl">
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">{u.name}</span>
+                            </div>
+
                             {!isView && (
                               <button
                                 type="button"
                                 onClick={() => toggleAssignee(u.uid)}
-                                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
                               >
                                 <X className="w-2 text-white" />
                               </button>
@@ -368,20 +406,25 @@ export const NovaDemandaModal = () => {
 
                     {!isView && (
                       <>
-                        <div className="h-6 w-px bg-white/10 mx-1" />
-                        <div className="flex gap-2">
+                        <div className="h-6 w-px bg-white/10 mx-1 shrink-0" />
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 flex-1">
                           {allUsers
                             .filter((u) => !formData.assignees.includes(u.uid))
-                            .slice(0, 3)
                             .map((u) => (
-                              <button
-                                key={u.uid}
-                                type="button"
-                                onClick={() => toggleAssignee(u.uid)}
-                                className="opacity-40 hover:opacity-100 transition-all hover:scale-110"
-                              >
-                                <Avatar src={u.photoURL} alt={u.name} size="sm" />
-                              </button>
+                              <div key={u.uid} className="relative group shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleAssignee(u.uid)}
+                                  className="opacity-40 hover:opacity-100 transition-all hover:scale-110"
+                                >
+                                  <Avatar src={u.photoURL} alt={u.name} size="sm" />
+                                </button>
+                                
+                                {/* Tooltip */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-2xl">
+                                  <span className="text-[10px] font-black text-white uppercase tracking-widest">{u.name}</span>
+                                </div>
+                              </div>
                             ))}
                         </div>
                       </>
@@ -474,11 +517,10 @@ export const NovaDemandaModal = () => {
                         {formData.startDate || '—'}
                       </div>
                     ) : (
-                      <Input
-                        type="date"
+                      <DatePicker
                         value={formData.startDate}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
-                        className="bg-zinc-950 border-white/[0.03] h-12 text-xs"
+                        onChange={(date) => setFormData((prev) => ({ ...prev, startDate: date }))}
+                        error={!!formErrors.startDate}
                       />
                     )}
                   </div>
@@ -489,11 +531,10 @@ export const NovaDemandaModal = () => {
                         {formData.deadline || '—'}
                       </div>
                     ) : (
-                      <Input
-                        type="date"
+                      <DatePicker
                         value={formData.deadline}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, deadline: e.target.value }))}
-                        className="bg-zinc-950 border-white/[0.03] h-12 text-xs"
+                        onChange={(date) => setFormData((prev) => ({ ...prev, deadline: date }))}
+                        error={!!formErrors.deadline}
                       />
                     )}
                   </div>
@@ -506,16 +547,27 @@ export const NovaDemandaModal = () => {
                       {formData.estimatedHours} <span className="text-[10px] text-zinc-600 ml-2 uppercase">Horas</span>
                     </div>
                   ) : (
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={formData.estimatedHours}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, estimatedHours: Number(e.target.value) }))}
-                        className="bg-zinc-950 border-white/[0.03] h-12 text-sm font-bold pr-12"
-                      />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-600 uppercase">hrs</span>
-                    </div>
+                    <>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          min={0}
+                          value={formData.estimatedHours}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, estimatedHours: Number(e.target.value) }))}
+                          className={cn(
+                            'bg-zinc-950 border-white/[0.03] h-12 text-sm font-bold pr-12',
+                            formErrors.estimatedHours && 'border-red-500/50'
+                          )}
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-600 uppercase">hrs</span>
+                      </div>
+                      {formErrors.estimatedHours && (
+                        <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.estimatedHours}</p>
+                      )}
+                      {formErrors.deadline && (
+                        <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.deadline}</p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
