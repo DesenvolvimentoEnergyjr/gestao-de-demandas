@@ -2,6 +2,21 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Demand, User } from '@/types';
+
+export function isDemandVisibleToUser(demand: Demand, currentUser: User | null, allUsers: User[]): boolean {
+  if (!currentUser) return false;
+  if (currentUser.role === 'diretor') return true;
+
+  if (demand.assignees.length === 0) return true;
+
+  const hasAssessor = demand.assignees.some(uid => {
+    const u = allUsers.find(user => user.uid === uid);
+    return u && u.role === 'assessor';
+  });
+
+  return hasAssessor;
+}
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

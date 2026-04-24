@@ -78,6 +78,50 @@ export const SprintDetalhesModal = () => {
     return groups;
   }, [sprint, sprintDemands]);
 
+  // Chart Data (Burn-up)
+  const chartData = useMemo(() => {
+    if (!sprint || weekGroups.length === 0) return null;
+
+    const totalEffort = sprintDemands.length > 0
+      ? sprintDemands.reduce((acc, d) => acc + (d.estimatedHours || 1), 0)
+      : 1;
+
+    const start = new Date(sprint.startDate);
+    start.setHours(0, 0, 0, 0);
+    const totalWeeks = weekGroups.length;
+
+    const data = [];
+    const now = new Date();
+
+    for (let i = 0; i <= totalWeeks; i++) {
+      const pointDate = addDays(start, i * 7);
+      const idealProgress = Math.round((i / totalWeeks) * 100);
+
+      let actualProgress: number | null = null;
+      // We compute actual progress if pointDate is before today or it is the first point
+      if (pointDate <= addDays(now, 7) || i === 0) {
+        // If i=0, actual is 0
+        if (i === 0) {
+          actualProgress = 0;
+        } else {
+          const completedEffort = sprintDemands
+            .filter(d => d.status === 'concluido' && d.updatedAt && new Date(d.updatedAt) <= pointDate)
+            .reduce((acc, d) => acc + (d.estimatedHours || 1), 0);
+          actualProgress = Math.round((completedEffort / totalEffort) * 100);
+        }
+      }
+
+      data.push({
+        week: i,
+        label: i === 0 ? 'Início' : `S${i}`,
+        ideal: idealProgress,
+        actual: actualProgress,
+        pointDate
+      });
+    }
+    return data;
+  }, [sprint, sprintDemands, weekGroups.length]);
+
   const handleStartEdit = () => {
     if (!sprint) return;
     setEditFormData({
@@ -390,6 +434,113 @@ export const SprintDetalhesModal = () => {
               )}
             </div>
           </div>
+
+          {/* Burn-up Chart */}
+          {chartData && chartData.length > 1 && !isEditMode && (
+            <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] md:rounded-[32px] p-6 md:p-8 overflow-hidden">
+              <div className="flex items-center gap-2 mb-6">
+                <TrendingUp className="w-4 h-4 text-secondary" />
+                <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
+                  Gráfico de Acompanhamento (Burn-up)
+                </h4>
+              </div>
+
+              <div className="relative w-full h-[200px] md:h-[250px]">
+                <svg viewBox="0 0 1000 300" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                  <defs>
+                    <linearGradient id="idealGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="rgba(255,255,255,0.1)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                    </linearGradient>
+                    <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="rgba(11, 175, 77, 0.4)" />
+                      <stop offset="100%" stopColor="rgba(11, 175, 77, 0)" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Grid lines */}
+                  {[0, 25, 50, 75, 100].map(percent => {
+                    const y = 250 - (percent / 100) * 200;
+                    return (
+                      <g key={percent}>
+                        <line x1="50" y1={y} x2="950" y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="4 4" />
+                        <text x="40" y={y + 4} fill="rgba(255,255,255,0.3)" fontSize="12" fontWeight="bold" textAnchor="end">{percent}%</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Ideal Line & Area */}
+                  <path
+                    d={`M ${chartData.map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${250 - (d.ideal / 100) * 200}`).join(' L ')}`}
+                    fill="none"
+                    stroke="rgba(255,255,255,0.2)"
+                    strokeWidth="2"
+                    strokeDasharray="8 8"
+                  />
+                  <path
+                    d={`M 50,250 L ${chartData.map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${250 - (d.ideal / 100) * 200}`).join(' L ')} L 950,250 Z`}
+                    fill="url(#idealGrad)"
+                  />
+
+                  {/* Actual Line & Area */}
+                  {chartData.filter(d => d.actual !== null).length > 0 && (
+                    <>
+                      <path
+                        d={`M 50,250 L ${chartData.filter(d => d.actual !== null).map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${250 - (d.actual! / 100) * 200}`).join(' L ')} L ${50 + ((chartData.filter(d => d.actual !== null).length - 1) / (chartData.length - 1)) * 900},250 Z`}
+                        fill="url(#actualGrad)"
+                      />
+                      <path
+                        d={`M ${chartData.filter(d => d.actual !== null).map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${250 - (d.actual! / 100) * 200}`).join(' L ')}`}
+                        fill="none"
+                        stroke="#0baf4d"
+                        strokeWidth="4"
+                        style={{ filter: 'drop-shadow(0px 0px 8px rgba(11, 175, 77, 0.6))' }}
+                      />
+
+                      {/* Dots */}
+                      {chartData.filter(d => d.actual !== null).map((d, i) => (
+                        <circle
+                          key={i}
+                          cx={50 + (d.week / (chartData.length - 1)) * 900}
+                          cy={250 - (d.actual! / 100) * 200}
+                          r="6"
+                          fill="#0f0f0f"
+                          stroke="#0baf4d"
+                          strokeWidth="3"
+                        />
+                      ))}
+                    </>
+                  )}
+
+                  {/* X Axis Labels */}
+                  {chartData.map((d, i) => (
+                    <text
+                      key={i}
+                      x={50 + (i / (chartData.length - 1)) * 900}
+                      y="280"
+                      fill="rgba(255,255,255,0.5)"
+                      fontSize="12"
+                      fontWeight="bold"
+                      textAnchor="middle"
+                    >
+                      {d.label}
+                    </text>
+                  ))}
+                </svg>
+              </div>
+
+              <div className="flex items-center justify-center gap-6 mt-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-0.5 bg-white/20 border border-white/20 border-dashed" />
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Ritmo Ideal</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-1 bg-secondary rounded-full shadow-[0_0_8px_rgba(11,175,77,0.5)]" />
+                  <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Progresso Real</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Description + Metrics */}
           <div className={cn(

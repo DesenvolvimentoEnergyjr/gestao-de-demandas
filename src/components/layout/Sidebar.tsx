@@ -22,7 +22,7 @@ const navigation = [
   { name: 'Kanban', href: '/kanban', icon: LayoutGrid },
   { name: 'Timeline', href: '/timeline', icon: TrendingUp },
   { name: 'Sprints', href: '/sprints', icon: RefreshCw },
-  { name: 'Assessores', href: '/assessores', icon: Users },
+  { name: 'Membros', href: '/membros', icon: Users },
 ];
 
 export const Sidebar = () => {

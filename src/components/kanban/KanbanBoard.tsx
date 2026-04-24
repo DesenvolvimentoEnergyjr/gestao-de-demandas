@@ -14,6 +14,8 @@ import {
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { DemandStatus, User } from '@/types';
+import { isDemandVisibleToUser } from '@/lib/utils';
+import { useAuthStore } from '@/store/useAuthStore';
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard } from './KanbanCard';
 import { updateDemand } from '@/lib/firestore';
@@ -30,16 +32,18 @@ const COLUMNS: { id: DemandStatus; title: string; color: string }[] = [
 
 export const KanbanBoard = ({ users = [] }: { users?: User[] }) => {
   const { demands, updateDemand: updateStoreDemand, searchQuery } = useDemandStore();
+  const { user: currentUser } = useAuthStore();
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const filteredDemands = useMemo(
     () =>
       demands.filter(
         (d) =>
-          d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          d.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))
+          (d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          d.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))) &&
+          isDemandVisibleToUser(d, currentUser, users)
       ),
-    [demands, searchQuery]
+    [demands, searchQuery, currentUser, users]
   );
 
   const sensors = useSensors(

@@ -8,23 +8,28 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useDemandStore } from '@/store/useDemandStore';
 import { useUIStore } from '@/store/useUIStore';
 import { Avatar } from '@/components/ui/Avatar';
-import { Search, Clock, AlertCircle, Plus, Settings, LogOut, ChevronDown, Menu } from 'lucide-react';
+import { Search, AlertCircle, Plus, Settings, LogOut, ChevronDown, Menu, RefreshCw, LayoutGrid, User as UserIcon } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { toast } from '@/store/useToastStore';
+import { User } from '@/types';
+import { getUsers } from '@/lib/firestore';
+import { useSprintStore } from '@/store/useSprintStore';
 
 const tabs = [
   { name: 'Kanban', href: '/kanban' },
   { name: 'Timeline', href: '/timeline' },
   { name: 'Sprints', href: '/sprints' },
-  { name: 'Assessores', href: '/assessores' },
+  { name: 'Membros', href: '/membros' },
 ];
 
 export const Header = () => {
   const { user } = useAuthStore();
   const { demands } = useDemandStore();
-  const { openNovaDemanda, openDemanda, setSidebarOpen } = useUIStore();
+  const { sprints } = useSprintStore();
+  const { openNovaDemanda, openDemanda, setSidebarOpen, openSprintDetalhes } = useUIStore();
+  const [users, setUsers] = useState<User[]>([]);
   const [localSearch, setLocalSearch] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -47,6 +52,47 @@ export const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showUserMenu]);
 
+  useEffect(() => {
+    getUsers().then(setUsers).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (!user || demands.length === 0) return;
+    
+    if (sessionStorage.getItem('notified_overdue_demands')) return;
+    
+    const myDemands = demands.filter(d => d.assignees.includes(user.uid) && d.status !== 'concluido' && d.deadline);
+    if (myDemands.length === 0) return;
+
+    let hasNotified = false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const overdue = myDemands.filter(d => {
+      const deadline = new Date(d.deadline!);
+      deadline.setHours(0, 0, 0, 0);
+      return deadline < today;
+    });
+
+    const expiringToday = myDemands.filter(d => {
+      return new Date(d.deadline!).toDateString() === new Date().toDateString();
+    });
+
+    if (overdue.length > 0) {
+      setTimeout(() => toast.error(`Atenção: Você tem ${overdue.length} demanda(s) em atraso!`), 1000);
+      hasNotified = true;
+    }
+    
+    if (expiringToday.length > 0) {
+      setTimeout(() => toast.warning(`Aviso: Você tem ${expiringToday.length} demanda(s) vencendo hoje!`), 1500);
+      hasNotified = true;
+    }
+
+    if (hasNotified) {
+      sessionStorage.setItem('notified_overdue_demands', 'true');
+    }
+  }, [user, demands]);
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -57,18 +103,39 @@ export const Header = () => {
     }
   };
 
-  const filteredDemands = useMemo(() => {
+  const searchResults = useMemo(() => {
     if (!localSearch.trim()) return [];
-    return demands
-      .filter((d) =>
-        d.title.toLowerCase().includes(localSearch.toLowerCase()) ||
-        d.code.toLowerCase().includes(localSearch.toLowerCase())
-      )
-      .slice(0, 5);
-  }, [demands, localSearch]);
 
-  const handleResultClick = (demandId: string) => {
-    openDemanda(demandId, 'view');
+    const results: Array<{ type: 'demand' | 'sprint' | 'user', id: string, title: string, subtitle: string, icon: React.ElementType }> = [];
+    const term = localSearch.toLowerCase();
+
+    // Demands
+    demands.filter(d => (d.title || '').toLowerCase().includes(term) || (d.code || '').toLowerCase().includes(term)).forEach(d => {
+      results.push({ type: 'demand', id: d.id, title: d.title || 'Sem título', subtitle: d.code, icon: LayoutGrid });
+    });
+
+    // Sprints
+    sprints.filter(s => (s.title || '').toLowerCase().includes(term) || (s.objective || '').toLowerCase().includes(term)).forEach(s => {
+      results.push({ type: 'sprint', id: s.id, title: s.title || 'Sprint', subtitle: `Sprint #${s.number}`, icon: RefreshCw });
+    });
+
+    // Users
+    users.filter(u => (u.name || '').toLowerCase().includes(term) || (u.area || '').toLowerCase().includes(term)).forEach(u => {
+      results.push({ type: 'user', id: u.uid, title: u.name || 'Usuário', subtitle: (u.title || u.role || '').toUpperCase(), icon: UserIcon });
+    });
+
+    return results.slice(0, 8);
+  }, [localSearch, demands, sprints, users]);
+
+  const handleResultClick = (result: { type: string, id: string }) => {
+    if (result.type === 'demand') {
+      openDemanda(result.id, 'view');
+    } else if (result.type === 'sprint') {
+      router.push('/sprints');
+      openSprintDetalhes(result.id);
+    } else if (result.type === 'user') {
+      router.push('/membros');
+    }
     setLocalSearch('');
     setShowResults(false);
   };
@@ -162,26 +229,29 @@ export const Header = () => {
               <div className="p-2">
                 <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
                   <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Resultados</span>
-                  <span className="text-[10px] font-bold text-zinc-600">{filteredDemands.length}</span>
+                  <span className="text-[10px] font-bold text-zinc-600">{searchResults.length}</span>
                 </div>
 
                 <div className="mt-1 py-1">
-                  {filteredDemands.length > 0 ? (
-                    filteredDemands.map((demand) => (
-                      <button
-                        key={demand.id}
-                        onClick={() => handleResultClick(demand.id)}
-                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all group flex items-start gap-3"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-white/5 flex items-center justify-center shrink-0 group-hover:border-secondary/30 group-hover:bg-secondary/5 transition-all">
-                          <Clock className="w-4 h-4 text-zinc-600 group-hover:text-secondary" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-zinc-200 group-hover:text-white transition-colors truncate">{demand.title}</p>
-                          <p className="text-[10px] text-zinc-500 font-medium tracking-tight mt-0.5">{demand.code}</p>
-                        </div>
-                      </button>
-                    ))
+                  {searchResults.length > 0 ? (
+                    searchResults.map((result) => {
+                      const Icon = result.icon;
+                      return (
+                        <button
+                          key={`${result.type}-${result.id}`}
+                          onClick={() => handleResultClick(result)}
+                          className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all group flex items-start gap-3"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-white/5 flex items-center justify-center shrink-0 group-hover:border-secondary/30 group-hover:bg-secondary/5 transition-all">
+                            <Icon className="w-4 h-4 text-zinc-600 group-hover:text-secondary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-zinc-200 group-hover:text-white transition-colors truncate">{result.title}</p>
+                            <p className="text-[10px] text-zinc-500 font-medium tracking-tight mt-0.5">{result.subtitle}</p>
+                          </div>
+                        </button>
+                      );
+                    })
                   ) : (
                     <div className="px-4 py-8 flex flex-col items-center justify-center text-center">
                       <AlertCircle className="w-6 h-6 text-zinc-700 mb-2" />

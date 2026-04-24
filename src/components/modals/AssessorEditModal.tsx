@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Loader2, User } from 'lucide-react';
+import { X, Save, Loader2 } from 'lucide-react';
 import { User as UserType } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
@@ -39,7 +39,7 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
     try {
       const updatedData = { name, title, area, history, workloadLimit };
       await updateUser(user.uid, updatedData);
-      
+
       onUpdate({ ...user, ...updatedData });
       toast.success('Perfil atualizado com sucesso!');
       onClose();
@@ -59,7 +59,7 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
             <h2 className="text-xl md:text-2xl font-black text-white tracking-tight">Editar Perfil</h2>
             <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-1">Configurações de {user.name}</p>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/5 text-zinc-500 hover:text-white transition-all"
           >

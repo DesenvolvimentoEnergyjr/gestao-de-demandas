@@ -7,10 +7,9 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
-import { Camera, Check, Save, Loader2, UserX, AlertCircle, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
+import { Camera, Check, Save, Loader2, UserX, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { User, Role } from '@/types';
 import { cn } from '@/lib/utils';
-import { AssessorEditModal } from '@/components/modals/AssessorEditModal';
 
 export default function ConfiguracoesPage() {
   const { user, setUser } = useAuthStore();
@@ -28,7 +27,6 @@ export default function ConfiguracoesPage() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [mgmtLoading, setMgmtLoading] = useState(false);
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState<User | null>(null);
-  const [showEditModal, setShowEditModal] = useState<User | null>(null);
   const [activeFilter, setActiveFilter] = useState<'todos' | 'pos_junior' | 'gestao_atual'>('gestao_atual');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ 'Gestão Atual': true });
 
@@ -351,15 +349,21 @@ export default function ConfiguracoesPage() {
                                   )}
                                 </div>
                                 <p className="text-xs text-zinc-500 font-medium truncate">{member.email}</p>
-                                {member.history && (
-                                  <p className="text-[9px] text-zinc-600 font-bold mt-1 uppercase tracking-wider truncate">
-                                    {member.history}
-                                  </p>
-                                )}
+                                </div>
                               </div>
-                            </div>
 
                             <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6">
+                              {/* Deactivate Button */}
+                              {member.uid !== user.uid && member.status !== 'desligado' && (
+                                <button 
+                                  onClick={() => setShowDeactivateConfirm(member)}
+                                  className="p-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/10 text-red-500/30 hover:text-red-500 border border-red-500/0 hover:border-red-500/10 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
+                                  title="Desligar Membro"
+                                >
+                                  <UserX className="w-4 h-4" />
+                                </button>
+                              )}
+
                               {/* Role Toggle */}
                               <div className={cn(
                                 "flex p-1 bg-zinc-950 border border-white/5 rounded-xl transition-opacity flex-1 sm:flex-none",
@@ -381,28 +385,6 @@ export default function ConfiguracoesPage() {
                                   </button>
                                 ))}
                               </div>
-
-                              {/* Edit Button */}
-                              {member.uid !== user.uid && member.status !== 'desligado' && (
-                                <button 
-                                  onClick={() => setShowEditModal(member)}
-                                  className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-500 hover:text-white border border-white/0 hover:border-white/5 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
-                                  title="Editar Perfil"
-                                >
-                                  <Pencil className="w-4 h-4" />
-                                </button>
-                              )}
-
-                              {/* Deactivate Button */}
-                              {member.uid !== user.uid && member.status !== 'desligado' && (
-                                <button 
-                                  onClick={() => setShowDeactivateConfirm(member)}
-                                  className="p-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/10 text-red-500/30 hover:text-red-500 border border-red-500/0 hover:border-red-500/10 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
-                                  title="Desligar Membro"
-                                >
-                                  <UserX className="w-4 h-4" />
-                                </button>
-                              )}
                             </div>
                           </div>
                         ))}
@@ -450,17 +432,7 @@ export default function ConfiguracoesPage() {
         </div>
       )}
 
-      {/* Edit Assessor Modal */}
-      {showEditModal && (
-        <AssessorEditModal
-          user={showEditModal}
-          isOpen={!!showEditModal}
-          onClose={() => setShowEditModal(null)}
-          onUpdate={(updatedUser) => {
-            setAllUsers(prev => prev.map(u => u.uid === updatedUser.uid ? updatedUser : u));
-          }}
-        />
-      )}
+
     </div>
   );
 }

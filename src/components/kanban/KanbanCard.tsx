@@ -5,9 +5,10 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Demand, User } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
-import { Calendar, Clock, MessageSquare } from 'lucide-react';
+import { Calendar, Clock, MessageSquare, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
+import { differenceInDays } from 'date-fns';
 
 interface KanbanCardProps {
   demand: Demand;
@@ -71,13 +72,11 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
     );
   }
 
-  const progress =
-    demand.estimatedHours > 0
-      ? Math.min(100, Math.round((demand.completedHours / demand.estimatedHours) * 100))
-      : 0;
 
-  const isInProgress = demand.status === 'em_progresso';
   const isOverdue = demand.deadline && new Date(demand.deadline) < new Date();
+  
+  const daysSinceUpdate = differenceInDays(new Date(), new Date(demand.updatedAt));
+  const isStagnant = (demand.status === 'em_progresso' || demand.status === 'em_revisao') && daysSinceUpdate >= 5;
 
   // Color bar logic
   const priorityColor = priorityColorMap[demand.priority.toLowerCase()] ?? 'bg-zinc-700';
@@ -99,7 +98,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
       onClick={handleCardClick}
       className={cn(
         'group cursor-grab active:cursor-grabbing relative overflow-hidden',
-        'border-gradient border-gradient-hover',
+        isStagnant ? 'border border-red-500/30 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]' : 'border-gradient border-gradient-hover',
         'rounded-[24px] md:rounded-3xl p-4 md:p-5 flex flex-col gap-3 md:gap-4',
         'transition-all duration-300',
         'bg-gradient-to-br from-bg-surface to-bg-surface group-hover:from-bg-surface group-hover:to-secondary/5',
@@ -116,18 +115,21 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
         <span className="text-[10px] font-mono text-zinc-500">{demand.code}</span>
       </div>
 
-      <h4 className="text-sm font-semibold text-white leading-snug line-clamp-2 group-hover:text-secondary transition-colors pl-1">
-        {demand.title}
-      </h4>
+      <div className="flex flex-col gap-1.5 pl-1">
+        <h4 className="text-sm font-semibold text-white leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
+          {demand.title}
+        </h4>
+        
+        {isStagnant && (
+          <div className="inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded w-fit">
+            <AlertTriangle className="w-3 h-3 text-red-400" />
+            <span className="text-[9px] font-bold text-red-400 uppercase tracking-widest">
+              Estagnada há {daysSinceUpdate} dias
+            </span>
+          </div>
+        )}
+      </div>
 
-      {isInProgress && (
-        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden ml-1">
-          <div
-            className="h-full bg-gradient-to-r from-secondary to-secondary rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      )}
 
       <div className="flex items-center justify-between mt-auto pt-0.5 pl-1">
         <div className="flex -space-x-1.5 focus-within:z-10">
@@ -157,12 +159,6 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
         </div>
 
         <div className="flex items-center gap-2">
-          {isInProgress && (
-            <span className="text-[10px] text-zinc-500 flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {progress}%
-            </span>
-          )}
           {demand.comments.length > 0 && (
             <span className="text-[10px] text-zinc-500 flex items-center gap-1">
               <MessageSquare className="w-3 h-3" />

@@ -22,9 +22,10 @@ import { ptBR } from 'date-fns/locale';
 import { Avatar } from '@/components/ui/Avatar';
 import { useDemandStore } from '@/store/useDemandStore';
 import { ChevronLeft, ChevronRight, Calendar, LayoutGrid } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, isDemandVisibleToUser } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useUIStore } from '@/store/useUIStore';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface TimelineViewProps {
   demands: Demand[];
@@ -40,6 +41,7 @@ const PROJECT_COLORS = {
 
 export function TimelineView({ demands, users }: TimelineViewProps) {
   const router = useRouter();
+  const { user: currentUser } = useAuthStore();
   const { openDemanda } = useUIStore();
   const { searchQuery } = useDemandStore();
   const [viewMode, setViewMode] = useState<ViewMode>('semana');
@@ -86,11 +88,14 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
   }, [viewMode, range]);
 
   const userRows = useMemo(() => {
+    const activeUsers = users.filter(u => u.status !== 'desligado' && u.status !== 'pos_junior');
+
     const filteredDemands = demands.filter((d) =>
-      d.title.toLowerCase().includes(searchQuery.toLowerCase())
+      d.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      isDemandVisibleToUser(d, currentUser, users)
     );
 
-    return users.map((user) => {
+    return activeUsers.map((user) => {
       const userDemands = filteredDemands.filter(
         (d) =>
           d.assignees.includes(user.uid) &&
@@ -143,7 +148,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
 
       return { user, demands: demandsWithLayout };
     });
-  }, [users, demands, range, searchQuery]);
+  }, [users, demands, range, searchQuery, currentUser]);
 
   interface TimelineDemand extends Demand {
     slotIndex: number;

@@ -133,7 +133,7 @@ export const createDemand = async (
         createNotification({
           userId,
           title: 'Nova demanda designada',
-          message: `Você foi designado para a demanda ${newId.code}: ${data.title}`,
+          message: `Você foi designado para a demanda "${data.title}"`,
           type: 'assignment',
           link: `/kanban`,
         })
@@ -149,12 +149,13 @@ export const updateDemand = async (
   data: Partial<Omit<Demand, 'id' | 'code' | 'createdAt'>>
 ) => {
   const demandDoc = doc(db, 'demands', id);
+  const oldSnap = await getDoc(demandDoc);
 
-  // If updating assignees, notify only the new ones
-  if (data.assignees) {
-    const oldSnap = await getDoc(demandDoc);
-    if (oldSnap.exists()) {
-      const oldData = oldSnap.data() as Demand;
+  if (oldSnap.exists()) {
+    const oldData = oldSnap.data() as Demand;
+
+    // If updating assignees, notify only the new ones
+    if (data.assignees) {
       const newAssignees = data.assignees.filter(
         (uid) => !oldData.assignees?.includes(uid)
       );
@@ -165,12 +166,46 @@ export const updateDemand = async (
             createNotification({
               userId,
               title: 'Nova designação',
-              message: `Você foi designado para a demanda ${oldData.code}: ${data.title || oldData.title}`,
+              message: `Você foi designado para a demanda "${data.title || oldData.title}"`,
               type: 'assignment',
               link: `/kanban`,
             })
           )
         );
+      }
+    }
+
+    // Se a demanda for concluída, notificar o criador
+    if (data.status === 'concluido' && oldData.status !== 'concluido') {
+      if (oldData.createdBy) {
+        await createNotification({
+          userId: oldData.createdBy,
+          title: 'Demanda Concluída',
+          message: `Excelente! A demanda "${oldData.title}" que você criou foi concluída!`,
+          type: 'system',
+          link: `/kanban`,
+        });
+      }
+    } 
+    // Notificar mudança de status/coluna
+    else if (data.status && data.status !== oldData.status) {
+      if (oldData.createdBy) {
+        const statusMap: Record<string, string> = {
+          backlog: 'Backlog',
+          criando_escopo: 'Criando Escopo',
+          em_progresso: 'Em Progresso',
+          em_revisao: 'Em Revisão',
+        };
+        
+        const newStatusStr = statusMap[data.status] || data.status;
+        
+        await createNotification({
+          userId: oldData.createdBy,
+          title: 'Atualização de Status',
+          message: `A demanda "${oldData.title}" foi movida para ${newStatusStr}.`,
+          type: 'system',
+          link: `/kanban`,
+        });
       }
     }
   }
