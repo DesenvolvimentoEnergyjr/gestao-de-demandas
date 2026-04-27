@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Demand, User } from '@/types';
 import {
@@ -45,7 +45,68 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
   const { openDemanda } = useUIStore();
   const { searchQuery } = useDemandStore();
   const [viewMode, setViewMode] = useState<ViewMode>('semana');
+  const [density, setDensity] = useState<'standard' | 'compact'>('standard');
+  const [zoomLevel, setZoomLevel] = useState(1); // 1 = 100%
   const [referenceDate, setReferenceDate] = useState(new Date());
+  const [memberFilter, setMemberFilter] = useState<'todos' | 'diretoria' | 'assessores' | 'comercial' | 'prodev' | 'rh'>('todos');
+
+  const navigateTime = useCallback((direction: 'next' | 'prev' | 'today') => {
+    if (direction === 'today') {
+      setReferenceDate(new Date());
+      return;
+    }
+    const delta = direction === 'next' ? 1 : -1;
+    setReferenceDate((prev) => {
+      let nextDate: Date;
+      if (viewMode === 'ano') nextDate = addMonths(prev, delta * 12);
+      else if (viewMode === 'semana') nextDate = addWeeks(prev, delta * 4);
+      else nextDate = addDays(prev, delta * 7);
+
+      // Impedir ultrapassar o ano atual
+      const currentYear = new Date().getFullYear();
+      if (nextDate.getFullYear() > currentYear) {
+        return new Date(currentYear, 11, 31); // Último dia do ano
+      }
+      if (nextDate.getFullYear() < currentYear) {
+        return new Date(currentYear, 0, 1); // Primeiro dia do ano
+      }
+      return nextDate;
+    });
+  }, [viewMode]);
+
+  // Atalhos de teclado
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Evitar atalhos se o usuário estiver digitando em um input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'c':
+          setDensity(prev => prev === 'standard' ? 'compact' : 'standard');
+          break;
+        case '+':
+        case '=':
+          setZoomLevel(prev => Math.min(prev + 0.2, 3));
+          break;
+        case '-':
+        case '_':
+          setZoomLevel(prev => Math.max(prev - 0.2, 0.5));
+          break;
+        case '0':
+          setZoomLevel(1);
+          break;
+        case 'arrowleft':
+          navigateTime('prev');
+          break;
+        case 'arrowright':
+          navigateTime('next');
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewMode, navigateTime]);
 
   const range = useMemo(() => {
     if (viewMode === 'dia') {
@@ -54,7 +115,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
     }
     if (viewMode === 'semana') {
       const start = startOfWeek(referenceDate, { weekStartsOn: 1 });
-      const end = addWeeks(start, 8);
+      const end = addWeeks(start, 7);
       return { start, end, totalDays: 56 };
     }
     const start = startOfYear(referenceDate);
@@ -63,16 +124,23 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
   }, [viewMode, referenceDate]);
 
   const columns = useMemo(() => {
+    const yearEnd = endOfYear(referenceDate);
+
     if (viewMode === 'dia') {
-      return Array.from({ length: 14 }, (_, i) => ({
-        date: addDays(range.start, i),
-        label: format(addDays(range.start, i), 'eee', { locale: ptBR }),
-        subLabel: format(addDays(range.start, i), 'dd'),
-      }));
+      return Array.from({ length: 14 }, (_, i) => {
+        const date = addDays(range.start, i);
+        if (date > yearEnd) return null;
+        return {
+          date,
+          label: format(date, 'eee', { locale: ptBR }),
+          subLabel: format(date, 'dd'),
+        };
+      });
     }
     if (viewMode === 'semana') {
       return Array.from({ length: 8 }, (_, i) => {
         const date = addWeeks(range.start, i);
+        if (date > yearEnd) return null;
         return {
           date,
           label: format(date, 'MMMM', { locale: ptBR }),
@@ -80,22 +148,44 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
         };
       });
     }
-    return eachMonthOfInterval({ start: range.start, end: range.end }).map((month) => ({
-      date: month,
-      label: format(month, 'MMMM', { locale: ptBR }),
-      subLabel: format(month, 'yyyy'),
-    }));
-  }, [viewMode, range]);
+    return eachMonthOfInterval({ start: range.start, end: range.end }).map((month) => {
+      if (month > yearEnd) return null;
+      return {
+        date: month,
+        label: format(month, 'MMMM', { locale: ptBR }),
+        subLabel: format(month, 'yyyy'),
+      };
+    });
+  }, [viewMode, range, referenceDate]);
 
   const userRows = useMemo(() => {
-    const activeUsers = users.filter(u => u.status !== 'desligado' && u.status !== 'pos_junior');
+    let filteredUsers = users.filter(u => u.status !== 'desligado' && u.status !== 'pos_junior');
+
+    // Aplicação do Filtro de Membros com Palavras-Chave
+    if (memberFilter === 'diretoria') {
+      filteredUsers = filteredUsers.filter(u => u.role === 'diretor');
+    } else if (memberFilter === 'assessores') {
+      filteredUsers = filteredUsers.filter(u => u.role === 'assessor');
+    } else if (memberFilter === 'comercial') {
+      const keywords = ['COMERCIAL', 'VENDAS', 'MARKETING'];
+      filteredUsers = filteredUsers.filter(u =>
+        keywords.some(k => u.area?.toUpperCase().includes(k))
+      );
+    } else if (memberFilter === 'prodev') {
+      const keywords = ['DESENVOLVIMENTO', 'PROJETOS', 'DEV', 'PRODEV'];
+      filteredUsers = filteredUsers.filter(u =>
+        keywords.some(k => u.area?.toUpperCase().includes(k))
+      );
+    } else if (memberFilter === 'rh') {
+      filteredUsers = filteredUsers.filter(u => u.area?.toUpperCase().includes('RECURSOS HUMANOS'));
+    }
 
     const filteredDemands = demands.filter((d) =>
       d.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
       isDemandVisibleToUser(d, currentUser, users)
     );
 
-    return activeUsers.map((user) => {
+    return filteredUsers.map((user) => {
       const userDemands = filteredDemands.filter(
         (d) =>
           d.assignees.includes(user.uid) &&
@@ -148,7 +238,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
 
       return { user, demands: demandsWithLayout };
     });
-  }, [users, demands, range, searchQuery, currentUser]);
+  }, [users, demands, range, searchQuery, currentUser, memberFilter]);
 
   interface TimelineDemand extends Demand {
     slotIndex: number;
@@ -184,28 +274,15 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
     };
   };
 
-  const navigateTime = (direction: 'next' | 'prev' | 'today') => {
-    if (direction === 'today') {
-      setReferenceDate(new Date());
-      return;
-    }
-    const delta = direction === 'next' ? 1 : -1;
-    setReferenceDate((prev) => {
-      if (viewMode === 'ano') return addMonths(prev, delta * 12);
-      if (viewMode === 'semana') return addWeeks(prev, delta * 4);
-      return addDays(prev, delta * 7);
-    });
-  };
-
   return (
-    <div className="flex flex-col h-full text-white font-sans px-4 md:px-8">
+    <div className="flex flex-col min-h-full text-white font-sans px-4 md:px-8">
       <PageHeader
         title="Linha do Tempo"
         description="Gestão estratégica e acompanhamento temporal de todas as frentes de trabalho em tempo real."
       />
 
       {/* Control Bar */}
-      <div className="py-4 flex flex-col lg:flex-row lg:items-center justify-between bg-zinc-950/40 border border-white/[0.03] rounded-[24px] px-6 mb-6 backdrop-blur-md gap-6 lg:gap-0">
+      <div className="py-4 flex flex-col lg:flex-row lg:items-center justify-between bg-zinc-950/40 border border-white/[0.03] rounded-[24px] px-6 mb-4 backdrop-blur-md gap-6 lg:gap-0">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <div className="flex items-center gap-2.5">
             <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#0baf4d] shadow-[0_0_10px_rgba(11,175,77,0.5)]" />
@@ -228,12 +305,28 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                   viewMode === mode ? 'bg-white text-black shadow-xl' : 'text-zinc-500 hover:text-white'
                 )}
               >
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                {mode === 'ano' ? 'Mês' : mode.charAt(0).toUpperCase() + mode.slice(1)}
               </button>
             ))}
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
+            <button
+              onClick={() => setDensity(prev => prev === 'standard' ? 'compact' : 'standard')}
+              className={cn(
+                "p-2.5 rounded-xl border transition-all flex items-center gap-2",
+                density === 'compact' ? "bg-white text-black border-white" : "bg-zinc-900 border-white/5 text-zinc-500 hover:text-white"
+              )}
+              title="Alternar Densidade (Atalho: C)"
+            >
+              <LayoutGrid className="w-4 h-4" />
+              <span className="text-[10px] font-black uppercase hidden sm:inline">
+                {density === 'compact' ? 'Compacto' : 'Padrão'}
+              </span>
+            </button>
+
+            <div className="h-8 w-px bg-white/5 mx-1 hidden sm:block" />
+
             <button onClick={() => navigateTime('prev')} className="p-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-white/20 transition-all">
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -247,32 +340,81 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
         </div>
       </div>
 
+      {/* Member Filters */}
+      <div className="flex flex-col gap-3 mb-6 px-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-black text-secondary uppercase tracking-[0.3em] ml-1">Filtros de Membros</span>
+          <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest bg-zinc-900/50 px-2 py-0.5 rounded-full border border-white/5">
+            {userRows.length} Membros Visíveis
+          </span>
+        </div>
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+          {[
+            { id: 'todos', label: 'Todos' },
+            { id: 'diretoria', label: 'Diretoria' },
+            { id: 'assessores', label: 'Assessores' },
+            { id: 'comercial', label: 'Comercial' },
+            { id: 'prodev', label: 'PRODEV' },
+            { id: 'rh', label: 'Recursos Humanos' },
+          ].map((filter) => (
+            <button
+              key={filter.id}
+              onClick={() => setMemberFilter(filter.id as typeof memberFilter)}
+              className={cn(
+                "flex-none px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95",
+                memberFilter === filter.id
+                  ? "bg-secondary/10 border-secondary text-secondary shadow-[0_0_15px_rgba(11,175,77,0.1)]"
+                  : "bg-zinc-950/40 border-white/[0.03] text-zinc-500 hover:text-white hover:border-white/10"
+              )}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Timeline Grid */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar">
+      <div className="flex-1 flex flex-col">
+        <div className="overflow-x-auto no-scrollbar">
           <div className="min-w-fit w-full flex flex-col">
 
             {/* Header */}
-            <div className="flex sticky top-0 z-40 bg-bg-section">
-              <div className="w-[160px] md:w-[320px] min-w-[160px] md:min-w-[320px] px-4 md:px-8 py-6 border-r border-b border-white/[0.03] flex items-end sticky left-0 bg-bg-section z-50">
-                <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.1em] md:tracking-[0.3em] text-zinc-600 truncate">
-                  Assessor
+            <div className="flex sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md">
+              <div
+                className={cn(
+                  "px-4 md:px-8 border-r border-b border-white/10 flex items-end sticky left-0 bg-bg-section z-50 transition-all",
+                  density === 'compact' ? "w-[120px] md:w-[240px] min-w-[120px] md:min-w-[240px] py-3" : "w-[160px] md:w-[320px] min-w-[160px] md:min-w-[320px] py-6"
+                )}
+              >
+                <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.2em] md:tracking-[0.4em] text-zinc-400 truncate">
+                  Membros
                 </span>
               </div>
               <div
-                className="flex-1 grid border-b border-white/[0.03]"
+                className="flex-1 grid border-b border-white/10"
                 style={{
-                  gridTemplateColumns: `repeat(${columns.length}, minmax(${viewMode === 'ano' ? '300px' : '120px'}, 1fr))`
+                  gridTemplateColumns: `repeat(${columns.length}, minmax(${viewMode === 'ano' ? (300 * zoomLevel) : (120 * zoomLevel)
+                    }px, 1fr))`
                 }}
               >
                 {columns.map((col, i) => {
+                  if (!col) {
+                    return (
+                      <div key={i} className="flex flex-col items-center justify-center py-5 border-r border-white/5 last:border-r-0 bg-white/[0.01]">
+                        <span className="text-[10px] font-black uppercase text-zinc-800 tracking-[0.2em] mb-1">
+                          Ano Que Vem
+                        </span>
+                      </div>
+                    );
+                  }
+
                   const isToday = isSameDay(col.date, new Date()) && viewMode === 'dia';
                   return (
                     <div
                       key={i}
                       className={cn(
-                        'flex flex-col items-center justify-center py-5 border-r border-white/[0.03] last:border-r-0',
-                        isToday ? 'bg-secondary/10' : 'hover:bg-white/[0.01]'
+                        'flex flex-col items-center justify-center py-5 border-r border-white/5 last:border-r-0',
+                        isToday ? 'bg-secondary/10' : 'hover:bg-white/[0.02]'
                       )}
                     >
                       <span className={cn(
@@ -306,26 +448,59 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                 userRows.map((row) => (
                   <div
                     key={row.user.uid}
-                    className="flex min-h-[110px] border-b border-white/[0.03] group hover:bg-white/[0.01] transition-all"
+                    className={cn(
+                      "flex border-b border-white/10 group hover:bg-white/[0.02] transition-all",
+                      density === 'compact' ? "min-h-[60px]" : "min-h-[110px]"
+                    )}
                   >
-                    <div className="w-[160px] md:w-[320px] min-w-[160px] md:min-w-[320px] px-4 md:px-8 py-4 flex items-center gap-3 md:gap-5 border-r border-white/[0.03] sticky left-0 bg-bg-section z-30">
-                      <Avatar src={row.user.photoURL} alt={row.user.name} size="sm" className="ring-2 ring-zinc-800 shadow-xl" />
+                    <div
+                      className={cn(
+                        "px-4 md:px-8 flex items-center gap-3 md:gap-5 border-r border-white/10 sticky left-0 bg-bg-section z-30 transition-all",
+                        density === 'compact' ? "w-[120px] md:w-[240px] min-w-[120px] md:min-w-[240px] py-2" : "w-[160px] md:w-[320px] min-w-[160px] md:min-w-[320px] py-4"
+                      )}
+                    >
+                      <Avatar
+                        src={row.user.photoURL}
+                        alt={row.user.name}
+                        size={density === 'compact' ? "xs" : "sm"}
+                        className="ring-2 ring-zinc-800 shadow-xl"
+                      />
                       <div className="min-w-0">
-                        <h3 className="text-xs md:text-sm font-black text-white truncate tracking-tight">{row.user.name}</h3>
-                        <p className="text-[8px] md:text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1 truncate">
+                        <h3 className={cn(
+                          "font-black text-white truncate tracking-tight transition-all",
+                          density === 'compact' ? "text-[10px] md:text-xs" : "text-xs md:text-sm"
+                        )}>
+                          {row.user.name}
+                        </h3>
+                        <p className={cn(
+                          "text-zinc-500 font-bold uppercase tracking-wider truncate",
+                          density === 'compact' ? "text-[7px] md:text-[8px] mt-0.5" : "text-[8px] md:text-[10px] mt-1"
+                        )}>
                           {row.user.area || 'Técnico'}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex-1 relative py-6">
+                    <div className={cn(
+                      "flex-1 relative transition-all",
+                      density === 'compact' ? "py-2" : "py-6"
+                    )}>
                       <div className="absolute inset-0 flex">
-                        {columns.map((_, i) => (
-                          <div key={i} className="flex-1 border-r border-white/[0.02] last:border-r-0" />
+                        {columns.map((col, i) => (
+                          <div
+                            key={i}
+                            className={cn(
+                              "flex-1 border-r border-white/5 last:border-r-0",
+                              !col && "bg-white/[0.01]"
+                            )}
+                          />
                         ))}
                       </div>
 
-                      <div className="relative h-full flex flex-col justify-center gap-3">
+                      <div className={cn(
+                        "relative h-full flex flex-col justify-center",
+                        density === 'compact' ? "gap-1" : "gap-3"
+                      )}>
                         {row.demands.map((demand) => {
                           const { style, colorClass } = getBarProps(demand);
                           const startDate = demand.startDate ?? demand.createdAt;
@@ -336,9 +511,9 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                               key={demand.id}
                               style={style}
                               className={cn(
-                                'absolute h-9 rounded-xl flex items-center px-4 font-black text-[10px] uppercase tracking-wider',
-                                'transition-all hover:scale-[1.02] active:scale-95 cursor-pointer z-10',
-                                'truncate group/bar',
+                                'absolute rounded-xl flex items-center px-4 font-black uppercase tracking-wider transition-all',
+                                'hover:scale-[1.02] active:scale-95 cursor-pointer z-10 truncate group/bar',
+                                density === 'compact' ? 'h-6 text-[8px]' : 'h-9 text-[10px]',
                                 colorClass
                               )}
                               onClick={() => {

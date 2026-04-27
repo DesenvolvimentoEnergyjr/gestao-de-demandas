@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Loader2 } from 'lucide-react';
 import { User as UserType } from '@/types';
+import { format } from 'date-fns';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -21,6 +22,7 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
   const [title, setTitle] = useState(user.title || '');
   const [area, setArea] = useState(user.area || '');
   const [history, setHistory] = useState(user.history || '');
+  const [joinDate, setJoinDate] = useState(user.joinDate ? format(user.joinDate, 'yyyy-MM-dd') : '');
   const [workloadLimit, setWorkloadLimit] = useState(user.workloadLimit || 3);
   const [loading, setLoading] = useState(false);
 
@@ -29,6 +31,7 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
     setTitle(user.title || '');
     setArea(user.area || '');
     setHistory(user.history || '');
+    setJoinDate(user.joinDate ? format(user.joinDate, 'yyyy-MM-dd') : '');
     setWorkloadLimit(user.workloadLimit || 3);
   }, [user]);
 
@@ -37,10 +40,17 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
     setLoading(true);
 
     try {
-      const updatedData = { name, title, area, history, workloadLimit };
+      const updatedData: Partial<UserType> = {
+        name,
+        title,
+        area,
+        history,
+        workloadLimit,
+        joinDate: joinDate ? new Date(joinDate + 'T12:00:00') : undefined
+      };
       await updateUser(user.uid, updatedData);
 
-      onUpdate({ ...user, ...updatedData });
+      onUpdate({ ...user, ...updatedData } as UserType);
       toast.success('Perfil atualizado com sucesso!');
       onClose();
     } catch (error) {
@@ -89,7 +99,7 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
             </div>
 
             <div className="space-y-3">
-              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Diretoria / Área</label>
+              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Diretoria</label>
               <Input
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
@@ -98,14 +108,26 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
             </div>
           </div>
 
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Trajetória (Cargos Anteriores)</label>
-            <Input
-              value={history}
-              onChange={(e) => setHistory(e.target.value)}
-              placeholder="Ex: Assessor de Dev - Jan/2025 | Gerente - Jan/2026"
-              className="bg-white/5 border-white/5 h-14 focus:bg-white/[0.08] transition-all rounded-2xl text-sm"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Trajetória</label>
+              <textarea
+                value={history}
+                onChange={(e) => setHistory(e.target.value)}
+                placeholder="Ex: Assessor de Dev - Jan/2025 | Gerente - Jan/2026"
+                className="w-full bg-white/5 border border-white/5 focus:border-secondary/30 focus:bg-white/[0.08] transition-all rounded-2xl text-sm p-4 min-h-[100px] outline-none text-white"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Data de Ingresso</label>
+              <Input
+                type="date"
+                value={joinDate}
+                onChange={(e) => setJoinDate(e.target.value)}
+                className="bg-white/5 border-white/5 h-14 focus:bg-white/[0.08] transition-all rounded-2xl text-sm"
+              />
+            </div>
           </div>
 
           <div className="space-y-3">

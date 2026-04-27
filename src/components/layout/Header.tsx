@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { toast } from '@/store/useToastStore';
 import { User } from '@/types';
-import { getUsers } from '@/lib/firestore';
+import { getUsers, getDemands, getSprints } from '@/lib/firestore';
 import { useSprintStore } from '@/store/useSprintStore';
 
 const tabs = [
@@ -26,8 +26,8 @@ const tabs = [
 
 export const Header = () => {
   const { user } = useAuthStore();
-  const { demands } = useDemandStore();
-  const { sprints } = useSprintStore();
+  const { demands, setDemands } = useDemandStore();
+  const { sprints, setSprints } = useSprintStore();
   const { openNovaDemanda, openDemanda, setSidebarOpen, openSprintDetalhes } = useUIStore();
   const [users, setUsers] = useState<User[]>([]);
   const [localSearch, setLocalSearch] = useState('');
@@ -54,7 +54,10 @@ export const Header = () => {
 
   useEffect(() => {
     getUsers().then(setUsers).catch(console.error);
-  }, []);
+    // Garantir que temos as sprints e demandas para a pesquisa global
+    if (sprints.length === 0) getSprints().then(setSprints).catch(console.error);
+    if (demands.length === 0) getDemands().then(setDemands).catch(console.error);
+  }, [sprints.length, setSprints, demands.length, setDemands]);
 
   useEffect(() => {
     if (!user || demands.length === 0) return;
@@ -110,12 +113,18 @@ export const Header = () => {
     const term = localSearch.toLowerCase();
 
     // Demands
-    demands.filter(d => (d.title || '').toLowerCase().includes(term) || (d.code || '').toLowerCase().includes(term)).forEach(d => {
-      results.push({ type: 'demand', id: d.id, title: d.title || 'Sem título', subtitle: d.code, icon: LayoutGrid });
+    demands.filter(d => (d.title || '').toLowerCase().includes(term)).forEach(d => {
+      results.push({ type: 'demand', id: d.id, title: d.title || 'Sem título', subtitle: 'Demanda de Projeto', icon: LayoutGrid });
     });
 
     // Sprints
-    sprints.filter(s => (s.title || '').toLowerCase().includes(term) || (s.objective || '').toLowerCase().includes(term)).forEach(s => {
+    sprints.filter(s => 
+      (s.title || '').toLowerCase().includes(term) || 
+      (s.objective || '').toLowerCase().includes(term) ||
+      `sprint ${s.number}`.includes(term) ||
+      `#${s.number}`.includes(term) ||
+      s.number.toString() === term
+    ).forEach(s => {
       results.push({ type: 'sprint', id: s.id, title: s.title || 'Sprint', subtitle: `Sprint #${s.number}`, icon: RefreshCw });
     });
 

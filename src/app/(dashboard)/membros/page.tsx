@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { getUsers, getDemands } from '@/lib/firestore';
-import { User, Demand } from '@/types';
+import { getUsers, getDemands, getSprints } from '@/lib/firestore';
+import { User, Demand, Sprint } from '@/types';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { Mail, Activity, Clock, Layers, Target, TrendingUp, AlertCircle, Pencil } from 'lucide-react';
@@ -11,10 +11,10 @@ import { AssessorHistoryModal } from '@/components/modals/AssessorHistoryModal';
 import { AssessorEditModal } from '@/components/modals/AssessorEditModal';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useAuthStore } from '@/store/useAuthStore';
-
 export default function AssessoresPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [demands, setDemands] = useState<Demand[]>([]);
+  const [sprints, setSprints] = useState<Sprint[]>([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -23,9 +23,10 @@ export default function AssessoresPage() {
 
   useEffect(() => {
     setMounted(true);
-    Promise.all([getUsers(), getDemands()]).then(([uData, dData]) => {
+    Promise.all([getUsers(), getDemands(), getSprints()]).then(([uData, dData, sData]) => {
       setUsers(uData);
       setDemands(dData);
+      setSprints(sData);
       setLoading(false);
     });
   }, []);
@@ -41,7 +42,7 @@ export default function AssessoresPage() {
     const currentYear = new Date().getFullYear();
 
     users.forEach(u => {
-      const startYear = new Date(u.createdAt).getFullYear();
+      const startYear = new Date(u.joinDate || u.createdAt).getFullYear();
       const endYear = (u.status === 'desligado' && u.deactivatedAt)
         ? new Date(u.deactivatedAt).getFullYear()
         : currentYear;
@@ -88,67 +89,67 @@ export default function AssessoresPage() {
         className="p-6 md:p-8 group rounded-[32px] flex flex-col h-full cursor-pointer transition-all active:scale-[0.98]"
         onClick={() => setSelectedUser(user)}
       >
-        {/* Profile Section */}
-        <div className="flex items-center gap-5 relative">
+        {/* Profile Section - Centered */}
+        <div className="flex flex-col items-center text-center relative">
           {currentUser?.role === 'diretor' && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setShowEditModal(user);
               }}
-              className="absolute -top-2 -right-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-500 hover:text-white border border-white/0 hover:border-white/5 transition-all opacity-0 group-hover:opacity-100 z-10"
+              className="absolute top-0 right-0 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-500 hover:text-white border border-white/0 hover:border-white/5 transition-all opacity-0 group-hover:opacity-100 z-10"
               title="Editar Perfil"
             >
               <Pencil className="w-3.5 h-3.5" />
             </button>
           )}
-          <div className="relative">
-            <Avatar src={user.photoURL} alt={user.name} size="lg" className="border-2 border-white/5 h-16 w-16 md:h-20 md:w-20 shadow-2xl group-hover:scale-105 transition-transform duration-500" />
+
+          <div className="relative mb-6">
+            <Avatar 
+              src={user.photoURL} 
+              alt={user.name} 
+              size="lg" 
+              className="border-2 border-white/5 h-20 w-20 md:h-24 md:w-24 shadow-2xl group-hover:scale-105 transition-transform duration-500" 
+            />
             <div className={cn(
-              "absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-[#0f0f0f] flex items-center justify-center transition-all",
+              "absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-2 border-[#0f0f0f] flex items-center justify-center transition-all",
               isOverloaded ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" : "bg-secondary shadow-[0_0_10px_rgba(11,175,77,0.5)]"
             )}>
-              {isOverloaded ? <AlertCircle className="w-3 h-3 text-white" /> : <Layers className="w-3 h-3 text-white" />}
+              {isOverloaded ? <AlertCircle className="w-3.5 h-3.5 text-white" /> : <Layers className="w-3.5 h-3.5 text-white" />}
             </div>
           </div>
 
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg md:text-xl font-black text-white truncate tracking-tight">{user.name}</h3>
-            <p className="text-[12px] font-black text-secondary uppercase tracking-[0.15em] mt-1.5 leading-none truncate">
+          <div className="space-y-1.5 w-full">
+            <h3 className="text-xl md:text-2xl font-black text-white tracking-tight leading-tight">{user.name}</h3>
+            <div className="flex items-center justify-center gap-2 text-[11px] text-zinc-500 font-bold">
+              <Mail className="w-3 h-3 text-zinc-700 shrink-0" />
+              <span className="truncate">{user.email}</span>
+            </div>
+            <p className="text-[12px] font-black text-secondary uppercase tracking-[0.15em] pt-1">
               {user.title || user.role} {user.area && <span className="text-zinc-600 font-bold mx-1.5">|</span>} {user.area && <span className="text-zinc-400">{user.area}</span>}
             </p>
-            <div className="mt-2.5 flex flex-col gap-1.5 min-w-0">
-              <div className="flex items-center gap-2 text-[11px] text-zinc-500 font-bold truncate">
-                <Mail className="w-3.5 h-3.5 text-zinc-700 shrink-0" />
-                <span className="truncate">{user.email}</span>
-              </div>
-            </div>
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-4 mt-10">
-          <div className="bg-zinc-900/40 rounded-2xl p-3 md:p-4 border border-white/[0.03] text-center group-hover:bg-zinc-900/60 transition-all">
-            <div className="flex justify-center mb-2">
-              <Activity className="w-3.5 h-3.5 text-zinc-700 group-hover:text-zinc-500 transition-colors" />
-            </div>
+        <div className="grid grid-cols-3 gap-3 mt-6">
+          <div className="bg-zinc-900/40 rounded-2xl p-3 md:p-4 border border-white/[0.03] flex flex-col items-center justify-center group-hover:bg-zinc-900/60 transition-all">
+            <Activity className="w-3.5 h-3.5 text-zinc-700 mb-2 group-hover:text-zinc-500 transition-colors" />
             <div className="text-lg md:text-xl font-black text-white leading-none">{activeDemands}</div>
             <div className="text-[8px] uppercase font-black text-zinc-600 mt-2 tracking-widest">Ativas</div>
           </div>
 
-          <div className="bg-zinc-900/40 rounded-2xl p-3 md:p-4 border border-white/[0.03] text-center group-hover:bg-zinc-900/60 transition-all">
-            <div className="flex justify-center mb-2">
-              <Clock className="w-3.5 h-3.5 text-zinc-700 group-hover:text-zinc-500 transition-colors" />
-            </div>
+          <div className="bg-zinc-900/40 rounded-2xl p-3 md:p-4 border border-white/[0.03] flex flex-col items-center justify-center group-hover:bg-zinc-900/60 transition-all">
+            <Clock className="w-3.5 h-3.5 text-zinc-700 mb-2 group-hover:text-zinc-500 transition-colors" />
             <div className="text-lg md:text-xl font-black text-white leading-none">{totalEstimated}h</div>
             <div className="text-[8px] uppercase font-black text-zinc-600 mt-2 tracking-widest">Horas</div>
           </div>
 
-          <div className="bg-zinc-900/40 rounded-2xl p-3 md:p-4 border border-white/[0.03] text-center group-hover:bg-zinc-900/60 transition-all">
-            <div className="flex justify-center mb-2">
-              <Layers className="w-3.5 h-3.5 text-zinc-700 group-hover:text-zinc-500 transition-colors" />
+          <div className="bg-zinc-900/40 rounded-2xl p-3 md:p-4 border border-white/[0.03] flex flex-col items-center justify-center group-hover:bg-zinc-900/60 transition-all">
+            <Layers className="w-3.5 h-3.5 text-zinc-700 mb-2 group-hover:text-zinc-500 transition-colors" />
+            <div className="text-lg md:text-xl font-black text-white leading-none">
+              {userDemands.filter(d => d.status === 'concluido').length}
             </div>
-            <div className="text-lg md:text-xl font-black text-white leading-none">{userDemands.length}</div>
             <div className="text-[8px] uppercase font-black text-zinc-600 mt-2 tracking-widest">Entregas</div>
           </div>
         </div>
@@ -261,6 +262,7 @@ export default function AssessoresPage() {
         <AssessorHistoryModal
           user={selectedUser}
           demands={demands.filter(d => d.assignees.includes(selectedUser.uid))}
+          sprints={sprints}
           onClose={() => setSelectedUser(null)}
         />
       )}

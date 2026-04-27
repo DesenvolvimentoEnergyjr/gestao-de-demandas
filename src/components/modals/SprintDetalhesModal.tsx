@@ -192,12 +192,6 @@ export const SprintDetalhesModal = () => {
       ? (sprint.storyPoints.completed / sprint.storyPoints.total) * 100
       : 0;
 
-  const statusLabel =
-    sprint.status === 'active'
-      ? 'Ciclo Ativo'
-      : sprint.status === 'completed'
-        ? 'Concluído'
-        : 'Planejado';
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -214,22 +208,6 @@ export const SprintDetalhesModal = () => {
         {/* Header */}
         <div className="p-6 md:p-10 pb-6 flex items-start justify-between relative z-10 gap-4">
           <div className="space-y-4 min-w-0">
-            <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-              <span
-                className={cn(
-                  'px-3 py-1 rounded-full text-[9px] md:text-[10px] font-black tracking-widest uppercase border',
-                  sprint.status === 'active'
-                    ? 'bg-secondary/10 text-secondary border-secondary/20'
-                    : 'bg-zinc-800 text-zinc-500 border-white/5'
-                )}
-              >
-                {statusLabel}
-              </span>
-              <span className="text-zinc-600 font-bold text-xs">•</span>
-              <span className="text-[10px] md:text-xs text-zinc-500 font-bold uppercase tracking-widest">
-                Sprint #{sprint.number}
-              </span>
-            </div>
             <div className="min-w-0">
               {isEditMode ? (
                 <>
@@ -445,8 +423,8 @@ export const SprintDetalhesModal = () => {
                 </h4>
               </div>
 
-              <div className="relative w-full h-[200px] md:h-[250px]">
-                <svg viewBox="0 0 1000 300" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+              <div className="relative w-full aspect-[1000/500] md:aspect-[1000/400] mt-4">
+                <svg viewBox="0 0 1000 500" className="w-full h-full overflow-visible">
                   <defs>
                     <linearGradient id="idealGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="rgba(255,255,255,0.1)" />
@@ -460,25 +438,25 @@ export const SprintDetalhesModal = () => {
 
                   {/* Grid lines */}
                   {[0, 25, 50, 75, 100].map(percent => {
-                    const y = 250 - (percent / 100) * 200;
+                    const y = 450 - (percent / 100) * 400;
                     return (
                       <g key={percent}>
                         <line x1="50" y1={y} x2="950" y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="4 4" />
-                        <text x="40" y={y + 4} fill="rgba(255,255,255,0.3)" fontSize="12" fontWeight="bold" textAnchor="end">{percent}%</text>
+                        <text x="40" y={y + 4} fill="rgba(255,255,255,0.3)" fontSize="14" fontWeight="bold" textAnchor="end" className="hidden md:block">{percent}%</text>
                       </g>
                     );
                   })}
 
                   {/* Ideal Line & Area */}
                   <path
-                    d={`M ${chartData.map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${250 - (d.ideal / 100) * 200}`).join(' L ')}`}
+                    d={`M ${chartData.map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.ideal / 100) * 400}`).join(' L ')}`}
                     fill="none"
                     stroke="rgba(255,255,255,0.2)"
                     strokeWidth="2"
                     strokeDasharray="8 8"
                   />
                   <path
-                    d={`M 50,250 L ${chartData.map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${250 - (d.ideal / 100) * 200}`).join(' L ')} L 950,250 Z`}
+                    d={`M 50,450 L ${chartData.map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.ideal / 100) * 400}`).join(' L ')} L 950,450 Z`}
                     fill="url(#idealGrad)"
                   />
 
@@ -486,15 +464,15 @@ export const SprintDetalhesModal = () => {
                   {chartData.filter(d => d.actual !== null).length > 0 && (
                     <>
                       <path
-                        d={`M 50,250 L ${chartData.filter(d => d.actual !== null).map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${250 - (d.actual! / 100) * 200}`).join(' L ')} L ${50 + ((chartData.filter(d => d.actual !== null).length - 1) / (chartData.length - 1)) * 900},250 Z`}
+                        d={`M 50,450 L ${chartData.filter(d => d.actual !== null).map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.actual! / 100) * 400}`).join(' L ')} L ${50 + ((chartData.filter(d => d.actual !== null).length - 1) / (chartData.length - 1)) * 900},450 Z`}
                         fill="url(#actualGrad)"
                       />
                       <path
-                        d={`M ${chartData.filter(d => d.actual !== null).map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${250 - (d.actual! / 100) * 200}`).join(' L ')}`}
+                        d={`M ${chartData.filter(d => d.actual !== null).map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.actual! / 100) * 400}`).join(' L ')}`}
                         fill="none"
                         stroke="#0baf4d"
                         strokeWidth="4"
-                        style={{ filter: 'drop-shadow(0px 0px 8px rgba(11, 175, 77, 0.6))' }}
+                        style={{ filter: 'drop-shadow(0px 0px 12px rgba(11, 175, 77, 0.6))' }}
                       />
 
                       {/* Dots */}
@@ -502,7 +480,7 @@ export const SprintDetalhesModal = () => {
                         <circle
                           key={i}
                           cx={50 + (d.week / (chartData.length - 1)) * 900}
-                          cy={250 - (d.actual! / 100) * 200}
+                          cy={450 - (d.actual! / 100) * 400}
                           r="6"
                           fill="#0f0f0f"
                           stroke="#0baf4d"
@@ -513,19 +491,22 @@ export const SprintDetalhesModal = () => {
                   )}
 
                   {/* X Axis Labels */}
-                  {chartData.map((d, i) => (
-                    <text
-                      key={i}
-                      x={50 + (i / (chartData.length - 1)) * 900}
-                      y="280"
-                      fill="rgba(255,255,255,0.5)"
-                      fontSize="12"
-                      fontWeight="bold"
-                      textAnchor="middle"
-                    >
-                      {d.label}
-                    </text>
-                  ))}
+                  {chartData.map((d, i) => {
+                    return (
+                      <text
+                        key={i}
+                        x={50 + (i / (chartData.length - 1)) * 900}
+                        y="485"
+                        fill="rgba(255,255,255,0.5)"
+                        fontSize="14"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        className="hidden md:block"
+                      >
+                        {d.label}
+                      </text>
+                    );
+                  })}
                 </svg>
               </div>
 

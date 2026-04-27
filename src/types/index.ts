@@ -31,6 +31,7 @@ export interface User {
   area: string;
   title: string;
   history?: string;
+  joinDate?: Date;
   workloadLimit?: number;
   createdAt: Date;
   updatedAt: Date;

@@ -32,9 +32,9 @@ export default function TimelinePage() {
   }, [setDemands, setLoading]);
 
   return (
-    <div className="h-full w-full overflow-hidden">
+    <div className="min-h-full w-full flex flex-col">
       {loading ? (
-        <div className="h-full flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-secondary/20 border-t-secondary rounded-full animate-spin" />
         </div>
       ) : (

@@ -67,7 +67,7 @@ export const Select = ({
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            'w-full bg-black border border-white/[0.03] rounded-xl h-12 px-4 text-sm text-white focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/5 transition-all font-bold pr-10 flex items-center justify-between text-left group',
+            'w-full bg-black border border-white/[0.03] rounded-xl h-12 px-5 text-sm text-white focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/5 transition-all font-bold flex items-center justify-between text-left group',
             isOpen && 'border-secondary ring-4 ring-secondary/5',
             className
           )}

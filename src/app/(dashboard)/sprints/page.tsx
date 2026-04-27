@@ -52,6 +52,7 @@ export default function SprintsPage() {
   const { sprints, loading } = useSprintStore();
   const { demands } = useDemandStore();
   const [activeFilter, setActiveFilter] = useState('todas');
+  const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<User[]>([]);
 
   React.useEffect(() => {
@@ -64,6 +65,18 @@ export default function SprintsPage() {
     );
 
     return sprints.filter((s) => {
+      // Filtro de busca por texto
+      if (searchQuery.trim()) {
+        const term = searchQuery.toLowerCase();
+        const matchesSearch = 
+          (s.title || '').toLowerCase().includes(term) || 
+          (s.objective || '').toLowerCase().includes(term) ||
+          `sprint ${s.number}`.includes(term) ||
+          `#${s.number}`.includes(term);
+        
+        if (!matchesSearch) return false;
+      }
+
       if (user?.role === 'assessor' && s.demandIds && s.demandIds.length > 0) {
         const hasVisibleDemand = s.demandIds.some(id => visibleDemandsIds.has(id));
         if (!hasVisibleDemand) return false;
@@ -79,7 +92,7 @@ export default function SprintsPage() {
       }
       return true;
     });
-  }, [sprints, demands, activeFilter, user, users]);
+  }, [sprints, demands, activeFilter, user, users, searchQuery]);
 
   const groupedSprints = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -189,21 +202,34 @@ export default function SprintsPage() {
         )}
       </PageHeader>
 
-      <div className="flex flex-wrap items-center gap-2 md:gap-3 pb-2">
-        {FILTERS.map((filter) => (
-          <button
-            key={filter.id}
-            onClick={() => setActiveFilter(filter.id)}
-            className={cn(
-              'px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border',
-              activeFilter === filter.id
-                ? 'bg-white text-black border-white shadow-lg'
-                : 'bg-[#111111] text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300'
-            )}
-          >
-            {filter.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-2">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          {FILTERS.map((filter) => (
+            <button
+              key={filter.id}
+              onClick={() => setActiveFilter(filter.id)}
+              className={cn(
+                'px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border',
+                activeFilter === filter.id
+                  ? 'bg-white text-black border-white shadow-lg'
+                  : 'bg-[#111111] text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300'
+              )}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative w-full md:w-64">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+          <input
+            type="text"
+            placeholder="Pesquisar sprints..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-[#111111] border border-white/5 rounded-full py-2.5 pl-11 pr-4 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary/50 transition-all"
+          />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto pr-0 md:pr-6 no-scrollbar">

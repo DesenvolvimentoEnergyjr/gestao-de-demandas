@@ -172,7 +172,7 @@ export const NovaSprintModal = () => {
                 value={formData.objective}
                 onChange={(e) => setFormData((prev) => ({ ...prev, objective: e.target.value }))}
                 className={cn(
-                  'w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-10 py-3 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-secondary transition-all resize-none',
+                  'w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-10 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-all resize-none',
                   formErrors.objective && 'border-red-500/50'
                 )}
                 placeholder="Qual o foco principal dessa entrega?"
@@ -193,7 +193,7 @@ export const NovaSprintModal = () => {
               rows={2}
               value={formData.description}
               onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-              className="w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-secondary transition-all resize-none"
+              className="w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-all resize-none"
               placeholder="Contexto adicional sobre este ciclo..."
             />
           </div>

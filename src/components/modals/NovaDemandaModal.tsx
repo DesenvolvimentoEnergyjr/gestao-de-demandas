@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, ArrowRight, Pencil, Trash2, Clock } from 'lucide-react';
+import { X, ArrowRight, Pencil, Trash2, Clock, Users, ChevronUp, ChevronDown } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
 import { useSprintStore } from '@/store/useSprintStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -12,7 +12,7 @@ import { Select } from '@/components/ui/Select';
 import { Avatar } from '@/components/ui/Avatar';
 import { createDemand, getDemandById, getUsers, updateDemand, deleteDemand } from '@/lib/firestore';
 import { useDemandStore } from '@/store/useDemandStore';
-import { User, Demand, DemandStatus, Priority } from '@/types';
+import { User, DemandStatus, Priority } from '@/types';
 import { cn } from '@/lib/utils';
 import { demandaSchema, DemandaFormData } from '@/lib/schemas';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -31,6 +31,7 @@ const initialFormData = (status: DemandStatus): FormData => ({
   deadline: '',
   estimatedHours: 0,
   projectType: 'Interno',
+  createdAt: '',
 });
 
 export const NovaDemandaModal = () => {
@@ -50,7 +51,6 @@ export const NovaDemandaModal = () => {
   const [loading, setLoading] = useState(false);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [formData, setFormData] = useState<FormData>(initialFormData('backlog'));
-  const [selectedDemand, setSelectedDemand] = useState<Demand | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
@@ -68,7 +68,6 @@ export const NovaDemandaModal = () => {
         setLoading(true);
         const d = await getDemandById(selectedDemandId);
         if (d) {
-          setSelectedDemand(d);
           setFormData({
             title: d.title,
             description: d.description,
@@ -80,16 +79,17 @@ export const NovaDemandaModal = () => {
             deadline: d.deadline ? d.deadline.toISOString().split('T')[0] : '',
             estimatedHours: d.estimatedHours,
             projectType: d.projectType || 'Interno',
+            createdAt: d.createdAt ? d.createdAt.toISOString().split('T')[0] : '',
           });
         }
         setLoading(false);
       };
       fetchDemand();
     } else {
-      setSelectedDemand(null);
       const initial = initialFormData(novaDemandaInitialStatus);
       // Set current date only on client
       initial.startDate = new Date().toISOString().split('T')[0];
+      initial.createdAt = new Date().toISOString().split('T')[0];
       setFormData(initial);
     }
   }, [novaDemandaOpen, selectedDemandId, demandModalMode, novaDemandaInitialStatus]);
@@ -150,6 +150,7 @@ export const NovaDemandaModal = () => {
           deadline: formData.deadline ? new Date(formData.deadline) : null,
           estimatedHours: Number(formData.estimatedHours),
           projectType: formData.projectType,
+          createdAt: formData.createdAt ? new Date(formData.createdAt) : new Date(),
           completedHours: 0,
           subtasks: [],
           comments: [],
@@ -174,6 +175,7 @@ export const NovaDemandaModal = () => {
           deadline: formData.deadline ? new Date(formData.deadline) : null,
           estimatedHours: Number(formData.estimatedHours),
           projectType: formData.projectType,
+          createdAt: formData.createdAt ? new Date(formData.createdAt) : undefined,
         };
 
         await updateDemand(selectedDemandId, updateData);
@@ -216,7 +218,7 @@ export const NovaDemandaModal = () => {
 
   const modalTitle = isCreate
     ? 'Nova Demanda'
-    : `${selectedDemand?.code || ''} • Detalhes da Demanda`;
+    : 'Detalhes da Demanda';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -315,7 +317,7 @@ export const NovaDemandaModal = () => {
                       value={formData.description}
                       onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                       className={cn(
-                        'w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-secondary transition-all resize-none',
+                        'w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-all resize-none',
                         formErrors.description && 'border-red-500/50 focus:border-red-500'
                       )}
                       placeholder="Descreva os requisitos principais..."
@@ -366,72 +368,80 @@ export const NovaDemandaModal = () => {
                 )}
               </div>
 
-              {/* Assignees & Status */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+              {/* Assignees - Full Width */}
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                  Responsáveis
+                </label>
+
                 <div className="space-y-4">
-                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                    Responsáveis
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <div className="flex -space-x-2 overflow-x-auto no-scrollbar pb-1 max-w-full">
-                      {allUsers
-                        .filter((u) => formData.assignees.includes(u.uid))
-                        .map((u) => (
-                          <div key={u.uid} className="relative group shrink-0">
-                            <Avatar src={u.photoURL} alt={u.name} size="sm" className="border-2 border-[#0f0f0f]" />
-                            
-                            {/* Tooltip */}
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-2xl">
-                              <span className="text-[10px] font-black text-white uppercase tracking-widest">{u.name}</span>
-                            </div>
-
-                            {!isView && (
-                              <button
-                                type="button"
-                                onClick={() => toggleAssignee(u.uid)}
-                                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                              >
-                                <X className="w-2 text-white" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      {formData.assignees.length === 0 && (
-                        <div className="flex items-center gap-2 text-zinc-600">
-                          <Avatar size="sm" className="border-2 border-dashed border-white/5 opacity-40" />
-                          <span className="text-[9px] font-black uppercase tracking-widest italic">Não atribuído</span>
+                  {/* Selected Assignees - Improved with names */}
+                  <div className="flex flex-wrap gap-2">
+                    {allUsers
+                      .filter((u) => formData.assignees.includes(u.uid))
+                      .map((u) => (
+                        <div
+                          key={u.uid}
+                          className="flex items-center gap-2 bg-secondary/10 border border-secondary/20 p-1 pr-3 rounded-full animate-in fade-in slide-in-from-left-2"
+                        >
+                          <Avatar src={u.photoURL} alt={u.name} size="xs" className="border-none" />
+                          <span className="text-[10px] font-black text-white uppercase tracking-tighter truncate max-w-[120px]">
+                            {u.name.split(' ')[0]} {u.name.split(' ')[1] ? u.name.split(' ')[1][0] + '.' : ''}
+                          </span>
+                          {!isView && (
+                            <button
+                              type="button"
+                              onClick={() => toggleAssignee(u.uid)}
+                              className="w-4 h-4 rounded-full bg-white/5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-all flex items-center justify-center ml-1"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      ))}
 
-                    {!isView && (
-                      <>
-                        <div className="h-6 w-px bg-white/10 mx-1 shrink-0" />
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 flex-1">
-                          {allUsers
-                            .filter((u) => !formData.assignees.includes(u.uid))
-                            .map((u) => (
-                              <div key={u.uid} className="relative group shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => toggleAssignee(u.uid)}
-                                  className="opacity-40 hover:opacity-100 transition-all hover:scale-110"
-                                >
-                                  <Avatar src={u.photoURL} alt={u.name} size="sm" />
-                                </button>
-                                
-                                {/* Tooltip */}
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-2xl">
-                                  <span className="text-[10px] font-black text-white uppercase tracking-widest">{u.name}</span>
-                                </div>
-                              </div>
-                            ))}
+                    {formData.assignees.length === 0 && (
+                      <div className="flex items-center gap-2 text-zinc-600 px-1 py-1">
+                        <div className="w-6 h-6 rounded-full border border-dashed border-white/10 flex items-center justify-center">
+                          <Users className="w-3 h-3 opacity-30" />
                         </div>
-                      </>
+                        <span className="text-[9px] font-black uppercase tracking-widest italic opacity-40">Ninguém atribuído</span>
+                      </div>
                     )}
                   </div>
-                </div>
 
+                  {/* Member Selection Pool - Grid with Names */}
+                  {!isView && (
+                    <div className="space-y-3">
+                      <p className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest ml-1">Adicionar Membros</p>
+                      <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1 rounded-xl bg-black/20 border border-white/5">
+                        {allUsers
+                          .filter((u) => !formData.assignees.includes(u.uid))
+                          .map((u) => (
+                            <button
+                              key={u.uid}
+                              type="button"
+                              onClick={() => toggleAssignee(u.uid)}
+                              className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 transition-all text-left border border-transparent hover:border-white/5"
+                            >
+                              <Avatar src={u.photoURL} alt={u.name} size="xs" className="opacity-60 grayscale group-hover:grayscale-0 transition-all" />
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[9px] font-black text-zinc-400 truncate">{u.name.split(' ')[0]}</span>
+                                <span className="text-[7px] font-bold text-zinc-600 uppercase truncate">{u.area || 'Membro'}</span>
+                              </div>
+                            </button>
+                          ))}
+                        {allUsers.filter((u) => !formData.assignees.includes(u.uid)).length === 0 && (
+                          <p className="col-span-full text-[8px] text-zinc-700 text-center py-2 uppercase font-black">Todos selecionados</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Status & Priority */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                 {isView ? (
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Status</label>
@@ -452,10 +462,7 @@ export const NovaDemandaModal = () => {
                     <option value="concluido">Concluído</option>
                   </Select>
                 )}
-              </div>
 
-              {/* Priority & Sprint */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                 {isView ? (
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Prioridade</label>
@@ -483,12 +490,15 @@ export const NovaDemandaModal = () => {
                     <option value="urgente">Urgente</option>
                   </Select>
                 )}
+              </div>
 
+              {/* Sprint & Hours */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                 {isView ? (
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Ciclo de Sprint</label>
                     <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                      {sprints.find(s => s.id === formData.sprintId)?.title || 'Sem sprint definida'}
+                      {sprints.find(s => s.id === formData.sprintId)?.title || 'Sem sprint'}
                     </div>
                   </div>
                 ) : (
@@ -505,40 +515,6 @@ export const NovaDemandaModal = () => {
                     ))}
                   </Select>
                 )}
-              </div>
-
-              {/* Dates & Hours */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
-                <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Início</label>
-                    {isView ? (
-                      <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                        {formData.startDate || '—'}
-                      </div>
-                    ) : (
-                      <DatePicker
-                        value={formData.startDate}
-                        onChange={(date) => setFormData((prev) => ({ ...prev, startDate: date }))}
-                        error={!!formErrors.startDate}
-                      />
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Fim (Deadline)</label>
-                    {isView ? (
-                      <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                        {formData.deadline || '—'}
-                      </div>
-                    ) : (
-                      <DatePicker
-                        value={formData.deadline}
-                        onChange={(date) => setFormData((prev) => ({ ...prev, deadline: date }))}
-                        error={!!formErrors.deadline}
-                      />
-                    )}
-                  </div>
-                </div>
 
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Horas Estimadas</label>
@@ -547,27 +523,81 @@ export const NovaDemandaModal = () => {
                       {formData.estimatedHours} <span className="text-[10px] text-zinc-600 ml-2 uppercase">Horas</span>
                     </div>
                   ) : (
-                    <>
-                      <div className="relative">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
                         <Input
                           type="number"
                           min={0}
-                          value={formData.estimatedHours}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, estimatedHours: Number(e.target.value) }))}
+                          value={formData.estimatedHours || ''}
+                          placeholder="0"
+                          onChange={(e) => setFormData((prev) => ({
+                            ...prev,
+                            estimatedHours: e.target.value === '' ? 0 : Number(e.target.value)
+                          }))}
                           className={cn(
                             'bg-zinc-950 border-white/[0.03] h-12 text-sm font-bold pr-12',
                             formErrors.estimatedHours && 'border-red-500/50'
                           )}
                         />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-600 uppercase">hrs</span>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-600 uppercase pointer-events-none">hrs</span>
                       </div>
-                      {formErrors.estimatedHours && (
-                        <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.estimatedHours}</p>
-                      )}
-                      {formErrors.deadline && (
-                        <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.deadline}</p>
-                      )}
-                    </>
+
+                      {/* Custom Stepper Buttons */}
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, estimatedHours: (prev.estimatedHours || 0) + 1 }))}
+                          className="w-8 h-[22px] flex items-center justify-center bg-zinc-900 border border-white/5 rounded-md hover:bg-zinc-800 hover:text-secondary transition-all active:scale-95"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, estimatedHours: Math.max(0, (prev.estimatedHours || 0) - 1) }))}
+                          className="w-8 h-[22px] flex items-center justify-center bg-zinc-900 border border-white/5 rounded-md hover:bg-zinc-800 hover:text-red-400 transition-all active:scale-95"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {formErrors.estimatedHours && (
+                    <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.estimatedHours}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Dates - Last Line Side-by-Side */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Início</label>
+                  {isView ? (
+                    <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-white">
+                      {formData.startDate || '—'}
+                    </div>
+                  ) : (
+                    <DatePicker
+                      value={formData.startDate}
+                      onChange={(date) => setFormData((prev) => ({ ...prev, startDate: date }))}
+                      error={!!formErrors.startDate}
+                    />
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Fim (Deadline)</label>
+                  {isView ? (
+                    <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-white">
+                      {formData.deadline || '—'}
+                    </div>
+                  ) : (
+                    <DatePicker
+                      value={formData.deadline}
+                      onChange={(date) => setFormData((prev) => ({ ...prev, deadline: date }))}
+                      error={!!formErrors.deadline}
+                    />
+                  )}
+                  {!isView && formErrors.deadline && (
+                    <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.deadline}</p>
                   )}
                 </div>
               </div>

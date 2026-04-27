@@ -32,7 +32,7 @@ export function Modal({ isOpen, onClose, children, className }: ModalProps) {
       />
       
       <div className={cn(
-        "relative w-full max-w-xl bg-bg-section border-gradient rounded-[2rem] md:rounded-[40px] shadow-[0_0_100px_-20px_rgba(11,175,77,0.15)] overflow-hidden animate-in zoom-in-95 duration-500",
+        "relative w-full max-w-xl bg-bg-section border-gradient rounded-[2rem] md:rounded-[40px] shadow-[0_0_100px_-20px_rgba(11,175,77,0.15)] overflow-y-auto max-h-[90vh] no-scrollbar animate-in zoom-in-95 duration-500",
         className
       )}>
         {children}

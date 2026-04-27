@@ -97,7 +97,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
       {...listeners}
       onClick={handleCardClick}
       className={cn(
-        'group cursor-grab active:cursor-grabbing relative overflow-hidden',
+        'group cursor-grab active:cursor-grabbing relative overflow-hidden touch-none',
         isStagnant ? 'border border-red-500/30 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]' : 'border-gradient border-gradient-hover',
         'rounded-[24px] md:rounded-3xl p-4 md:p-5 flex flex-col gap-3 md:gap-4',
         'transition-all duration-300',
@@ -112,7 +112,6 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
         <span className={cn('text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded', tagColor)}>
           {tagLabel}
         </span>
-        <span className="text-[10px] font-mono text-zinc-500">{demand.code}</span>
       </div>
 
       <div className="flex flex-col gap-1.5 pl-1">

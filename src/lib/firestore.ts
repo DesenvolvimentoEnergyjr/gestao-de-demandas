@@ -101,7 +101,7 @@ export const getDemandById = async (id: string): Promise<Demand | null> => {
 };
 
 export const createDemand = async (
-  data: Omit<Demand, 'id' | 'code' | 'createdAt' | 'updatedAt'>
+  data: Omit<Demand, 'id' | 'code' | 'createdAt' | 'updatedAt'> & { createdAt?: Date }
 ): Promise<string> => {
   const counterRef = doc(db, 'meta', 'counters');
 
@@ -119,7 +119,7 @@ export const createDemand = async (
     transaction.set(demandRef, {
       ...data,
       code,
-      createdAt: serverTimestamp(),
+      createdAt: data.createdAt || serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
 
@@ -146,7 +146,7 @@ export const createDemand = async (
 
 export const updateDemand = async (
   id: string,
-  data: Partial<Omit<Demand, 'id' | 'code' | 'createdAt'>>
+  data: Partial<Omit<Demand, 'id' | 'code' | 'updatedAt'>>
 ) => {
   const demandDoc = doc(db, 'demands', id);
   const oldSnap = await getDoc(demandDoc);
@@ -310,6 +310,7 @@ export const getUsers = async (onlyActive = true): Promise<User[]> => {
     createdAt: toDate(d.data().createdAt),
     updatedAt: toDate(d.data().updatedAt),
     deactivatedAt: toDateOrNull(d.data().deactivatedAt),
+    joinDate: toDateOrNull(d.data().joinDate),
   })) as User[];
 }
 
@@ -323,6 +324,7 @@ export const getUserById = async (uid: string): Promise<User | null> => {
     createdAt: toDate(d.createdAt),
     updatedAt: toDate(d.updatedAt),
     deactivatedAt: toDateOrNull(d.deactivatedAt),
+    joinDate: toDateOrNull(d.joinDate),
   } as User;
 };
 
