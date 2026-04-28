@@ -28,6 +28,7 @@ const Avatar: React.FC<AvatarProps> = ({ src, alt, fallback, size = 'md', classN
           src={src} 
           alt={alt || 'avatar'} 
           fill 
+          sizes="(max-width: 768px) 32px, (max-width: 1200px) 48px, 64px"
           className="aspect-square h-full w-full object-cover" 
         />
       ) : (

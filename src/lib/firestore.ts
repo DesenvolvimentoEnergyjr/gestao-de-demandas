@@ -11,6 +11,7 @@ import {
   serverTimestamp,
   orderBy,
   runTransaction,
+  onSnapshot,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Demand, DemandStatus, Sprint, User, AppNotification } from '@/types';
@@ -24,6 +25,60 @@ const toDateOrNull = (val: unknown): Date | null =>
   val && typeof (val as { toDate?: () => Date }).toDate === 'function'
     ? (val as { toDate: () => Date }).toDate()
     : null;
+
+// REAL-TIME LISTENERS
+
+export const subscribeToDemands = (
+  callback: (demands: Demand[]) => void,
+  filters?: {
+    status?: DemandStatus;
+    assigneeId?: string;
+    sprintId?: string | null;
+  }
+) => {
+  let q = query(collection(db, 'demands'), orderBy('createdAt', 'desc'));
+
+  if (filters?.status) {
+    q = query(q, where('status', '==', filters.status));
+  }
+  if (filters?.assigneeId) {
+    q = query(q, where('assignees', 'array-contains', filters.assigneeId));
+  }
+  if (filters?.sprintId !== undefined) {
+    q = query(q, where('sprintId', '==', filters.sprintId));
+  }
+
+  return onSnapshot(q, (snapshot) => {
+    const demands = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      startDate: toDateOrNull(d.data().startDate),
+      deadline: toDateOrNull(d.data().deadline),
+      createdAt: toDate(d.data().createdAt),
+      updatedAt: toDate(d.data().updatedAt),
+    })) as Demand[];
+    callback(demands);
+  }, (error) => {
+    console.error("Error subscribing to demands:", error);
+  });
+};
+
+export const subscribeToSprints = (callback: (sprints: Sprint[]) => void) => {
+  const q = query(collection(db, 'sprints'), orderBy('startDate', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const sprints = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      startDate: toDate(d.data().startDate),
+      endDate: toDate(d.data().endDate),
+      createdAt: toDate(d.data().createdAt),
+      updatedAt: toDate(d.data().updatedAt),
+    })) as Sprint[];
+    callback(sprints);
+  }, (error) => {
+    console.error("Error subscribing to sprints:", error);
+  });
+};
 
 // NOTIFICATIONS
 
@@ -298,6 +353,26 @@ export const deleteSprint = async (id: string) => {
 };
 
 // USERS
+
+export const subscribeToUsers = (callback: (users: User[]) => void, onlyActive = true) => {
+  const q = onlyActive
+    ? query(collection(db, 'users'), where('status', '==', 'ativo'))
+    : query(collection(db, 'users'));
+    
+  return onSnapshot(q, (snapshot) => {
+    const users = snapshot.docs.map((d) => ({
+      uid: d.id,
+      ...d.data(),
+      createdAt: toDate(d.data().createdAt),
+      updatedAt: toDate(d.data().updatedAt),
+      deactivatedAt: toDateOrNull(d.data().deactivatedAt),
+      joinDate: toDateOrNull(d.data().joinDate),
+    })) as User[];
+    callback(users);
+  }, (error) => {
+    console.error("Error subscribing to users:", error);
+  });
+};
 
 export const getUsers = async (onlyActive = true): Promise<User[]> => {
   const q = onlyActive

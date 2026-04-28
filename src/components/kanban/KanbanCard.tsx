@@ -9,6 +9,7 @@ import { Calendar, Clock, MessageSquare, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { differenceInDays } from 'date-fns';
+import { motion } from 'framer-motion';
 
 interface KanbanCardProps {
   demand: Demand;
@@ -90,23 +91,27 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
     : (tagColorMap[demand.priority] ?? 'text-zinc-400 bg-zinc-400/10');
 
   return (
-    <div
+    <motion.div
+      initial={false}
+      whileHover={{ y: -4, scale: 1.01 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
       onClick={handleCardClick}
       className={cn(
-        'group cursor-grab active:cursor-grabbing relative overflow-hidden touch-none',
+        'group cursor-grab active:cursor-grabbing relative touch-none',
         isStagnant ? 'border border-red-500/30 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]' : 'border-gradient border-gradient-hover',
         'rounded-[24px] md:rounded-3xl p-4 md:p-5 flex flex-col gap-3 md:gap-4',
-        'transition-all duration-300',
         'bg-gradient-to-br from-bg-surface to-bg-surface group-hover:from-bg-surface group-hover:to-secondary/5',
         isOverlay && 'shadow-2xl scale-[1.02] z-50'
       )}
     >
-      {/* Priority Bar Indicator */}
-      <div className={cn("absolute left-0 top-0 bottom-0 w-1", priorityColor)} />
+      {/* Clipping container for the priority bar to follow rounded corners */}
+      <div className="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none">
+        <div className={cn("absolute left-0 top-0 bottom-0 w-1", priorityColor)} />
+      </div>
 
       <div className="flex items-center justify-between pl-1">
         <span className={cn('text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded', tagColor)}>
@@ -144,8 +149,8 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
                     fallback={user?.name?.substring(0, 1).toUpperCase() || '?'}
                   />
                   {/* Tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-white/10 rounded-lg opacity-0 group-hover/member:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-2xl">
-                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{user?.name}</span>
+                  <div className="absolute bottom-full left-0 mb-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/member:opacity-100 transition-all pointer-events-none z-50 shadow-2xl min-w-[100px] max-w-[200px]">
+                    <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight break-words">{user?.name}</p>
                   </div>
                 </div>
               );
@@ -184,6 +189,6 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

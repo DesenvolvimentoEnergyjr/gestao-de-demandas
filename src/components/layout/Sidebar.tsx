@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { signOut } from '@/lib/auth';
+import { motion } from 'framer-motion';
 
 const navigation = [
   { name: 'Kanban', href: '/kanban', icon: LayoutGrid },
@@ -55,6 +56,7 @@ export const Sidebar = () => {
             src="/logo-energy.svg"
             alt="Energy Júnior"
             fill
+            sizes="48px"
             className="object-contain"
           />
         </div>
@@ -66,16 +68,18 @@ export const Sidebar = () => {
 
       {/* Nova Demanda Button */}
       <div className="px-4 pt-4">
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => {
             openNovaDemanda();
             setSidebarOpen(false);
           }}
-          className="w-full h-12 flex items-center justify-center gap-2 px-4 rounded-xl bg-gradient-to-r from-secondary to-secondary-dark text-white text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-secondary/20 active:scale-[0.97]"
+          className="w-full h-12 flex items-center justify-center gap-2 px-4 rounded-xl bg-gradient-to-r from-secondary to-secondary-dark text-white text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-secondary/20"
         >
           <Plus className="w-4 h-4" />
           Nova Demanda
-        </button>
+        </motion.button>
       </div>
 
       {/* Nav */}
@@ -88,19 +92,26 @@ export const Sidebar = () => {
               href={item.href}
               onClick={() => setSidebarOpen(false)}
               className={cn(
-                'flex items-center gap-4 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-[0.1em] transition-all group',
+                'flex items-center gap-4 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-[0.1em] transition-all group relative',
                 isActive
-                  ? 'bg-secondary/10 text-secondary'
-                  : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
+                  ? 'text-secondary'
+                  : 'text-zinc-500 hover:text-zinc-300'
               )}
             >
+              {isActive && (
+                <motion.div
+                  layoutId="activeNav"
+                  className="absolute inset-0 bg-secondary/10 rounded-xl"
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                />
+              )}
               <item.icon
                 className={cn(
-                  'w-[18px] h-[18px]',
+                  'w-[18px] h-[18px] relative z-10',
                   isActive ? 'text-secondary' : 'text-zinc-600 group-hover:text-zinc-400'
                 )}
               />
-              {item.name}
+              <span className="relative z-10">{item.name}</span>
             </Link>
           );
         })}
@@ -112,17 +123,24 @@ export const Sidebar = () => {
           href="/configuracoes"
           onClick={() => setSidebarOpen(false)}
           className={cn(
-            "flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-[0.1em] transition-all group",
+            "flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-[0.1em] transition-all group relative",
             pathname === '/configuracoes'
-              ? 'bg-secondary/10 text-secondary'
-              : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
+              ? 'text-secondary'
+              : 'text-zinc-500 hover:text-zinc-300'
           )}
         >
+          {pathname === '/configuracoes' && (
+            <motion.div
+              layoutId="activeNav"
+              className="absolute inset-0 bg-secondary/10 rounded-xl"
+              transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+            />
+          )}
           <Settings className={cn(
-            "w-[18px] h-[18px]",
+            "w-[18px] h-[18px] relative z-10",
             pathname === '/configuracoes' ? 'text-secondary' : 'text-zinc-600 group-hover:text-zinc-400'
           )} />
-          Configurações
+          <span className="relative z-10">Configurações</span>
         </Link>
         <button
           onClick={handleLogout}

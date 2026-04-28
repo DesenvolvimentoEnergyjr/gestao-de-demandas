@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Demand, User } from '@/types';
 import {
   format,
@@ -26,6 +25,7 @@ import { cn, isDemandVisibleToUser } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface TimelineViewProps {
   demands: Demand[];
@@ -40,7 +40,6 @@ const PROJECT_COLORS = {
 };
 
 export function TimelineView({ demands, users }: TimelineViewProps) {
-  const router = useRouter();
   const { user: currentUser } = useAuthStore();
   const { openDemanda } = useUIStore();
   const { searchQuery } = useDemandStore();
@@ -49,6 +48,11 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
   const [zoomLevel, setZoomLevel] = useState(1); // 1 = 100%
   const [referenceDate, setReferenceDate] = useState(new Date());
   const [memberFilter, setMemberFilter] = useState<'todos' | 'diretoria' | 'assessores' | 'comercial' | 'prodev' | 'rh'>('todos');
+  const [isFirstMount, setIsFirstMount] = useState(true);
+
+  useEffect(() => {
+    setIsFirstMount(false);
+  }, []);
 
   const navigateTime = useCallback((direction: 'next' | 'prev' | 'today') => {
     if (direction === 'today') {
@@ -180,6 +184,9 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
       filteredUsers = filteredUsers.filter(u => u.area?.toUpperCase().includes('RECURSOS HUMANOS'));
     }
 
+    // Ordenação Alfabética
+    filteredUsers.sort((a, b) => a.name.localeCompare(b.name));
+
     const filteredDemands = demands.filter((d) =>
       d.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
       isDemandVisibleToUser(d, currentUser, users)
@@ -282,36 +289,60 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
       />
 
       {/* Control Bar */}
-      <div className="py-4 flex flex-col lg:flex-row lg:items-center justify-between bg-zinc-950/40 border border-white/[0.03] rounded-[24px] px-6 mb-4 backdrop-blur-md gap-6 lg:gap-0">
+      <motion.div
+        // initial={{ opacity: 0, y: 20 }}
+        // animate={{ opacity: 1, y: 0 }}
+        // transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="py-4 flex flex-col lg:flex-row lg:items-center justify-between bg-zinc-950/40 border border-white/[0.03] rounded-[24px] px-6 mb-4 backdrop-blur-md gap-6 lg:gap-0"
+      >
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#0baf4d] shadow-[0_0_10px_rgba(11,175,77,0.5)]" />
+            <motion.div
+              animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#0baf4d] shadow-[0_0_10px_rgba(11,175,77,0.5)]"
+            />
             <span className="text-[9px] md:text-[10px] font-black text-zinc-400 uppercase tracking-widest">Serviços Empresa</span>
           </div>
           <div className="flex items-center gap-2.5">
-            <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#ffc20e] shadow-[0_0_10px_rgba(255,194,14,0.5)]" />
+            <motion.div
+              animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+              className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#ffc20e] shadow-[0_0_10px_rgba(255,194,14,0.5)]"
+            />
             <span className="text-[9px] md:text-[10px] font-black text-zinc-400 uppercase tracking-widest">Projetos Internos</span>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex items-center gap-1 md:gap-2 p-1.5 bg-zinc-900/80 rounded-2xl border border-white/5 w-full sm:w-auto justify-center">
+          {/* View Mode Tabs */}
+          <div className="flex items-center gap-1 md:gap-2 p-1.5 bg-zinc-900/80 rounded-2xl border border-white/5 w-full sm:w-auto justify-center relative">
             {(['dia', 'semana', 'ano'] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
                 className={cn(
-                  'flex-1 sm:flex-none px-3 md:px-4 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all',
-                  viewMode === mode ? 'bg-white text-black shadow-xl' : 'text-zinc-500 hover:text-white'
+                  'relative flex-1 sm:flex-none px-3 md:px-4 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-colors z-10',
+                  viewMode === mode ? 'text-black' : 'text-zinc-500 hover:text-white'
                 )}
               >
+                {viewMode === mode && (
+                  <motion.div
+                    layoutId="viewModeIndicator"
+                    className="absolute inset-0 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.15)] -z-10"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
+                  />
+                )}
                 {mode === 'ano' ? 'Mês' : mode.charAt(0).toUpperCase() + mode.slice(1)}
               </button>
             ))}
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
-            <button
+            {/* Density Toggle */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setDensity(prev => prev === 'standard' ? 'compact' : 'standard')}
               className={cn(
                 "p-2.5 rounded-xl border transition-all flex items-center gap-2",
@@ -319,36 +350,73 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
               )}
               title="Alternar Densidade (Atalho: C)"
             >
-              <LayoutGrid className="w-4 h-4" />
+              <motion.div animate={{ rotate: density === 'compact' ? 45 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
+                <LayoutGrid className="w-4 h-4" />
+              </motion.div>
               <span className="text-[10px] font-black uppercase hidden sm:inline">
                 {density === 'compact' ? 'Compacto' : 'Padrão'}
               </span>
-            </button>
+            </motion.button>
 
             <div className="h-8 w-px bg-white/5 mx-1 hidden sm:block" />
 
-            <button onClick={() => navigateTime('prev')} className="p-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-white/20 transition-all">
+            {/* Navigation < Hoje > */}
+            <motion.button
+              whileHover={{ scale: 1.12, x: -2 }}
+              whileTap={{ scale: 0.88 }}
+              onClick={() => navigateTime('prev')}
+              className="p-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-white/20 hover:bg-zinc-800 transition-colors"
+            >
               <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button onClick={() => navigateTime('today')} className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-white/20 text-[10px] font-black uppercase tracking-[0.2em] transition-all">
-              Hoje
-            </button>
-            <button onClick={() => navigateTime('next')} className="p-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-white/20 transition-all">
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(11,175,77,0.2)' }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigateTime('today')}
+              className="relative flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-secondary/30 text-[10px] font-black uppercase tracking-[0.2em] transition-colors overflow-hidden group"
+            >
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                <motion.span
+                  className="w-1.5 h-1.5 rounded-full bg-secondary"
+                  animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                Hoje
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-secondary/0 via-secondary/5 to-secondary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.12, x: 2 }}
+              whileTap={{ scale: 0.88 }}
+              onClick={() => navigateTime('next')}
+              className="p-2.5 rounded-xl bg-zinc-900 border border-white/5 hover:border-white/20 hover:bg-zinc-800 transition-colors"
+            >
               <ChevronRight className="w-4 h-4" />
-            </button>
+            </motion.button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Member Filters */}
       <div className="flex flex-col gap-3 mb-6 px-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <span className="text-[10px] font-black text-secondary uppercase tracking-[0.3em] ml-1">Filtros de Membros</span>
-          <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest bg-zinc-900/50 px-2 py-0.5 rounded-full border border-white/5">
-            {userRows.length} Membros Visíveis
-          </span>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={userRows.length}
+              initial={isFirstMount ? false : { opacity: 0, y: 10, rotateX: -90 }}
+              animate={{ opacity: 1, y: 0, rotateX: 0 }}
+              exit={{ opacity: 0, y: -10, rotateX: 90 }}
+              transition={{ duration: 0.3 }}
+              className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest bg-zinc-900/50 px-2.5 py-1 rounded-full border border-white/5"
+            >
+              {userRows.length} Membros Visíveis
+            </motion.span>
+          </AnimatePresence>
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2 -mx-2 px-2">
           {[
             { id: 'todos', label: 'Todos' },
             { id: 'diretoria', label: 'Diretoria' },
@@ -357,18 +425,20 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
             { id: 'prodev', label: 'PRODEV' },
             { id: 'rh', label: 'Recursos Humanos' },
           ].map((filter) => (
-            <button
+            <motion.button
               key={filter.id}
+              whileHover={{ scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setMemberFilter(filter.id as typeof memberFilter)}
               className={cn(
-                "flex-none px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95",
+                "relative flex-none px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all duration-300",
                 memberFilter === filter.id
-                  ? "bg-secondary/10 border-secondary text-secondary shadow-[0_0_15px_rgba(11,175,77,0.1)]"
+                  ? "border-secondary bg-secondary/10 text-secondary shadow-[0_0_15px_rgba(11,175,77,0.15)]"
                   : "bg-zinc-950/40 border-white/[0.03] text-zinc-500 hover:text-white hover:border-white/10"
               )}
             >
               {filter.label}
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
@@ -382,16 +452,19 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
             <div className="flex sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md">
               <div
                 className={cn(
-                  "px-4 md:px-8 border-r border-b border-white/10 flex items-end sticky left-0 bg-bg-section z-50 transition-all",
+                  "px-4 md:px-8 border-r border-b border-white/10 flex items-center justify-center sticky left-0 bg-bg-section z-50 transition-all",
                   density === 'compact' ? "w-[120px] md:w-[240px] min-w-[120px] md:min-w-[240px] py-3" : "w-[160px] md:w-[320px] min-w-[160px] md:min-w-[320px] py-6"
                 )}
               >
-                <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.2em] md:tracking-[0.4em] text-zinc-400 truncate">
-                  Membros
-                </span>
+                <div className="flex flex-col items-center">
+                  <span className="text-xs md:text-base font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-white">
+                    Membros
+                  </span>
+                </div>
               </div>
               <div
-                className="flex-1 grid border-b border-white/10"
+                key={`grid-${viewMode}-${referenceDate.toISOString()}`}
+                className="flex-1 grid border-b border-white/10 animate-in fade-in duration-300"
                 style={{
                   gridTemplateColumns: `repeat(${columns.length}, minmax(${viewMode === 'ano' ? (300 * zoomLevel) : (120 * zoomLevel)
                     }px, 1fr))`
@@ -413,7 +486,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                     <div
                       key={i}
                       className={cn(
-                        'flex flex-col items-center justify-center py-5 border-r border-white/5 last:border-r-0',
+                        'flex flex-col items-center justify-center py-5 border-r border-white/5 last:border-r-0 transition-colors',
                         isToday ? 'bg-secondary/10' : 'hover:bg-white/[0.02]'
                       )}
                     >
@@ -445,102 +518,107 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                   </p>
                 </div>
               ) : (
-                userRows.map((row) => (
-                  <div
-                    key={row.user.uid}
-                    className={cn(
-                      "flex border-b border-white/10 group hover:bg-white/[0.02] transition-all",
-                      density === 'compact' ? "min-h-[60px]" : "min-h-[110px]"
-                    )}
-                  >
+                <div key={`rows-${memberFilter}`} className="animate-in fade-in duration-300">
+                  {userRows.map((row) => (
                     <div
+                      key={row.user.uid}
                       className={cn(
-                        "px-4 md:px-8 flex items-center gap-3 md:gap-5 border-r border-white/10 sticky left-0 bg-bg-section z-30 transition-all",
-                        density === 'compact' ? "w-[120px] md:w-[240px] min-w-[120px] md:min-w-[240px] py-2" : "w-[160px] md:w-[320px] min-w-[160px] md:min-w-[320px] py-4"
+                        "flex border-b border-white/10 group hover:bg-white/[0.02] transition-colors",
+                        density === 'compact' ? "min-h-[60px]" : "min-h-[110px]"
                       )}
                     >
-                      <Avatar
-                        src={row.user.photoURL}
-                        alt={row.user.name}
-                        size={density === 'compact' ? "xs" : "sm"}
-                        className="ring-2 ring-zinc-800 shadow-xl"
-                      />
-                      <div className="min-w-0">
-                        <h3 className={cn(
-                          "font-black text-white truncate tracking-tight transition-all",
-                          density === 'compact' ? "text-[10px] md:text-xs" : "text-xs md:text-sm"
-                        )}>
-                          {row.user.name}
-                        </h3>
-                        <p className={cn(
-                          "text-zinc-500 font-bold uppercase tracking-wider truncate",
-                          density === 'compact' ? "text-[7px] md:text-[8px] mt-0.5" : "text-[8px] md:text-[10px] mt-1"
-                        )}>
-                          {row.user.area || 'Técnico'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={cn(
-                      "flex-1 relative transition-all",
-                      density === 'compact' ? "py-2" : "py-6"
-                    )}>
-                      <div className="absolute inset-0 flex">
-                        {columns.map((col, i) => (
-                          <div
-                            key={i}
-                            className={cn(
-                              "flex-1 border-r border-white/5 last:border-r-0",
-                              !col && "bg-white/[0.01]"
-                            )}
-                          />
-                        ))}
+                      <div
+                        className={cn(
+                          "px-4 md:px-8 flex items-center gap-3 md:gap-5 border-r border-white/10 sticky left-0 bg-bg-section z-30 transition-all",
+                          density === 'compact' ? "w-[120px] md:w-[240px] min-w-[120px] md:min-w-[240px] py-2" : "w-[160px] md:w-[320px] min-w-[160px] md:min-w-[320px] py-4"
+                        )}
+                      >
+                        <Avatar
+                          src={row.user.photoURL}
+                          alt={row.user.name}
+                          size={density === 'compact' ? "xs" : "sm"}
+                          className="ring-2 ring-zinc-800 shadow-xl"
+                        />
+                        <div className="min-w-0">
+                          <h3 className={cn(
+                            "font-black text-white truncate tracking-tight transition-all",
+                            density === 'compact' ? "text-[10px] md:text-xs" : "text-xs md:text-sm"
+                          )}>
+                            {row.user.name}
+                          </h3>
+                          <p className={cn(
+                            "text-zinc-500 font-bold uppercase tracking-wider truncate",
+                            density === 'compact' ? "text-[7px] md:text-[8px] mt-0.5" : "text-[8px] md:text-[10px] mt-1"
+                          )}>
+                            {row.user.area || 'Técnico'}
+                          </p>
+                        </div>
                       </div>
 
                       <div className={cn(
-                        "relative h-full flex flex-col justify-center",
-                        density === 'compact' ? "gap-1" : "gap-3"
+                        "flex-1 relative transition-all",
+                        density === 'compact' ? "py-2" : "py-6"
                       )}>
-                        {row.demands.map((demand) => {
-                          const { style, colorClass } = getBarProps(demand);
-                          const startDate = demand.startDate ?? demand.createdAt;
-                          const endDate = demand.deadline ?? addDays(startDate, 7);
-
-                          return (
+                        <div className="absolute inset-0 flex">
+                          {columns.map((col, i) => (
                             <div
-                              key={demand.id}
-                              style={style}
+                              key={i}
                               className={cn(
-                                'absolute rounded-xl flex items-center px-4 font-black uppercase tracking-wider transition-all',
-                                'hover:scale-[1.02] active:scale-95 cursor-pointer z-10 truncate group/bar',
-                                density === 'compact' ? 'h-6 text-[8px]' : 'h-9 text-[10px]',
-                                colorClass
+                                "flex-1 border-r border-white/5 last:border-r-0",
+                                !col && "bg-white/[0.01]"
                               )}
-                              onClick={() => {
-                                if (demand.sprintId) {
-                                  useUIStore.getState().openSprintDetalhes(demand.sprintId);
-                                } else {
-                                  openDemanda(demand.id, 'view');
-                                }
-                              }}
-                            >
-                              <span className="truncate w-full">{demand.title}</span>
+                            />
+                          ))}
+                        </div>
 
-                              <div className="absolute top-[120%] left-0 opacity-0 group-hover/bar:opacity-100 transition-all z-50 bg-zinc-900 border border-white/10 p-3 rounded-2xl shadow-2xl pointer-events-none scale-90 group-hover/bar:scale-100 min-w-[200px]">
-                                <p className="text-xs font-black text-white mb-1">{demand.title}</p>
-                                <div className="flex items-center gap-2 text-[8px] font-bold text-zinc-500 uppercase tracking-widest">
-                                  <Calendar className="w-3 h-3" />
-                                  {format(startDate, 'dd MMM', { locale: ptBR })} —{' '}
-                                  {format(endDate, 'dd MMM', { locale: ptBR })}
+                        <div className={cn(
+                          "relative h-full flex flex-col justify-center",
+                          density === 'compact' ? "gap-1" : "gap-3"
+                        )}>
+                          {row.demands.map((demand) => {
+                            const { style, colorClass } = getBarProps(demand);
+                            const startDate = demand.startDate ?? demand.createdAt;
+                            const endDate = demand.deadline ?? addDays(startDate, 7);
+
+                            return (
+                              <motion.div
+                                key={demand.id}
+                                style={style}
+                                initial={false}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className={cn(
+                                  'absolute rounded-xl flex items-center px-4 font-black uppercase tracking-wider transition-all',
+                                  'cursor-pointer z-10 truncate group/bar',
+                                  density === 'compact' ? 'h-6 text-[8px]' : 'h-9 text-[10px]',
+                                  colorClass
+                                )}
+                                onClick={() => {
+                                  if (demand.sprintId) {
+                                    useUIStore.getState().openSprintDetalhes(demand.sprintId);
+                                  } else {
+                                    openDemanda(demand.id, 'view');
+                                  }
+                                }}
+                              >
+                                <span className="truncate w-full">{demand.title}</span>
+
+                                <div className="absolute top-[120%] left-0 opacity-0 group-hover/bar:opacity-100 transition-all z-50 bg-zinc-900 border border-white/10 p-3 rounded-2xl shadow-2xl pointer-events-none scale-90 group-hover/bar:scale-100 min-w-[200px]">
+                                  <p className="text-xs font-black text-white mb-1">{demand.title}</p>
+                                  <div className="flex items-center gap-2 text-[8px] font-bold text-zinc-500 uppercase tracking-widest">
+                                    <Calendar className="w-3 h-3" />
+                                    {format(startDate, 'dd MMM', { locale: ptBR })} —{' '}
+                                    {format(endDate, 'dd MMM', { locale: ptBR })}
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                              </motion.div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
 
               {(viewMode === 'dia' || viewMode === 'semana') &&
@@ -561,12 +639,6 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
         </div>
       </div>
 
-      <button
-        className="fixed bottom-10 right-10 w-14 h-14 bg-secondary text-white rounded-2xl hidden md:flex items-center justify-center shadow-[0_20px_40px_rgba(11,175,77,0.3)] hover:scale-110 active:scale-95 transition-all z-[100]"
-        onClick={() => router.push('/kanban')}
-      >
-        <LayoutGrid className="w-6 h-6" />
-      </button>
     </div>
   );
 }

@@ -36,17 +36,24 @@ export const useNotificationStore = create<NotificationState>((set) => ({
       limit(20)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notifications = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: (doc.data().createdAt as Timestamp).toDate(),
-      })) as AppNotification[];
+    const unsubscribe = onSnapshot(
+      q, 
+      (snapshot) => {
+        const notifications = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: (doc.data().createdAt as Timestamp)?.toDate() || new Date(),
+        })) as AppNotification[];
 
-      const unreadCount = notifications.filter((n) => !n.read).length;
+        const unreadCount = notifications.filter((n) => !n.read).length;
 
-      set({ notifications, unreadCount, loading: false });
-    });
+        set({ notifications, unreadCount, loading: false });
+      },
+      (error) => {
+        console.error('Erro ao assinar notificações:', error);
+        set({ loading: false });
+      }
+    );
 
     return unsubscribe;
   },

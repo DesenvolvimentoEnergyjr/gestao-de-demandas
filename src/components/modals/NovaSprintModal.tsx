@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { sprintSchema, SprintFormData } from '@/lib/schemas';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { toast } from '@/store/useToastStore';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type FormData = SprintFormData;
 
@@ -45,12 +46,9 @@ export const NovaSprintModal = () => {
     }
   }, [novaSprintOpen]);
 
-  if (!novaSprintOpen) return null;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // ── Zod validation ──────────────────────────────────────────────────────
     const result = sprintSchema.safeParse(formData);
     if (!result.success) {
       const fieldErrors: Partial<Record<keyof FormData, string>> = {};
@@ -62,7 +60,6 @@ export const NovaSprintModal = () => {
       return;
     }
     setFormErrors({});
-    // ────────────────────────────────────────────────────────────────────────
 
     setLoading(true);
     try {
@@ -104,203 +101,208 @@ export const NovaSprintModal = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-[#0a0a0a]/90 backdrop-blur-sm"
-        onClick={closeNovaSprint}
-      />
-
-      <div className="relative w-full max-w-xl bg-[#0f0f0f] border border-white/[0.05] rounded-[2rem] md:rounded-[32px] shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in-95 duration-500 flex flex-col max-h-[90vh]">
-
-        {/* Header */}
-        <div className="p-6 md:p-8 pb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 md:gap-4">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-secondary/5 rounded-2xl flex items-center justify-center border border-white/5 shadow-[0_0_20px_rgba(11,175,77,0.1)] shrink-0">
-              <Image
-                src="/logo-energy.svg"
-                alt="Energy"
-                width={24}
-                height={24}
-                className="object-contain"
-              />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-lg md:text-xl font-black text-white tracking-tight truncate">Novo Ciclo de Sprint</h2>
-              <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-tighter truncate">
-                Planejamento e Metas • Energy Júnior
-              </p>
-            </div>
-          </div>
-          <button
+    <AnimatePresence>
+      {novaSprintOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-[#0a0a0a]/90 backdrop-blur-sm"
             onClick={closeNovaSprint}
-            className="w-10 h-10 flex items-center justify-center text-zinc-600 hover:text-white transition-colors"
+          />
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="relative w-full max-w-2xl bg-bg-section border-gradient rounded-[2rem] md:rounded-[32px] shadow-[0_0_50px_-12px_rgba(11,175,77,0.2)] overflow-hidden flex flex-col max-h-[90vh]"
           >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 md:p-8 pt-4 md:pt-6 space-y-6 flex-1 overflow-y-auto no-scrollbar">
-
-          {/* Título */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-              Título do Ciclo
-            </label>
-            <Input
-              value={formData.title}
-              onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-              placeholder="Ex: Otimização Operacional Q2"
-              className={cn(
-                'bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4',
-                formErrors.title && 'border-red-500/50 focus:border-red-500'
-              )}
-            />
-            {formErrors.title && (
-              <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.title}</p>
-            )}
-          </div>
-
-          {/* Objetivo */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-              Objetivo da Sprint
-            </label>
-            <div className="relative">
-              <textarea
-                required
-                rows={3}
-                value={formData.objective}
-                onChange={(e) => setFormData((prev) => ({ ...prev, objective: e.target.value }))}
-                className={cn(
-                  'w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-10 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-all resize-none',
-                  formErrors.objective && 'border-red-500/50'
-                )}
-                placeholder="Qual o foco principal dessa entrega?"
-              />
-              <Target className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-600 pointer-events-none" />
-            </div>
-            {formErrors.objective && (
-              <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.objective}</p>
-            )}
-          </div>
-
-          {/* Descrição (opcional) */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-              Descrição <span className="text-zinc-600 normal-case font-medium">(opcional)</span>
-            </label>
-            <textarea
-              rows={2}
-              value={formData.description}
-              onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-              className="w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-all resize-none"
-              placeholder="Contexto adicional sobre este ciclo..."
-            />
-          </div>
-
-          {/* Datas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                Início
-              </label>
-              <div className="relative">
-                <DatePicker
-                  value={formData.startDate}
-                  onChange={(date) => setFormData((prev) => ({ ...prev, startDate: date }))}
-                  error={!!formErrors.startDate}
-                />
+            {/* Header */}
+            <div className="p-6 md:p-8 pb-4 flex items-center justify-between">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-secondary/5 rounded-2xl flex items-center justify-center border border-white/5 shadow-[0_0_20px_rgba(11,175,77,0.1)] shrink-0">
+                  <Image src="/logo-energy.svg" alt="Energy" width={24} height={24} className="object-contain" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg md:text-xl font-black text-white tracking-tight truncate">Novo Ciclo de Sprint</h2>
+                  <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-tighter truncate">
+                    Planejamento e Metas • Energy Júnior
+                  </p>
+                </div>
               </div>
-              {formErrors.startDate && (
-                <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.startDate}</p>
-              )}
+              <button
+                onClick={closeNovaSprint}
+                className="w-10 h-10 flex items-center justify-center text-zinc-600 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                Previsão de Término
-              </label>
-              <div className="relative">
-                <DatePicker
-                  value={formData.endDate}
-                  onChange={(date) => setFormData((prev) => ({ ...prev, endDate: date }))}
-                  error={!!formErrors.endDate}
-                />
-              </div>
-              {formErrors.endDate && (
-                <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.endDate}</p>
-              )}
-            </div>
-          </div>
 
-          {/* Pontos e Tipo */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                Meta de Pontos
-              </label>
-              <div className="relative">
+            <form onSubmit={handleSubmit} className="p-6 md:p-8 pt-4 md:pt-6 space-y-6 md:space-y-8 flex-1 overflow-y-auto no-scrollbar">
+              {/* Título */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                  Título do Ciclo
+                </label>
                 <Input
-                  type="number"
-                  min={1}
-                  value={formData.totalPoints}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, totalPoints: Number(e.target.value) }))
-                  }
-                  className="bg-zinc-950 border-white/[0.03] h-12 text-sm rounded-xl px-4 pr-12 font-bold"
+                  value={formData.title}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Ex: Otimização Operacional Q2"
+                  className={cn(
+                    'bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4',
+                    formErrors.title && 'border-red-500/50 focus:border-red-500'
+                  )}
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-600 uppercase pointer-events-none">
-                  PTS
-                </span>
+                {formErrors.title && (
+                  <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.title}</p>
+                )}
               </div>
-            </div>
 
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                Tipo de Sprint
-              </label>
-              <div className="flex p-1 bg-zinc-950 border border-white/[0.03] rounded-xl h-12">
-                <button
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, type: 'Interno' }))}
-                  className={cn(
-                    'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
-                    formData.type === 'Interno'
-                      ? 'bg-white text-black shadow-lg'
-                      : 'text-zinc-600 hover:text-zinc-400'
-                  )}
-                >
-                  Interno
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, type: 'Externo' }))}
-                  className={cn(
-                    'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
-                    formData.type === 'Externo'
-                      ? 'bg-secondary text-white shadow-lg shadow-secondary/10'
-                      : 'text-zinc-600 hover:text-zinc-400'
-                  )}
-                >
-                  Externo
-                </button>
+              {/* Objetivo */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                  Objetivo da Sprint
+                </label>
+                <div className="relative">
+                  <textarea
+                    required
+                    rows={3}
+                    value={formData.objective}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, objective: e.target.value }))}
+                    className={cn(
+                      'w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-10 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-all resize-none',
+                      formErrors.objective && 'border-red-500/50'
+                    )}
+                    placeholder="Qual o foco principal dessa entrega?"
+                  />
+                  <Target className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-600 pointer-events-none" />
+                </div>
+                {formErrors.objective && (
+                  <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.objective}</p>
+                )}
               </div>
-            </div>
-          </div>
 
-          {/* Submit */}
-          <div className="pt-4">
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full h-14 rounded-2xl text-white font-black text-sm gap-3 transition-all active:scale-[0.98] shadow-lg shadow-secondary/20"
-              loading={loading}
-            >
-              Criar Ciclo de Sprint
-              <ArrowRight className="w-5 h-5 flex-shrink-0" />
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+              {/* Descrição */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                  Descrição <span className="text-zinc-600 normal-case font-medium">(opcional)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={formData.description}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                  className="w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-all resize-none"
+                  placeholder="Contexto adicional sobre este ciclo..."
+                />
+              </div>
+
+              {/* Datas */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                    Início
+                  </label>
+                  <DatePicker
+                    value={formData.startDate}
+                    onChange={(date) => setFormData((prev) => ({ ...prev, startDate: date }))}
+                    error={!!formErrors.startDate}
+                  />
+                  {formErrors.startDate && (
+                    <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.startDate}</p>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                    Previsão de Término
+                  </label>
+                  <DatePicker
+                    value={formData.endDate}
+                    onChange={(date) => setFormData((prev) => ({ ...prev, endDate: date }))}
+                    error={!!formErrors.endDate}
+                  />
+                  {formErrors.endDate && (
+                    <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.endDate}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Pontos e Tipo */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                    Meta de Pontos
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={formData.totalPoints}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, totalPoints: Number(e.target.value) }))
+                      }
+                      className="bg-zinc-950 border-white/[0.03] h-12 text-sm rounded-xl px-4 pr-12 font-bold"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-600 uppercase pointer-events-none">
+                      PTS
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                    Tipo de Sprint
+                  </label>
+                  <div className="flex p-1 bg-zinc-950 border border-white/[0.03] rounded-xl h-12">
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, type: 'Interno' }))}
+                      className={cn(
+                        'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
+                        formData.type === 'Interno'
+                          ? 'bg-white text-black shadow-lg shadow-white/10'
+                          : 'text-zinc-600 hover:text-white/40'
+                      )}
+                    >
+                      Interno
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, type: 'Externo' }))}
+                      className={cn(
+                        'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
+                        formData.type === 'Externo'
+                          ? 'bg-secondary text-white shadow-lg shadow-secondary/10'
+                          : 'text-zinc-600 hover:text-white/40'
+                      )}
+                    >
+                      Externo
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <div className="pt-4">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="w-full h-14 rounded-2xl text-white font-black text-sm gap-3 transition-all active:scale-[0.98] shadow-lg shadow-secondary/20"
+                  loading={loading}
+                >
+                  Criar Ciclo de Sprint
+                  <ArrowRight className="w-5 h-5 flex-shrink-0" />
+                </Button>
+
+                <p className="text-[9px] text-center text-zinc-600 uppercase tracking-[0.3em] font-black leading-relaxed mt-6">
+                  Sistema de Gestão Energy Júnior — 2026
+                </p>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 };

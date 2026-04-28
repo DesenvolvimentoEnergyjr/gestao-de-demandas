@@ -62,10 +62,9 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, de
         style={{ backgroundColor: color }}
       />
 
-      {/* Column Content */}
       <div
         ref={setNodeRef}
-        className="flex-1 p-3 space-y-2.5 min-h-[80px] overflow-y-auto"
+        className="flex-1 p-3 space-y-2.5 min-h-[80px] overflow-y-auto no-scrollbar"
       >
         <SortableContext
           id={id}

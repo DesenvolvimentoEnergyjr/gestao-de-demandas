@@ -2,40 +2,20 @@
 
 import React, { useEffect } from 'react';
 import { KanbanBoard } from '@/components/kanban/KanbanBoard';
-import { getDemands, getSprints, getUsers } from '@/lib/firestore';
+import { getUsers } from '@/lib/firestore';
 import { useDemandStore } from '@/store/useDemandStore';
-import { useSprintStore } from '@/store/useSprintStore';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { TrendingUp } from 'lucide-react';
-import Link from 'next/link';
 import { User } from '@/types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { KanbanBoardSkeleton } from '@/components/kanban/KanbanBoardSkeleton';
 
 export default function KanbanPage() {
-  const { setDemands, setLoading, loading } = useDemandStore();
-  const { setSprints } = useSprintStore();
+  const { loading } = useDemandStore();
   const [users, setUsers] = React.useState<User[]>([]);
 
   useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      try {
-        const [demandsData, sprintsData, usersData] = await Promise.all([
-          getDemands(),
-          getSprints(),
-          getUsers(true),
-        ]);
-        setDemands(demandsData);
-        setSprints(sprintsData);
-        setUsers(usersData);
-      } catch (error) {
-        console.error('Erro ao carregar Kanban:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    init();
-  }, [setDemands, setSprints, setLoading]);
+    getUsers(true).then(setUsers).catch(console.error);
+  }, []);
 
   return (
     <div className="h-full flex flex-col relative px-4 sm:px-6 lg:px-8">
@@ -45,21 +25,31 @@ export default function KanbanPage() {
       />
 
       <div className="flex-1 min-h-0">
-        {loading ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-secondary/20 border-t-secondary rounded-full animate-spin" />
-          </div>
-        ) : (
-          <KanbanBoard users={users} />
-        )}
+        <AnimatePresence mode="wait">
+          {loading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
+              <KanbanBoardSkeleton />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="content"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="h-full"
+            >
+              <KanbanBoard users={users} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      <Link
-        href="/timeline"
-        className="fixed bottom-10 right-10 w-14 h-14 bg-secondary text-white rounded-2xl hidden md:flex items-center justify-center shadow-[0_20px_40px_rgba(11,175,77,0.3)] hover:scale-110 active:scale-95 transition-all z-[90] group"
-      >
-        <TrendingUp className="w-6 h-6 group-hover:scale-110 transition-transform" />
-      </Link>
     </div>
   );
 }

@@ -8,6 +8,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export const ToastContainer = () => {
   const { toasts, removeToast } = useToastStore();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
 
   return (
     <div className="fixed top-6 right-6 z-[200] flex flex-col gap-3 pointer-events-none">

@@ -2,22 +2,26 @@
 
 import React, { useEffect } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { onAuthChange, getUserDoc, createUserDoc, setSessionCookie, clearSessionCookie } from '@/lib/auth';
-import { getDemands, getSprints } from '@/lib/firestore';
+import { subscribeToDemands, subscribeToSprints } from '@/lib/firestore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDemandStore } from '@/store/useDemandStore';
 import { useSprintStore } from '@/store/useSprintStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
-import { NovaDemandaModal } from '@/components/modals/NovaDemandaModal';
-import { SprintDetalhesModal } from '@/components/modals/SprintDetalhesModal';
-import { NovaSprintModal } from '@/components/modals/NovaSprintModal';
+import dynamic from 'next/dynamic';
 import { FloatingNotificationButton } from '@/components/layout/FloatingNotificationButton';
 import { Menu } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
 import { cn } from '@/lib/utils';
+
+// Dynamic imports for heavy modals to improve initial load performance
+const NovaDemandaModal = dynamic(() => import('@/components/modals/NovaDemandaModal').then(mod => mod.NovaDemandaModal), { ssr: false });
+const SprintDetalhesModal = dynamic(() => import('@/components/modals/SprintDetalhesModal').then(mod => mod.SprintDetalhesModal), { ssr: false });
+const NovaSprintModal = dynamic(() => import('@/components/modals/NovaSprintModal').then(mod => mod.NovaSprintModal), { ssr: false });
 
 export default function DashboardLayout({
   children,
@@ -25,6 +29,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, loading, setUser, setLoading } = useAuthStore();
   const { setDemands } = useDemandStore();
   const { setSprints } = useSprintStore();
@@ -35,18 +40,23 @@ export default function DashboardLayout({
   useEffect(() => {
     setMounted(true);
     let unsubscribeNotifications: (() => void) | undefined;
+    let unsubscribeDemands: (() => void) | undefined;
+    let unsubscribeSprints: (() => void) | undefined;
 
     const unsubscribeAuth = onAuthChange(async (firebaseUser) => {
       if (firebaseUser) {
         unsubscribeNotifications = subscribeNotifications(firebaseUser.uid);
+        
+        unsubscribeDemands = subscribeToDemands((data) => {
+          setDemands(data);
+        });
+
+        unsubscribeSprints = subscribeToSprints((data) => {
+          setSprints(data);
+        });
 
         try {
-          const [userData, demandsData, sprintsData] = await Promise.all([
-            getUserDoc(firebaseUser.uid),
-            getDemands(),
-            getSprints(),
-          ]);
-
+          const userData = await getUserDoc(firebaseUser.uid);
           let finalUser = userData;
           if (!userData) {
             finalUser = await createUserDoc(firebaseUser);
@@ -60,11 +70,7 @@ export default function DashboardLayout({
             return;
           }
 
-          // Refresh the session cookie on page load / auth state change
           await setSessionCookie();
-
-          setDemands(demandsData);
-          setSprints(sprintsData);
           setUser(finalUser);
         } catch (error) {
           console.error('Erro ao carregar dados iniciais:', error);
@@ -77,6 +83,8 @@ export default function DashboardLayout({
         setUser(null);
         router.push('/auth');
         if (unsubscribeNotifications) unsubscribeNotifications();
+        if (unsubscribeDemands) unsubscribeDemands();
+        if (unsubscribeSprints) unsubscribeSprints();
       }
       setLoading(false);
     });
@@ -84,11 +92,11 @@ export default function DashboardLayout({
     return () => {
       unsubscribeAuth();
       if (unsubscribeNotifications) unsubscribeNotifications();
+      if (unsubscribeDemands) unsubscribeDemands();
+      if (unsubscribeSprints) unsubscribeSprints();
     };
   }, [setUser, setLoading, setDemands, setSprints, subscribeNotifications, router]);
 
-  // ✅ FIX: Retorna null antes do mount para garantir que servidor e cliente
-  // renderizem o mesmo HTML inicial, evitando o erro de hidratação.
   if (!mounted) return null;
 
   return (
@@ -100,7 +108,6 @@ export default function DashboardLayout({
         </div>
       ) : user ? (
         <>
-          {/* Sidebar Mobile Overlay */}
           {sidebarOpen && (
             <div
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] xl:hidden"
@@ -108,7 +115,6 @@ export default function DashboardLayout({
             />
           )}
 
-          {/* Sidebar - Visible only on Mobile (controlled by sidebarOpen) */}
           <div className={cn(
             "fixed inset-y-0 left-0 z-[60] transform transition-transform duration-300 ease-in-out xl:hidden",
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -116,22 +122,17 @@ export default function DashboardLayout({
             <Sidebar />
           </div>
 
-          {/* Main Content Area */}
           <main className="flex-1 flex flex-col overflow-hidden w-full relative">
-            {/* Mobile Top Bar */}
             <div className="flex md:hidden items-center justify-between px-4 h-16 border-b border-white/[0.05] bg-bg-base/80 backdrop-blur-xl sticky top-0 z-40 gap-2">
-              {/* Logo Left */}
               <div className="w-8 h-8 relative shrink-0">
-                <Image src="/logo-energy.svg" alt="Logo" fill className="object-contain" />
+                <Image src="/logo-energy.svg" alt="Logo" fill sizes="32px" className="object-contain" />
               </div>
 
-              {/* Title Center (Stacked) */}
               <div className="flex-1 flex flex-col items-center justify-center min-w-0">
                 <span className="text-[10px] font-black text-white uppercase tracking-tight truncate">Energy Júnior</span>
                 <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest truncate mt-0.5">Gestão de Demandas</span>
               </div>
 
-              {/* Menu Right */}
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="p-2 bg-zinc-900/50 border border-white/5 rounded-xl text-zinc-400 hover:text-white transition-all active:scale-95 shrink-0"
@@ -140,20 +141,23 @@ export default function DashboardLayout({
               </button>
             </div>
 
-            {/* Header - Visible only on Desktop */}
             <div className="hidden md:block">
               <Header />
             </div>
 
-            <div className="flex-1 p-4 md:p-8 overflow-y-auto flex flex-col no-scrollbar">
+            <motion.div 
+              key={pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="flex-1 p-4 md:p-8 overflow-y-auto flex flex-col no-scrollbar"
+            >
               {children}
-            </div>
+            </motion.div>
           </main>
 
-          {/* Botão Flutuante de Notificação Global */}
           <FloatingNotificationButton />
 
-          {/* Modais Globais */}
           <NovaDemandaModal />
           <SprintDetalhesModal />
           <NovaSprintModal />

@@ -9,6 +9,7 @@ import { useDemandStore } from '@/store/useDemandStore';
 import { useUIStore } from '@/store/useUIStore';
 import { Avatar } from '@/components/ui/Avatar';
 import { Search, AlertCircle, Plus, Settings, LogOut, ChevronDown, Menu, RefreshCw, LayoutGrid, User as UserIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { signOut } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -158,6 +159,7 @@ export const Header = () => {
             src="/logo-energy.svg"
             alt="Energy Júnior"
             fill
+            sizes="(max-width: 768px) 32px, 40px"
             className="object-contain"
           />
         </div>
@@ -185,15 +187,26 @@ export const Header = () => {
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  'px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all relative whitespace-nowrap',
+                  'px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all relative whitespace-nowrap group',
                   isActive
-                    ? 'bg-secondary/10 text-secondary'
+                    ? 'text-secondary'
                     : 'text-zinc-500 hover:text-zinc-300'
                 )}
               >
-                {tab.name}
                 {isActive && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-secondary rounded-full shadow-[0_0_8px_rgba(11,175,77,1)]" />
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute inset-0 bg-secondary/10 rounded-xl"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <span className="relative z-10">{tab.name}</span>
+                {isActive && (
+                  <motion.span
+                    layoutId="activeDot"
+                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-secondary rounded-full shadow-[0_0_8px_rgba(11,175,77,1)]"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                  />
                 )}
               </Link>
             );
@@ -233,44 +246,55 @@ export const Header = () => {
           />
 
           {/* Search Results Dropdown */}
-          {showResults && localSearch.trim() && (
-            <div className="absolute top-full mt-3 right-0 w-[min(320px,calc(100vw-32px))] bg-bg-section border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50 backdrop-blur-xl">
-              <div className="p-2">
-                <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
-                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Resultados</span>
-                  <span className="text-[10px] font-bold text-zinc-600">{searchResults.length}</span>
-                </div>
+          <AnimatePresence>
+            {showResults && localSearch.trim() && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="absolute top-full mt-3 right-0 w-[min(320px,calc(100vw-32px))] bg-bg-section border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden z-50 backdrop-blur-xl"
+              >
+                <div className="p-2">
+                  <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Resultados</span>
+                    <span className="text-[10px] font-bold text-zinc-600">{searchResults.length}</span>
+                  </div>
 
-                <div className="mt-1 py-1">
-                  {searchResults.length > 0 ? (
-                    searchResults.map((result) => {
-                      const Icon = result.icon;
-                      return (
-                        <button
-                          key={`${result.type}-${result.id}`}
-                          onClick={() => handleResultClick(result)}
-                          className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all group flex items-start gap-3"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-white/5 flex items-center justify-center shrink-0 group-hover:border-secondary/30 group-hover:bg-secondary/5 transition-all">
-                            <Icon className="w-4 h-4 text-zinc-600 group-hover:text-secondary" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-zinc-200 group-hover:text-white transition-colors truncate">{result.title}</p>
-                            <p className="text-[10px] text-zinc-500 font-medium tracking-tight mt-0.5">{result.subtitle}</p>
-                          </div>
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <div className="px-4 py-8 flex flex-col items-center justify-center text-center">
-                      <AlertCircle className="w-6 h-6 text-zinc-700 mb-2" />
-                      <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nada encontrado</p>
-                    </div>
-                  )}
+                  <div className="mt-1 py-1">
+                    {searchResults.length > 0 ? (
+                      searchResults.map((result, idx) => {
+                        const Icon = result.icon;
+                        return (
+                          <motion.button
+                            key={`${result.type}-${result.id}`}
+                            initial={{ opacity: 0, x: -4 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.03 }}
+                            onClick={() => handleResultClick(result)}
+                            className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all group flex items-start gap-3"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-white/5 flex items-center justify-center shrink-0 group-hover:border-secondary/30 group-hover:bg-secondary/5 transition-all">
+                              <Icon className="w-4 h-4 text-zinc-600 group-hover:text-secondary" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-zinc-200 group-hover:text-white transition-colors truncate">{result.title}</p>
+                              <p className="text-[10px] text-zinc-500 font-medium tracking-tight mt-0.5">{result.subtitle}</p>
+                            </div>
+                          </motion.button>
+                        );
+                      })
+                    ) : (
+                      <div className="px-4 py-8 flex flex-col items-center justify-center text-center">
+                        <AlertCircle className="w-6 h-6 text-zinc-700 mb-2" />
+                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nada encontrado</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* User Menu */}
@@ -294,28 +318,36 @@ export const Header = () => {
           </button>
 
           {/* User Dropdown */}
-          {showUserMenu && (
-            <div className="absolute top-full mt-3 right-0 w-56 bg-bg-section border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50 backdrop-blur-xl">
-              <div className="p-2 space-y-1">
-                <Link
-                  href="/configuracoes"
-                  onClick={() => setShowUserMenu(false)}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-all text-xs font-bold"
-                >
-                  <Settings className="w-4 h-4" />
-                  Configurações
-                </Link>
-                <div className="h-px bg-white/5 mx-2" />
-                <button
-                  onClick={handleSignOut}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-xs font-bold"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sair do Sistema
-                </button>
-              </div>
-            </div>
-          )}
+          <AnimatePresence>
+            {showUserMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="absolute top-full mt-3 right-0 w-56 bg-bg-section border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden z-50 backdrop-blur-xl"
+              >
+                <div className="p-2 space-y-1">
+                  <Link
+                    href="/configuracoes"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-all text-xs font-bold"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Configurações
+                  </Link>
+                  <div className="h-px bg-white/5 mx-2" />
+                  <button
+                    onClick={handleSignOut}
+                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-xs font-bold"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sair do Sistema
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </header>

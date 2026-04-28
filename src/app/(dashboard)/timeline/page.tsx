@@ -2,34 +2,18 @@
 
 import React, { useEffect } from 'react';
 import { TimelineView } from '@/components/timeline/TimelineView';
-import { getDemands, getUsers } from '@/lib/firestore';
+import { getUsers } from '@/lib/firestore';
 import { useDemandStore } from '@/store/useDemandStore';
 import { useState } from 'react';
 import { User } from '@/types';
 
 export default function TimelinePage() {
-  const { demands, setDemands, loading, setLoading } = useDemandStore();
+  const { demands, loading } = useDemandStore();
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [demandsData, usersData] = await Promise.all([
-          getDemands(),
-          getUsers(true),
-        ]);
-        setDemands(demandsData);
-        setUsers(usersData);
-      } catch (error) {
-        console.error('Erro ao carregar Timeline:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [setDemands, setLoading]);
+    getUsers(true).then(setUsers).catch(console.error);
+  }, []);
 
   return (
     <div className="min-h-full w-full flex flex-col">
