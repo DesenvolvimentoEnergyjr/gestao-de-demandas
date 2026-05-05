@@ -6,6 +6,7 @@ import {
   User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { createMemberTimelineEvent } from './firestore';
 import { auth, db } from './firebase';
 import { User } from '@/types';
 
@@ -92,6 +93,19 @@ export const createUserDoc = async (
   };
 
   await setDoc(userRef, newUser);
+
+  // Criar evento automático de ingresso na linha do tempo
+  try {
+    await createMemberTimelineEvent({
+      userId: firebaseUser.uid,
+      date: new Date(),
+      type: 'ingresso',
+      title: 'Ingresso na Energy Júnior',
+      description: `Início da jornada na diretoria de ${newUser.area}.`,
+    });
+  } catch (e) {
+    console.error('Erro ao criar evento de ingresso na timeline:', e);
+  }
 
   return {
     ...newUser,

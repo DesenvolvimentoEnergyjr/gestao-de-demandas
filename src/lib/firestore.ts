@@ -14,7 +14,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Demand, DemandStatus, Sprint, User, AppNotification } from '@/types';
+import { Demand, DemandStatus, Sprint, User, AppNotification, MemberTimelineEvent } from '@/types';
 
 const toDate = (val: unknown): Date =>
   val && typeof (val as { toDate?: () => Date }).toDate === 'function'
@@ -230,7 +230,7 @@ export const updateDemand = async (
       }
     }
 
-    // Se a demanda for concluída, notificar o criador
+    // Se a demanda for concluída, notificar o criador e registrar na timeline dos assignees
     if (data.status === 'concluido' && oldData.status !== 'concluido') {
       if (oldData.createdBy) {
         await createNotification({
@@ -241,6 +241,20 @@ export const updateDemand = async (
           link: `/kanban`,
         });
       }
+
+      // Registrar evento automático na timeline de cada assignee
+      const assignees = data.assignees || oldData.assignees || [];
+      await Promise.all(
+        assignees.map((userId: string) =>
+          createMemberTimelineEvent({
+            userId,
+            date: new Date(),
+            type: 'demanda',
+            title: 'Demanda Concluída',
+            description: oldData.title || data.title || '',
+          }).catch((e: unknown) => console.error('Erro ao criar evento de demanda na timeline:', e))
+        )
+      );
     } 
     // Notificar mudança de status/coluna
     else if (data.status && data.status !== oldData.status) {
@@ -408,4 +422,55 @@ export const updateUser = async (uid: string, data: Partial<User>) => {
     ...data,
     updatedAt: serverTimestamp(),
   });
+};
+
+// MEMBER TIMELINE
+
+export const subscribeToMemberTimeline = (
+  userId: string,
+  callback: (events: MemberTimelineEvent[]) => void
+) => {
+  const q = query(
+    collection(db, 'member_timeline'),
+    where('userId', '==', userId),
+    orderBy('date', 'desc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const events = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      date: toDate(d.data().date),
+      createdAt: toDate(d.data().createdAt),
+      updatedAt: toDate(d.data().updatedAt),
+    })) as MemberTimelineEvent[];
+    callback(events);
+  }, (error) => {
+    console.error("Error subscribing to member timeline:", error);
+  });
+};
+
+export const createMemberTimelineEvent = async (
+  data: Omit<MemberTimelineEvent, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<string> => {
+  const docRef = await addDoc(collection(db, 'member_timeline'), {
+    ...data,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return docRef.id;
+};
+
+export const updateMemberTimelineEvent = async (
+  id: string,
+  data: Partial<Omit<MemberTimelineEvent, 'id' | 'createdAt'>>
+) => {
+  await updateDoc(doc(db, 'member_timeline', id), {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
+};
+
+export const deleteMemberTimelineEvent = async (id: string) => {
+  await deleteDoc(doc(db, 'member_timeline', id));
 };

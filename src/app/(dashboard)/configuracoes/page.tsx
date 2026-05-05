@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { updateUser, getUsers } from '@/lib/firestore';
+import { updateUser, getUsers, createMemberTimelineEvent } from '@/lib/firestore';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -114,8 +114,22 @@ export default function ConfiguracoesPage() {
   };
 
   const handleUpdateRole = async (uid: string, newRole: Role) => {
+    const member = allUsers.find(u => u.uid === uid);
+    if (!member || member.role === newRole) return;
+
     try {
       await updateUser(uid, { role: newRole });
+
+      // Registrar mudança de cargo na timeline
+      const roleLabels: Record<string, string> = { assessor: 'Assessor', diretor: 'Diretor' };
+      await createMemberTimelineEvent({
+        userId: uid,
+        date: new Date(),
+        type: 'cargo',
+        title: `Promovido a ${roleLabels[newRole] || newRole}`,
+        description: `Mudança de ${roleLabels[member.role] || member.role} para ${roleLabels[newRole] || newRole}.`,
+      }).catch((e: unknown) => console.error('Erro ao criar evento de cargo na timeline:', e));
+
       setAllUsers(prev => prev.map(u => u.uid === uid ? { ...u, role: newRole } : u));
     } catch (error) {
       console.error('Error updating role:', error);
@@ -130,6 +144,16 @@ export default function ConfiguracoesPage() {
     try {
       const now = new Date();
       await updateUser(targetUid, { status: 'desligado', deactivatedAt: now });
+
+      // Registrar evento automático de egresso na timeline
+      await createMemberTimelineEvent({
+        userId: targetUid,
+        date: now,
+        type: 'egresso',
+        title: 'Desligamento da Energy Júnior',
+        description: `Fim da jornada como ${showDeactivateConfirm.title || showDeactivateConfirm.role} na diretoria de ${showDeactivateConfirm.area || 'Operações'}.`,
+      }).catch((e: unknown) => console.error('Erro ao criar evento de egresso na timeline:', e));
+
       setAllUsers(prev => prev.map(u => u.uid === targetUid ? { ...u, status: 'desligado', deactivatedAt: now } : u));
       setShowDeactivateConfirm(null);
     } catch (error) {

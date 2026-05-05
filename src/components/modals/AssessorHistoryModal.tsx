@@ -1,89 +1,189 @@
-import { X, ClipboardList, CheckCircle2, Zap, AlertCircle, TrendingUp, Flag, MapPin } from 'lucide-react';
-import { User, Demand, Sprint } from '@/types';
+'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, ClipboardList, CheckCircle2, Zap, AlertCircle, TrendingUp, Flag, MapPin, Pencil, Trash2, Plus, Save, XCircle, Briefcase, LogOut, FolderKanban, MoreHorizontal, Loader2 } from 'lucide-react';
+import { User, Demand, Sprint, MemberTimelineEvent, MemberTimelineEventType } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { Select } from '@/components/ui/Select';
+import { Input } from '@/components/ui/Input';
 import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/useAuthStore';
+import { toast } from '@/store/useToastStore';
+import {
+  subscribeToMemberTimeline,
+  createMemberTimelineEvent,
+  updateMemberTimelineEvent,
+  deleteMemberTimelineEvent,
+} from '@/lib/firestore';
 
 interface AssessorHistoryModalProps {
   user: User;
   demands: Demand[];
-  sprints: Sprint[];
+  sprints?: Sprint[];
   onClose: () => void;
 }
 
-interface TimelineEvent {
-  id: string;
-  date: Date;
-  type: 'entry' | 'assignment' | 'completion' | 'movement';
-  title: string;
-  description?: string;
-  metadata?: {
-    code?: string;
-    sprint?: string;
-    onTime?: boolean
-  };
-}
+const EVENT_TYPE_CONFIG: Record<MemberTimelineEventType, { icon: React.ElementType; color: string; label: string }> = {
+  ingresso: { icon: MapPin, color: 'bg-primary text-black', label: 'Ingresso' },
+  egresso: { icon: LogOut, color: 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]', label: 'Egresso' },
+  cargo: { icon: Briefcase, color: 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]', label: 'Mudança de Cargo' },
+  projeto: { icon: FolderKanban, color: 'bg-secondary text-white shadow-[0_0_15px_rgba(11,175,77,0.3)]', label: 'Projeto' },
+  demanda: { icon: ClipboardList, color: 'bg-zinc-800 text-zinc-400', label: 'Demanda' },
+  outro: { icon: MoreHorizontal, color: 'bg-zinc-700 text-zinc-300', label: 'Outro' },
+};
 
-export function AssessorHistoryModal({ user, demands, sprints, onClose }: AssessorHistoryModalProps) {
+const EMPTY_FORM = { date: '', type: 'outro' as MemberTimelineEventType, title: '', description: '' };
+
+export function AssessorHistoryModal({ user, demands, onClose }: AssessorHistoryModalProps) {
+  const { user: currentUser } = useAuthStore();
+  const isDirector = currentUser?.role === 'diretor';
+
+  const [timelineEvents, setTimelineEvents] = useState<MemberTimelineEvent[]>([]);
+  const [loadingTimeline, setLoadingTimeline] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addForm, setAddForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+
+  // Subscribe to timeline events
+  useEffect(() => {
+    const unsub = subscribeToMemberTimeline(user.uid, (events) => {
+      setTimelineEvents(events);
+      setLoadingTimeline(false);
+    });
+    return () => unsub();
+  }, [user.uid]);
+
+  // Stats
   const completedDemands = demands.filter(d => d.status === 'concluido');
-
-  // 1. Taxa de Entrega no Prazo (%)
   const onTimeDemands = completedDemands.filter(d => !d.deadline || new Date(d.updatedAt) <= new Date(d.deadline));
   const onTimeRate = completedDemands.length > 0 ? Math.round((onTimeDemands.length / completedDemands.length) * 100) : 0;
-
-  // 2. Tempo Médio de Ciclo (dias)
   const cycleTimes = completedDemands.map(d => differenceInDays(new Date(d.updatedAt), new Date(d.createdAt)));
   const avgCycleTime = cycleTimes.length > 0 ? Math.round(cycleTimes.reduce((a, b) => a + b, 0) / cycleTimes.length) : 0;
-
-  // 3. Demandas Estagnadas
   const activeDemands = demands.filter(d => d.status === 'em_progresso' || d.status === 'em_revisao');
   const stagnantCount = activeDemands.filter(d => differenceInDays(new Date(), new Date(d.updatedAt)) >= 5).length;
 
-  // --- Lógica da Timeline de Histórico ---
-  const timelineEvents = (() => {
-    const events: TimelineEvent[] = [];
-
-    // Evento de Entrada
-    events.push({
-      id: 'entry-' + user.uid,
-      date: user.joinDate || user.createdAt,
-      type: 'entry',
-      title: 'Ingresso na Energy Júnior',
-      description: `Início da jornada na diretoria de ${user.area || 'Operações'}.`,
+  const handleStartEdit = useCallback((event: MemberTimelineEvent) => {
+    setEditingId(event.id);
+    setEditForm({
+      date: format(event.date, 'yyyy-MM-dd'),
+      type: event.type,
+      title: event.title,
+      description: event.description,
     });
+  }, []);
 
-    // Eventos de Demandas
-    demands.forEach((d) => {
-      // Atribuição
-      events.push({
-        id: 'assign-' + d.id,
-        date: d.createdAt,
-        type: 'assignment',
-        title: 'Nova Demanda Atribuída',
-        description: d.title,
-        metadata: { code: d.code }
+  const handleSaveEdit = async () => {
+    if (!editingId || !editForm.title.trim() || !editForm.date) return;
+    setSaving(true);
+    try {
+      await updateMemberTimelineEvent(editingId, {
+        date: new Date(editForm.date + 'T12:00:00'),
+        type: editForm.type,
+        title: editForm.title.trim(),
+        description: editForm.description.trim(),
       });
+      setEditingId(null);
+      toast.success('Evento atualizado!');
+    } catch { toast.error('Erro ao salvar.'); }
+    finally { setSaving(false); }
+  };
 
-      // Conclusão
-      if (d.status === 'concluido') {
-        const sprint = sprints.find(s => s.id === d.sprintId);
-        events.push({
-          id: 'complete-' + d.id,
-          date: d.updatedAt,
-          type: 'completion',
-          title: 'Demanda Concluída',
-          description: d.title,
-          metadata: {
-            sprint: sprint ? `${sprint.number} • ${sprint.title}` : 'Sem Sprint',
-            onTime: !d.deadline || d.updatedAt <= d.deadline
-          }
-        });
-      }
-    });
+  const handleAdd = async () => {
+    if (!addForm.title.trim() || !addForm.date) return;
+    setSaving(true);
+    try {
+      await createMemberTimelineEvent({
+        userId: user.uid,
+        date: new Date(addForm.date + 'T12:00:00'),
+        type: addForm.type,
+        title: addForm.title.trim(),
+        description: addForm.description.trim(),
+      });
+      setAddForm(EMPTY_FORM);
+      setShowAddForm(false);
+      toast.success('Evento adicionado!');
+    } catch { toast.error('Erro ao adicionar.'); }
+    finally { setSaving(false); }
+  };
 
-    return events.sort((a, b) => b.date.getTime() - a.date.getTime());
-  })();
+  const handleDelete = async (id: string) => {
+    setSaving(true);
+    try {
+      await deleteMemberTimelineEvent(id);
+      toast.success('Evento removido.');
+    } catch { toast.error('Erro ao remover.'); }
+    finally { setSaving(false); }
+  };
+
+  const renderEventForm = (
+    form: typeof EMPTY_FORM,
+    setForm: React.Dispatch<React.SetStateAction<typeof EMPTY_FORM>>,
+    onSave: () => void,
+    onCancel: () => void
+  ) => (
+    <div className="space-y-4 bg-zinc-950/60 border border-white/5 rounded-2xl p-5 animate-in fade-in duration-200">
+      <div className="grid grid-cols-2 gap-4 items-start">
+        <div className="space-y-3 w-full">
+          <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Data</label>
+          <DatePicker
+            value={form.date}
+            onChange={(date) => setForm(prev => ({ ...prev, date }))}
+            placeholder="Selecione uma data"
+          />
+        </div>
+        <Select
+          value={form.type}
+          onChange={(e) => setForm(prev => ({ ...prev, type: e.target.value as MemberTimelineEventType }))}
+          label="Tipo"
+        >
+          {Object.entries(EVENT_TYPE_CONFIG).map(([key, cfg]) => (
+            <option key={key} value={key}>{cfg.label}</option>
+          ))}
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Título</label>
+        <Input
+          value={form.title}
+          onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
+          placeholder="Ex: Promoção a Gerente"
+          className="bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4"
+        />
+      </div>
+      <div className="space-y-2">
+        <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Descrição</label>
+        <textarea
+          rows={2}
+          value={form.description}
+          onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
+          placeholder="Descrição do evento..."
+          className="w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-all resize-none"
+        />
+      </div>
+      <div className="flex items-center gap-2 pt-1">
+        <button
+          onClick={onSave}
+          disabled={saving || !form.title.trim() || !form.date}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-black text-[10px] font-black uppercase tracking-widest hover:bg-secondary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+          Salvar
+        </button>
+        <button
+          onClick={onCancel}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-800 text-zinc-400 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all"
+        >
+          <XCircle className="w-3 h-3" />
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-2 sm:p-4">
@@ -156,8 +256,8 @@ export function AssessorHistoryModal({ user, demands, sprints, onClose }: Assess
 
         {/* Timeline Content */}
         <div className="flex-1 overflow-y-auto no-scrollbar p-5 md:p-10 pt-6">
-          
-          {/* User History/Trajetória block if exists - MOVED TO TOP */}
+
+          {/* User History/Trajetória block if exists */}
           {user.history && (
             <div className="mb-10 p-6 bg-zinc-950/40 rounded-3xl border border-white/[0.03] border-l-secondary border-l-4">
               <div className="flex items-center gap-3 mb-4">
@@ -172,60 +272,107 @@ export function AssessorHistoryModal({ user, demands, sprints, onClose }: Assess
 
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em]">Linha do Tempo</h3>
-            <div className="px-3 py-1 bg-zinc-950 rounded-full border border-white/5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
-              {timelineEvents.length} Eventos
+            <div className="flex items-center gap-2">
+              {isDirector && (
+                <button
+                  onClick={() => { setShowAddForm(true); setAddForm({ ...EMPTY_FORM, date: format(new Date(), 'yyyy-MM-dd') }); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/10 border border-secondary/20 rounded-full text-[9px] font-black text-secondary uppercase tracking-widest hover:bg-secondary/20 transition-all"
+                >
+                  <Plus className="w-3 h-3" />
+                  Novo Evento
+                </button>
+              )}
+              <div className="px-3 py-1 bg-zinc-950 rounded-full border border-white/5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                {timelineEvents.length} Eventos
+              </div>
             </div>
           </div>
 
-          <div className="relative space-y-8 pl-4">
-            {/* Vertical Line */}
-            <div className="absolute left-0 top-2 bottom-2 w-px bg-gradient-to-b from-secondary/50 via-zinc-800 to-transparent" />
+          {/* Add Form */}
+          {showAddForm && renderEventForm(addForm, setAddForm, handleAdd, () => setShowAddForm(false))}
 
-            {timelineEvents.map((event) => (
-              <div key={event.id} className="relative pl-8 group">
-                {/* Node dot */}
-                <div className={cn(
-                  "absolute left-[-17px] top-1.5 w-8 h-8 rounded-full border-4 border-[#0f0f0f] z-10 flex items-center justify-center transition-all group-hover:scale-110",
-                  event.type === 'entry' ? "bg-primary text-black" :
-                    event.type === 'assignment' ? "bg-zinc-800 text-zinc-400" :
-                      event.type === 'completion' ? "bg-secondary text-white shadow-[0_0_15px_rgba(11,175,77,0.3)]" :
-                        "bg-zinc-900 text-zinc-600"
-                )}>
-                  {event.type === 'entry' && <MapPin className="w-3.5 h-3.5" />}
-                  {event.type === 'assignment' && <ClipboardList className="w-3.5 h-3.5" />}
-                  {event.type === 'completion' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                </div>
+          {/* Loading state */}
+          {loadingTimeline ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 text-secondary animate-spin" />
+            </div>
+          ) : timelineEvents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-zinc-700">
+              <Flag className="w-8 h-8 mb-3" />
+              <p className="text-xs font-bold uppercase tracking-widest">Nenhum evento registrado</p>
+              {isDirector && (
+                <p className="text-[10px] text-zinc-600 mt-2">Clique em &quot;Novo Evento&quot; para adicionar o primeiro registro.</p>
+              )}
+            </div>
+          ) : (
+            <div className="relative space-y-8 pl-4">
+              {/* Vertical Line */}
+              <div className="absolute left-0 top-2 bottom-2 w-px bg-gradient-to-b from-secondary/50 via-zinc-800 to-transparent" />
 
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">
-                      {format(event.date, "dd 'de' MMMM, yyyy", { locale: ptBR })}
-                    </span>
-                    {event.type === 'completion' && event.metadata?.onTime && (
-                      <span className="text-[8px] font-black text-secondary uppercase bg-secondary/10 px-2 py-0.5 rounded-md">No Prazo</span>
+              {timelineEvents.map((event) => {
+                const config = EVENT_TYPE_CONFIG[event.type] || EVENT_TYPE_CONFIG.outro;
+                const Icon = config.icon;
+                const isEditing = editingId === event.id;
+
+                return (
+                  <div key={event.id} className="relative pl-8 group/item">
+                    {/* Node dot */}
+                    <div className={cn(
+                      "absolute left-[-17px] top-1.5 w-8 h-8 rounded-full border-4 border-[#0f0f0f] z-10 flex items-center justify-center transition-all group-hover/item:scale-110",
+                      config.color
+                    )}>
+                      <Icon className="w-3.5 h-3.5" />
+                    </div>
+
+                    {isEditing ? (
+                      renderEventForm(editForm, setEditForm, handleSaveEdit, () => setEditingId(null))
+                    ) : (
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">
+                            {format(event.date, "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                          </span>
+                          <span className="text-[8px] font-black text-zinc-500 uppercase bg-white/5 px-2 py-0.5 rounded-md">
+                            {config.label}
+                          </span>
+
+                          {/* Edit/Delete buttons for directors */}
+                          {isDirector && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity ml-auto">
+                              <button
+                                onClick={() => handleStartEdit(event)}
+                                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-500 hover:text-white transition-all"
+                                title="Editar"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(event.id)}
+                                className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-all"
+                                title="Remover"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <h4 className="text-sm font-black text-white tracking-tight group-hover/item:text-secondary transition-colors">
+                          {event.title}
+                        </h4>
+
+                        {event.description && (
+                          <p className="text-xs text-zinc-500 font-medium mt-1 leading-relaxed max-w-lg italic">
+                            &quot;{event.description}&quot;
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
-
-                  <h4 className="text-sm font-black text-white tracking-tight group-hover:text-secondary transition-colors">
-                    {event.title}
-                  </h4>
-
-                  {event.description && (
-                    <p className="text-xs text-zinc-500 font-medium mt-1 leading-relaxed max-w-lg italic">
-                      &quot;{event.description}&quot;
-                    </p>
-                  )}
-
-                  {event.metadata?.sprint && (
-                    <div className="mt-2 flex items-center gap-2 text-[9px] font-bold text-zinc-400 uppercase tracking-widest bg-white/5 w-fit px-3 py-1 rounded-lg">
-                      <Flag className="w-3 h-3 text-secondary" />
-                      {event.metadata.sprint}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -7,7 +7,7 @@ import { User as UserType } from '@/types';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { updateUser } from '@/lib/firestore';
+import { updateUser, createMemberTimelineEvent } from '@/lib/firestore';
 import { toast } from '@/store/useToastStore';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -50,6 +50,19 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
         joinDate: joinDate ? new Date(joinDate + 'T12:00:00') : undefined
       };
       await updateUser(user.uid, updatedData);
+
+      // Registrar mudança de cargo na timeline se o título mudou
+      if (title && title !== user.title) {
+        await createMemberTimelineEvent({
+          userId: user.uid,
+          date: new Date(),
+          type: 'cargo',
+          title: `Novo cargo: ${title}`,
+          description: user.title
+            ? `Mudança de ${user.title} para ${title}.`
+            : `Definido como ${title}.`,
+        }).catch((e: unknown) => console.error('Erro ao criar evento de cargo na timeline:', e));
+      }
 
       onUpdate({ ...user, ...updatedData } as UserType);
       toast.success('Perfil atualizado com sucesso!');

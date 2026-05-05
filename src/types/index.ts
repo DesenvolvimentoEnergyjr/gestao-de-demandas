@@ -97,3 +97,22 @@ export interface Sprint {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type MemberTimelineEventType =
+  | 'ingresso'
+  | 'egresso'
+  | 'cargo'
+  | 'projeto'
+  | 'demanda'
+  | 'outro';
+
+export interface MemberTimelineEvent {
+  id: string;
+  userId: string;
+  date: Date;
+  type: MemberTimelineEventType;
+  title: string;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
