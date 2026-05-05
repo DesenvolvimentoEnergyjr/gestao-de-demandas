@@ -141,8 +141,8 @@ export const NovaDemandaModal = () => {
       startDate: sprint
         ? (sprint.startDate instanceof Date ? sprint.startDate.toISOString().split('T')[0] : (sprint.startDate as unknown as string))
         : prev.startDate,
-      deadline: sprint 
-        ? (sprint.endDate instanceof Date ? sprint.endDate.toISOString().split('T')[0] : (sprint.endDate as unknown as string)) 
+      deadline: sprint
+        ? (sprint.endDate instanceof Date ? sprint.endDate.toISOString().split('T')[0] : (sprint.endDate as unknown as string))
         : '',
     }));
   };
@@ -216,8 +216,9 @@ export const NovaDemandaModal = () => {
           deadline: formData.deadline ? new Date(formData.deadline) : null,
           estimatedHours: Number(formData.estimatedHours),
           projectType: formData.projectType,
-          createdAt: formData.createdAt ? new Date(formData.createdAt) : undefined,
+          ...(formData.createdAt && { createdAt: new Date(formData.createdAt) }),
         };
+
 
         await updateDemand(selectedDemandId, updateData);
         const updatedDemand = await getDemandById(selectedDemandId);
@@ -333,404 +334,404 @@ export const NovaDemandaModal = () => {
                   >
                     {/* Title Section */}
                     <div className="space-y-3">
-                    <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                      Título da Demanda
-                    </label>
-                    {isView ? (
-                      <div className="p-4 bg-zinc-950/50 rounded-2xl border border-white/[0.05] text-sm font-black text-white">
-                        {formData.title}
-                      </div>
-                    ) : (
-                      <>
-                        <Input
-                          value={formData.title}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                          placeholder="Ex: Otimização de Fluxo de Caixa"
-                          className={cn(
-                            'bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4',
-                            formErrors.title && 'border-red-500/50 focus:border-red-500'
-                          )}
-                        />
-                        {formErrors.title && (
-                          <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.title}</p>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  {/* Description Section */}
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                      Descrição
-                    </label>
-                    {isView ? (
-                      <div className="p-4 bg-zinc-950/50 rounded-2xl border border-white/[0.05] text-sm font-black text-white leading-relaxed min-h-[100px] whitespace-pre-wrap">
-                        {formData.description || 'Sem descrição.'}
-                      </div>
-                    ) : (
-                      <>
-                        <textarea
-                          rows={4}
-                          value={formData.description}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                          className={cn(
-                            'w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-all resize-none',
-                            formErrors.description && 'border-red-500/50 focus:border-red-500'
-                          )}
-                          placeholder="Descreva os requisitos principais..."
-                        />
-                        {formErrors.description && (
-                          <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.description}</p>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  {/* Project Type Selection */}
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                      Tipo de Projeto
-                    </label>
-                    {isView ? (
-                      <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.08] text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                        {formData.projectType === 'Externo' ? 'Serviços Empresa' : 'Projetos Internos'}
-                      </div>
-                    ) : (
-                      <div className="flex p-1 bg-zinc-950 border border-white/[0.08] rounded-xl h-12">
-                        <button
-                          type="button"
-                          onClick={() => setFormData((prev) => ({ ...prev, projectType: 'Interno' }))}
-                          className={cn(
-                            'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
-                            formData.projectType === 'Interno'
-                              ? 'bg-white text-black shadow-lg shadow-white/10'
-                              : 'text-zinc-600 hover:text-white/40'
-                          )}
-                        >
-                          Interno
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFormData((prev) => ({ ...prev, projectType: 'Externo' }))}
-                          className={cn(
-                            'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
-                            formData.projectType === 'Externo'
-                              ? 'bg-secondary text-white shadow-lg shadow-secondary/10'
-                              : 'text-zinc-600 hover:text-white/40'
-                          )}
-                        >
-                          Externo
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Assignees - Full Width */}
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                      Responsáveis
-                    </label>
-
-                    <div className="space-y-4">
-                      <div className="flex flex-wrap gap-2">
-                        {allUsers
-                          .filter((u) => formData.assignees.includes(u.uid))
-                          .map((u) => (
-                            <motion.div
-                              key={u.uid}
-                              initial={{ opacity: 0, scale: 0.8 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              className="flex items-center gap-2 bg-secondary/10 border border-secondary/20 p-1 pr-3 rounded-full"
-                            >
-                              <Avatar src={u.photoURL} alt={u.name} size="xs" className="border-none" />
-                              <span className="text-[10px] font-black text-white uppercase tracking-tighter truncate max-w-[120px]">
-                                {u.name.split(' ')[0]} {u.name.split(' ')[1] ? u.name.split(' ')[1][0] + '.' : ''}
-                              </span>
-                              {!isView && (
-                                <button
-                                  type="button"
-                                  onClick={() => toggleAssignee(u.uid)}
-                                  className="w-4 h-4 rounded-full bg-white/5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-all flex items-center justify-center ml-1"
-                                >
-                                  <X className="w-2.5 h-2.5" />
-                                </button>
-                              )}
-                            </motion.div>
-                          ))}
-
-                        {formData.assignees.length === 0 && (
-                          <div className="flex items-center gap-2 text-zinc-600 px-1 py-1">
-                            <div className="w-6 h-6 rounded-full border border-dashed border-white/10 flex items-center justify-center">
-                              <Users className="w-3 h-3 opacity-30" />
-                            </div>
-                            <span className="text-[9px] font-black uppercase tracking-widest italic opacity-40">Ninguém atribuído</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {!isView && (
-                        <div className="space-y-3">
-                          <p className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest ml-1">Adicionar Membros</p>
-                          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1 rounded-xl bg-black/20 border border-white/5">
-                            {allUsers
-                              .filter((u) => !formData.assignees.includes(u.uid))
-                              .map((u) => (
-                                <button
-                                  key={u.uid}
-                                  type="button"
-                                  onClick={() => toggleAssignee(u.uid)}
-                                  className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 transition-all text-left border border-transparent hover:border-white/5"
-                                >
-                                  <Avatar src={u.photoURL} alt={u.name} size="xs" className="opacity-60 grayscale group-hover:grayscale-0 transition-all" />
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="text-[9px] font-black text-zinc-400 truncate">{u.name.split(' ')[0]}</span>
-                                    <span className="text-[7px] font-bold text-zinc-600 uppercase truncate">{u.area || 'Membro'}</span>
-                                  </div>
-                                </button>
-                              ))}
-                            {allUsers.filter((u) => !formData.assignees.includes(u.uid)).length === 0 && (
-                              <p className="col-span-full text-[8px] text-zinc-700 text-center py-2 uppercase font-black">Todos selecionados</p>
+                      <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                        Título da Demanda
+                      </label>
+                      {isView ? (
+                        <div className="p-4 bg-zinc-950/50 rounded-2xl border border-white/[0.05] text-sm font-black text-white">
+                          {formData.title}
+                        </div>
+                      ) : (
+                        <>
+                          <Input
+                            value={formData.title}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                            placeholder="Ex: Otimização de Fluxo de Caixa"
+                            className={cn(
+                              'bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4',
+                              formErrors.title && 'border-red-500/50 focus:border-red-500'
                             )}
-                          </div>
-                        </div>
+                          />
+                          {formErrors.title && (
+                            <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.title}</p>
+                          )}
+                        </>
                       )}
                     </div>
-                  </div>
 
-                  {/* Status & Priority */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
-                    {isView ? (
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Status</label>
+                    {/* Description Section */}
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                        Descrição
+                      </label>
+                      {isView ? (
+                        <div className="p-4 bg-zinc-950/50 rounded-2xl border border-white/[0.05] text-sm font-black text-white leading-relaxed min-h-[100px] whitespace-pre-wrap">
+                          {formData.description || 'Sem descrição.'}
+                        </div>
+                      ) : (
+                        <>
+                          <textarea
+                            rows={4}
+                            value={formData.description}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                            className={cn(
+                              'w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-all resize-none',
+                              formErrors.description && 'border-red-500/50 focus:border-red-500'
+                            )}
+                            placeholder="Descreva os requisitos principais..."
+                          />
+                          {formErrors.description && (
+                            <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.description}</p>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Project Type Selection */}
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                        Tipo de Projeto
+                      </label>
+                      {isView ? (
                         <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.08] text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                          {formData.status.replace('_', ' ')}
-                        </div>
-                      </div>
-                    ) : (
-                      <Select
-                        label="Status"
-                        value={formData.status}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as DemandStatus }))}
-                      >
-                        <option value="backlog">Backlog</option>
-                        <option value="criando_escopo">Criando Escopo</option>
-                        <option value="em_progresso">Em Progresso</option>
-                        <option value="em_revisao">Em Revisão</option>
-                        <option value="concluido">Concluído</option>
-                      </Select>
-                    )}
-
-                    {isView ? (
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Prioridade</label>
-                        <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em]">
-                          <span className={cn(
-                            "px-2 py-0.5 rounded",
-                            formData.priority === 'urgente' ? 'text-red-400 bg-red-400/10' :
-                              formData.priority === 'alta' ? 'text-orange-400 bg-orange-400/10' :
-                                formData.priority === 'media' ? 'text-yellow-400 bg-yellow-400/10' :
-                                  'text-zinc-400 bg-zinc-400/10'
-                          )}>
-                            {formData.priority}
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <Select
-                        label="Prioridade"
-                        value={formData.priority}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, priority: e.target.value as Priority }))}
-                      >
-                        <option value="baixa">Baixa</option>
-                        <option value="media">Média</option>
-                        <option value="alta">Alta</option>
-                        <option value="urgente">Urgente</option>
-                      </Select>
-                    )}
-                  </div>
-
-                  {/* Sprint & Hours */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
-                    {isView ? (
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Ciclo de Sprint</label>
-                        <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                          {sprints.find(s => s.id === formData.sprintId)?.title || 'Sem sprint'}
-                        </div>
-                      </div>
-                    ) : (
-                      <Select
-                        label="Sprint"
-                        value={formData.sprintId}
-                        onChange={(e) => handleSprintChange(e.target.value)}
-                      >
-                        <option value="">Sem Sprint (Backlog)</option>
-                        {sprints.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.number} • {s.title}
-                          </option>
-                        ))}
-                      </Select>
-                    )}
-
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Horas Estimadas</label>
-                      {isView ? (
-                        <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-sm font-black text-white">
-                          {formData.estimatedHours} <span className="text-[10px] text-zinc-600 ml-2 uppercase">Horas</span>
+                          {formData.projectType === 'Externo' ? 'Serviços Empresa' : 'Projetos Internos'}
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <div className="relative flex-1">
-                            <Input
-                              type="number"
-                              min={0}
-                              value={formData.estimatedHours || ''}
-                              placeholder="0"
-                              onChange={(e) => setFormData((prev) => ({
-                                ...prev,
-                                estimatedHours: e.target.value === '' ? 0 : Number(e.target.value)
-                              }))}
-                              className={cn(
-                                'bg-zinc-950 border-white/[0.03] h-12 text-sm font-bold pr-12',
-                                formErrors.estimatedHours && 'border-red-500/50'
-                              )}
-                            />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-600 uppercase pointer-events-none">hrs</span>
-                          </div>
-
-                          <div className="flex flex-col gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setFormData(prev => ({ ...prev, estimatedHours: (prev.estimatedHours || 0) + 1 }))}
-                              className="w-8 h-[22px] flex items-center justify-center bg-zinc-900 border border-white/5 rounded-md hover:bg-zinc-800 hover:text-secondary transition-all active:scale-95"
-                            >
-                              <ChevronUp className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setFormData(prev => ({ ...prev, estimatedHours: Math.max(0, (prev.estimatedHours || 0) - 1) }))}
-                              className="w-8 h-[22px] flex items-center justify-center bg-zinc-900 border border-white/5 rounded-md hover:bg-zinc-800 hover:text-red-400 transition-all active:scale-95"
-                            >
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {formErrors.estimatedHours && (
-                        <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.estimatedHours}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Dates */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Início</label>
-                      {isView ? (
-                        <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                          {formData.startDate || '—'}
-                        </div>
-                      ) : (
-                        <DatePicker
-                          value={formData.startDate}
-                          onChange={(date) => setFormData((prev) => ({ ...prev, startDate: date }))}
-                          error={!!formErrors.startDate}
-                        />
-                      )}
-                    </div>
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Fim (Deadline)</label>
-                      {isView ? (
-                        <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                          {formData.deadline || '—'}
-                        </div>
-                      ) : (
-                        <DatePicker
-                          value={formData.deadline}
-                          onChange={(date) => setFormData((prev) => ({ ...prev, deadline: date }))}
-                          error={!!formErrors.deadline}
-                        />
-                      )}
-                      {!isView && formErrors.deadline && (
-                        <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.deadline}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Ação */}
-                  <div className="pt-6 flex flex-col gap-4">
-                    {isView ? (
-                      <div className="flex items-center justify-center p-4 bg-zinc-950/50 rounded-2xl border border-dashed border-white/5">
-                        <Clock className="w-4 h-4 text-zinc-700 mr-3" />
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.2em]">Visualizando apenas leitura</p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-4">
-                        {isCreate || currentUser?.role === 'diretor' ? (
-                          <Button
-                            type="submit"
-                            variant="primary"
-                            className="w-full h-14 rounded-2xl text-white font-black text-sm gap-3 transition-all active:scale-[0.98] shadow-lg shadow-secondary/20"
-                            loading={loading}
+                        <div className="flex p-1 bg-zinc-950 border border-white/[0.08] rounded-xl h-12">
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, projectType: 'Interno' }))}
+                            className={cn(
+                              'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
+                              formData.projectType === 'Interno'
+                                ? 'bg-white text-black shadow-lg shadow-white/10'
+                                : 'text-zinc-600 hover:text-white/40'
+                            )}
                           >
-                            {isCreate ? 'Criar Demanda' : 'Salvar Alterações'}
-                            <ArrowRight className="w-5 h-5" />
-                          </Button>
-                        ) : null}
+                            Interno
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, projectType: 'Externo' }))}
+                            className={cn(
+                              'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
+                              formData.projectType === 'Externo'
+                                ? 'bg-secondary text-white shadow-lg shadow-secondary/10'
+                                : 'text-zinc-600 hover:text-white/40'
+                            )}
+                          >
+                            Externo
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
-                        {!isCreate && currentUser?.role === 'diretor' && (
-                          <div className="flex flex-col gap-2">
-                            <AnimatePresence mode="wait">
-                              {showDeleteConfirm ? (
-                                <motion.div 
-                                  key="confirm"
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: -10 }}
-                                  className="flex items-center gap-2"
-                                >
-                                  <Button
+                    {/* Assignees - Full Width */}
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                        Responsáveis
+                      </label>
+
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap gap-2">
+                          {allUsers
+                            .filter((u) => formData.assignees.includes(u.uid))
+                            .map((u) => (
+                              <motion.div
+                                key={u.uid}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="flex items-center gap-2 bg-secondary/10 border border-secondary/20 p-1 pr-3 rounded-full"
+                              >
+                                <Avatar src={u.photoURL} alt={u.name} size="xs" className="border-none" />
+                                <span className="text-[10px] font-black text-white uppercase tracking-tighter truncate max-w-[120px]">
+                                  {u.name.split(' ')[0]} {u.name.split(' ')[1] ? u.name.split(' ')[1][0] + '.' : ''}
+                                </span>
+                                {!isView && (
+                                  <button
                                     type="button"
-                                    onClick={handleDelete}
-                                    className="flex-1 h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest gap-2"
-                                    loading={loading}
+                                    onClick={() => toggleAssignee(u.uid)}
+                                    className="w-4 h-4 rounded-full bg-white/5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-all flex items-center justify-center ml-1"
                                   >
-                                    Confirmar Exclusão
-                                  </Button>
-                                  <Button
+                                    <X className="w-2.5 h-2.5" />
+                                  </button>
+                                )}
+                              </motion.div>
+                            ))}
+
+                          {formData.assignees.length === 0 && (
+                            <div className="flex items-center gap-2 text-zinc-600 px-1 py-1">
+                              <div className="w-6 h-6 rounded-full border border-dashed border-white/10 flex items-center justify-center">
+                                <Users className="w-3 h-3 opacity-30" />
+                              </div>
+                              <span className="text-[9px] font-black uppercase tracking-widest italic opacity-40">Ninguém atribuído</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {!isView && (
+                          <div className="space-y-3">
+                            <p className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest ml-1">Adicionar Membros</p>
+                            <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1 rounded-xl bg-black/20 border border-white/5">
+                              {allUsers
+                                .filter((u) => !formData.assignees.includes(u.uid))
+                                .map((u) => (
+                                  <button
+                                    key={u.uid}
                                     type="button"
-                                    onClick={() => setShowDeleteConfirm(false)}
-                                    variant="ghost"
-                                    className="flex-1 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                                    onClick={() => toggleAssignee(u.uid)}
+                                    className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 transition-all text-left border border-transparent hover:border-white/5"
                                   >
-                                    Cancelar
-                                  </Button>
-                                </motion.div>
-                              ) : (
-                                <motion.div key="delete">
-                                  <Button
-                                    type="button"
-                                    onClick={() => setShowDeleteConfirm(true)}
-                                    variant="ghost"
-                                    className="w-full h-12 rounded-xl border-red-500/10 hover:bg-red-500/10 hover:text-red-400 group text-[10px] font-black uppercase tracking-widest gap-2 transition-all"
-                                  >
-                                    <Trash2 className="w-4 h-4 text-red-500 opacity-50 group-hover:opacity-100" />
-                                    Excluir Demanda
-                                  </Button>
-                                </motion.div>
+                                    <Avatar src={u.photoURL} alt={u.name} size="xs" className="opacity-60 grayscale group-hover:grayscale-0 transition-all" />
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="text-[9px] font-black text-zinc-400 truncate">{u.name.split(' ')[0]}</span>
+                                      <span className="text-[7px] font-bold text-zinc-600 uppercase truncate">{u.area || 'Membro'}</span>
+                                    </div>
+                                  </button>
+                                ))}
+                              {allUsers.filter((u) => !formData.assignees.includes(u.uid)).length === 0 && (
+                                <p className="col-span-full text-[8px] text-zinc-700 text-center py-2 uppercase font-black">Todos selecionados</p>
                               )}
-                            </AnimatePresence>
+                            </div>
                           </div>
                         )}
                       </div>
-                    )}
+                    </div>
 
-                    <p className="text-[9px] text-center text-zinc-600 uppercase tracking-[0.3em] font-black leading-relaxed mt-2">
-                      Sistema de Gestão Energy Júnior — 2026
-                    </p>
-                  </div>
-                </motion.div>
+                    {/* Status & Priority */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                      {isView ? (
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Status</label>
+                          <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.08] text-[10px] font-black uppercase tracking-[0.2em] text-white">
+                            {formData.status.replace('_', ' ')}
+                          </div>
+                        </div>
+                      ) : (
+                        <Select
+                          label="Status"
+                          value={formData.status}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as DemandStatus }))}
+                        >
+                          <option value="backlog">Backlog</option>
+                          <option value="criando_escopo">Criando Escopo</option>
+                          <option value="em_progresso">Em Progresso</option>
+                          <option value="em_revisao">Em Revisão</option>
+                          <option value="concluido">Concluído</option>
+                        </Select>
+                      )}
+
+                      {isView ? (
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Prioridade</label>
+                          <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em]">
+                            <span className={cn(
+                              "px-2 py-0.5 rounded",
+                              formData.priority === 'urgente' ? 'text-red-400 bg-red-400/10' :
+                                formData.priority === 'alta' ? 'text-orange-400 bg-orange-400/10' :
+                                  formData.priority === 'media' ? 'text-yellow-400 bg-yellow-400/10' :
+                                    'text-zinc-400 bg-zinc-400/10'
+                            )}>
+                              {formData.priority}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <Select
+                          label="Prioridade"
+                          value={formData.priority}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, priority: e.target.value as Priority }))}
+                        >
+                          <option value="baixa">Baixa</option>
+                          <option value="media">Média</option>
+                          <option value="alta">Alta</option>
+                          <option value="urgente">Urgente</option>
+                        </Select>
+                      )}
+                    </div>
+
+                    {/* Sprint & Hours */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                      {isView ? (
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Ciclo de Sprint</label>
+                          <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-white">
+                            {sprints.find(s => s.id === formData.sprintId)?.title || 'Sem sprint'}
+                          </div>
+                        </div>
+                      ) : (
+                        <Select
+                          label="Sprint"
+                          value={formData.sprintId}
+                          onChange={(e) => handleSprintChange(e.target.value)}
+                        >
+                          <option value="">Sem Sprint (Backlog)</option>
+                          {sprints.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.number} • {s.title}
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Horas Estimadas</label>
+                        {isView ? (
+                          <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-sm font-black text-white">
+                            {formData.estimatedHours} <span className="text-[10px] text-zinc-600 ml-2 uppercase">Horas</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={formData.estimatedHours || ''}
+                                placeholder="0"
+                                onChange={(e) => setFormData((prev) => ({
+                                  ...prev,
+                                  estimatedHours: e.target.value === '' ? 0 : Number(e.target.value)
+                                }))}
+                                className={cn(
+                                  'bg-zinc-950 border-white/[0.03] h-12 text-sm font-bold pr-12',
+                                  formErrors.estimatedHours && 'border-red-500/50'
+                                )}
+                              />
+                              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-600 uppercase pointer-events-none">hrs</span>
+                            </div>
+
+                            <div className="flex flex-col gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, estimatedHours: (prev.estimatedHours || 0) + 1 }))}
+                                className="w-8 h-[22px] flex items-center justify-center bg-zinc-900 border border-white/5 rounded-md hover:bg-zinc-800 hover:text-secondary transition-all active:scale-95"
+                              >
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, estimatedHours: Math.max(0, (prev.estimatedHours || 0) - 1) }))}
+                                className="w-8 h-[22px] flex items-center justify-center bg-zinc-900 border border-white/5 rounded-md hover:bg-zinc-800 hover:text-red-400 transition-all active:scale-95"
+                              >
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {formErrors.estimatedHours && (
+                          <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.estimatedHours}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Dates */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Início</label>
+                        {isView ? (
+                          <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-white">
+                            {formData.startDate || '—'}
+                          </div>
+                        ) : (
+                          <DatePicker
+                            value={formData.startDate}
+                            onChange={(date) => setFormData((prev) => ({ ...prev, startDate: date }))}
+                            error={!!formErrors.startDate}
+                          />
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Fim (Deadline)</label>
+                        {isView ? (
+                          <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-white">
+                            {formData.deadline || '—'}
+                          </div>
+                        ) : (
+                          <DatePicker
+                            value={formData.deadline}
+                            onChange={(date) => setFormData((prev) => ({ ...prev, deadline: date }))}
+                            error={!!formErrors.deadline}
+                          />
+                        )}
+                        {!isView && formErrors.deadline && (
+                          <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.deadline}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Ação */}
+                    <div className="pt-6 flex flex-col gap-4">
+                      {isView ? (
+                        <div className="flex items-center justify-center p-4 bg-zinc-950/50 rounded-2xl border border-dashed border-white/5">
+                          <Clock className="w-4 h-4 text-zinc-700 mr-3" />
+                          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.2em]">Visualizando apenas leitura</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-4">
+                          {isCreate || currentUser?.role === 'diretor' ? (
+                            <Button
+                              type="submit"
+                              variant="primary"
+                              className="w-full h-14 rounded-2xl text-white font-black text-sm gap-3 transition-all active:scale-[0.98] shadow-lg shadow-secondary/20"
+                              loading={loading}
+                            >
+                              {isCreate ? 'Criar Demanda' : 'Salvar Alterações'}
+                              <ArrowRight className="w-5 h-5" />
+                            </Button>
+                          ) : null}
+
+                          {!isCreate && currentUser?.role === 'diretor' && (
+                            <div className="flex flex-col gap-2">
+                              <AnimatePresence mode="wait">
+                                {showDeleteConfirm ? (
+                                  <motion.div
+                                    key="confirm"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <Button
+                                      type="button"
+                                      onClick={handleDelete}
+                                      className="flex-1 h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest gap-2"
+                                      loading={loading}
+                                    >
+                                      Confirmar Exclusão
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      onClick={() => setShowDeleteConfirm(false)}
+                                      variant="ghost"
+                                      className="flex-1 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  </motion.div>
+                                ) : (
+                                  <motion.div key="delete">
+                                    <Button
+                                      type="button"
+                                      onClick={() => setShowDeleteConfirm(true)}
+                                      variant="ghost"
+                                      className="w-full h-12 rounded-xl border-red-500/10 hover:bg-red-500/10 hover:text-red-400 group text-[10px] font-black uppercase tracking-widest gap-2 transition-all"
+                                    >
+                                      <Trash2 className="w-4 h-4 text-red-500 opacity-50 group-hover:opacity-100" />
+                                      Excluir Demanda
+                                    </Button>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <p className="text-[9px] text-center text-zinc-600 uppercase tracking-[0.3em] font-black leading-relaxed mt-2">
+                        Sistema de Gestão Energy Júnior — 2026
+                      </p>
+                    </div>
+                  </motion.div>
                 )}
               </AnimatePresence>
             </form>
