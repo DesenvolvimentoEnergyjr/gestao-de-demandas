@@ -82,10 +82,13 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
   }
 
 
-  const isOverdue = demand.deadline && new Date(demand.deadline) < new Date();
+  const isOverdue = demand.deadline && 
+    new Date(demand.deadline) < new Date() && 
+    demand.status !== 'em_revisao' && 
+    demand.status !== 'concluido';
   
   const daysSinceUpdate = differenceInDays(new Date(), new Date(demand.updatedAt));
-  const isStagnant = (demand.status === 'em_progresso' || demand.status === 'em_revisao') && daysSinceUpdate >= 5;
+  const isStagnant = demand.status === 'em_progresso' && daysSinceUpdate >= 5;
 
   // Color bar logic
   const priorityColor = priorityColorMap[demand.priority.toLowerCase()] ?? 'bg-zinc-700';
