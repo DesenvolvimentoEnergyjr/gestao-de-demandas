@@ -30,7 +30,7 @@ const initialFormData = (): FormData => ({
 
 export const NovaSprintModal = () => {
   const { novaSprintOpen, closeNovaSprint } = useUIStore();
-  const { sprints, addSprint } = useSprintStore();
+  const { sprints } = useSprintStore();
   const { user: currentUser } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
@@ -80,14 +80,7 @@ export const NovaSprintModal = () => {
         createdBy: currentUser?.uid ?? 'unknown',
       };
 
-      const sprintId = await createSprint(sprintData);
-
-      addSprint({
-        id: sprintId,
-        ...sprintData,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      await createSprint(sprintData);
 
       toast.success('Sprint criada com sucesso!');
       closeNovaSprint();

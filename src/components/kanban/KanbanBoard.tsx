@@ -31,7 +31,17 @@ const COLUMNS: { id: DemandStatus; title: string; color: string }[] = [
   { id: 'concluido', title: 'Concluído', color: '#0baf4d' },
 ];
 
-export const KanbanBoard = ({ users = [] }: { users?: User[] }) => {
+export const KanbanBoard = ({ 
+  users = [], 
+  activeFilter = 'todas', 
+  selectedSprintId = 'all',
+  highlightedId = null
+}: { 
+  users?: User[]; 
+  activeFilter?: string;
+  selectedSprintId?: string;
+  highlightedId?: string | null;
+}) => {
   const { demands, updateDemand: updateStoreDemand, searchQuery } = useDemandStore();
   const { user: currentUser } = useAuthStore();
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -39,12 +49,26 @@ export const KanbanBoard = ({ users = [] }: { users?: User[] }) => {
   const filteredDemands = useMemo(
     () =>
       demands.filter(
-        (d) =>
-          (d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          d.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))) &&
-          isDemandVisibleToUser(d, currentUser, users)
+        (d) => {
+          const matchesSearch = (d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          d.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
+          
+          if (!matchesSearch) return false;
+
+          if (!isDemandVisibleToUser(d, currentUser, users)) return false;
+
+          if (activeFilter === 'minhas' && currentUser) {
+            if (!d.assignees.includes(currentUser.uid)) return false;
+          }
+
+          if (selectedSprintId !== 'all') {
+            if (d.sprintId !== selectedSprintId) return false;
+          }
+
+          return true;
+        }
       ),
-    [demands, searchQuery, currentUser, users]
+    [demands, searchQuery, currentUser, users, activeFilter, selectedSprintId]
   );
 
   const sensors = useSensors(
@@ -112,6 +136,7 @@ export const KanbanBoard = ({ users = [] }: { users?: User[] }) => {
             color={column.color}
             demands={filteredDemands.filter((d) => d.status === column.id)}
             users={users}
+            highlightedId={highlightedId}
           />
         ))}
 

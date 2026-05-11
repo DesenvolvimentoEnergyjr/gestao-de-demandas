@@ -15,6 +15,7 @@ interface KanbanCardProps {
   demand: Demand;
   users?: User[];
   isOverlay?: boolean;
+  isHighlighted?: boolean;
 }
 
 const tagColorMap: Record<string, string> = {
@@ -47,8 +48,9 @@ function getTagColor(tag: string): string {
   return tagColorMap[tag.toLowerCase()] ?? 'text-zinc-400 bg-zinc-400/10';
 }
 
-export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOverlay }) => {
+export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOverlay, isHighlighted }) => {
   const { openDemanda } = useUIStore();
+  const cardRef = React.useRef<HTMLDivElement | null>(null);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: demand.id });
 
@@ -56,6 +58,12 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
     transform: CSS.Translate.toString(transform),
     transition,
   };
+
+  React.useEffect(() => {
+    if (isHighlighted && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    }
+  }, [isHighlighted]);
 
   const handleCardClick = () => {
     // Evitar abrir se estiver arrastando
@@ -94,17 +102,41 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
     <motion.div
       initial={false}
       whileHover={{ y: -4, scale: 1.01 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      ref={setNodeRef}
+      animate={isHighlighted ? {
+        boxShadow: [
+          '0 0 12px 0px rgba(11, 175, 77, 0.2)',
+          '0 0 20px 2px rgba(11, 175, 77, 0.5)',
+          '0 0 12px 0px rgba(11, 175, 77, 0.2)'
+        ],
+        borderColor: [
+          'rgba(11, 175, 77, 0.4)',
+          'rgba(11, 175, 77, 1)',
+          'rgba(11, 175, 77, 0.4)'
+        ]
+      } : {
+        boxShadow: '0 0 0px 0px rgba(11, 175, 77, 0)',
+        borderColor: 'rgba(255, 255, 255, 0.05)'
+      }}
+      transition={isHighlighted ? {
+        duration: 2,
+        repeat: Infinity,
+        ease: "easeInOut"
+      } : { duration: 0.3, ease: 'easeOut' }}
+      ref={(node) => {
+        setNodeRef(node);
+        cardRef.current = node;
+      }}
       style={style}
       {...attributes}
       {...listeners}
       onClick={handleCardClick}
       className={cn(
-        'group cursor-grab active:cursor-grabbing relative touch-none',
-        isStagnant ? 'border border-red-500/30 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]' : 'border-gradient border-gradient-hover',
+        'group cursor-grab active:cursor-grabbing relative touch-none border-2',
+        isHighlighted 
+          ? 'border-secondary/50' 
+          : (isStagnant ? 'border-red-500/30 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]' : 'border-white/5 hover:border-secondary/30'),
         'rounded-[24px] md:rounded-3xl p-4 md:p-5 flex flex-col gap-3 md:gap-4',
-        'bg-gradient-to-br from-bg-surface to-bg-surface group-hover:from-bg-surface group-hover:to-secondary/5',
+        isHighlighted ? 'bg-secondary/5' : 'bg-gradient-to-br from-bg-surface to-bg-surface group-hover:from-bg-surface group-hover:to-secondary/5',
         isOverlay && 'shadow-2xl scale-[1.02] z-50'
       )}
     >

@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, Target, TrendingUp, Layers, CheckCircle2, Clock, Pencil, Trash2, Save, RotateCcw } from 'lucide-react';
+import { X, Calendar, Target, TrendingUp, Layers, CheckCircle2, Clock, Pencil, Trash2, Save, RotateCcw, FileText } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/store/useUIStore';
 import { useSprintStore } from '@/store/useSprintStore';
 import { useDemandStore } from '@/store/useDemandStore';
 import { formatDate, cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { getUsers, updateSprint, deleteSprint } from '@/lib/firestore';
+import { exportSprintToPDF } from '@/lib/export';
 import { useAuthStore } from '@/store/useAuthStore';
 import { User, Sprint } from '@/types';
 import { differenceInWeeks, addDays, format } from 'date-fns';
@@ -64,9 +66,10 @@ const itemVariants: Variants = {
 
 export const SprintDetalhesModal = () => {
   const { sprintDetalhesOpen, closeSprintDetalhes, selectedSprintId } = useUIStore();
-  const { sprints, updateSprint: updateStoreSprint, removeSprint } = useSprintStore();
+  const { sprints } = useSprintStore();
   const { demands } = useDemandStore();
   const { user: currentUser } = useAuthStore();
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -75,7 +78,21 @@ export const SprintDetalhesModal = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Sprint>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const handleExport = async () => {
+    if (!sprint) return;
+    setIsExporting(true);
+    try {
+      await exportSprintToPDF(sprint, sprintDemands, users);
+      toast.success('PDF gerado com sucesso!');
+    } catch {
+      toast.error('Erro ao gerar PDF.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -203,7 +220,6 @@ export const SprintDetalhesModal = () => {
     setLoading(true);
     try {
       await updateSprint(selectedSprintId, editFormData);
-      updateStoreSprint(selectedSprintId, editFormData);
       toast.success('Sprint atualizada com sucesso!');
       setIsEditMode(false);
     } catch (error) {
@@ -220,7 +236,6 @@ export const SprintDetalhesModal = () => {
     setLoading(true);
     try {
       await deleteSprint(selectedSprintId);
-      removeSprint(selectedSprintId);
       toast.success('Sprint excluída com sucesso!');
       closeSprintDetalhes();
     } catch (error) {
@@ -249,6 +264,7 @@ export const SprintDetalhesModal = () => {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="relative w-full max-w-4xl bg-bg-section border border-white/[0.08] rounded-[2rem] md:rounded-[40px] shadow-[0_0_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[90vh]"
+            id="sprint-modal-content"
           >
             {/* Decorative glow */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[300px] bg-gradient-to-b from-secondary/5 to-transparent pointer-events-none" />
@@ -309,16 +325,24 @@ export const SprintDetalhesModal = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3" data-html2canvas-ignore>
                     {!isEditMode && currentUser?.role === 'diretor' && (
                       <>
-                        <button
-                          onClick={handleStartEdit}
-                          className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-90"
-                          title="Editar Ciclo"
-                        >
-                          <Pencil className="w-5 h-5" />
-                        </button>
+                          <button
+                            onClick={handleStartEdit}
+                            className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-90"
+                            title="Editar Ciclo"
+                          >
+                            <Pencil className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-secondary hover:bg-secondary/10 transition-all active:scale-90 disabled:opacity-50"
+                            title="Exportar como PDF (Captura de Tela)"
+                          >
+                            {isExporting ? <div className="w-5 h-5 border-2 border-secondary/20 border-t-secondary rounded-full animate-spin" /> : <FileText className="w-5 h-5" />}
+                          </button>
                         {showDeleteConfirm ? (
                           <div className="flex items-center gap-2 animate-in slide-in-from-right-2">
                             <button
@@ -729,7 +753,11 @@ export const SprintDetalhesModal = () => {
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true }}
                             transition={{ delay: 0.1 }}
-                            className="group bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 hover:border-white/10 rounded-2xl p-5 flex items-center justify-between transition-all"
+                            onClick={() => {
+                              closeSprintDetalhes();
+                              router.push(`/kanban?demandId=${demand.id}`);
+                            }}
+                            className="group bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 hover:border-white/10 rounded-2xl p-5 flex items-center justify-between transition-all cursor-pointer"
                           >
                             <div className="flex items-center gap-4 min-w-0">
                               <div

@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Avatar } from '@/components/ui/Avatar';
 import { createDemand, getDemandById, getUsers, updateDemand, deleteDemand } from '@/lib/firestore';
-import { useDemandStore } from '@/store/useDemandStore';
+
 import { User, DemandStatus, Priority } from '@/types';
 import { cn } from '@/lib/utils';
 import { demandaSchema, DemandaFormData } from '@/lib/schemas';
@@ -78,7 +78,7 @@ export const NovaDemandaModal = () => {
   } = useUIStore();
 
   const { sprints } = useSprintStore();
-  const { addDemand, updateDemand: updateStoreDemand, removeDemand } = useDemandStore();
+
   const { user: currentUser } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
@@ -179,7 +179,7 @@ export const NovaDemandaModal = () => {
 
     try {
       if (demandModalMode === 'create') {
-        const demandId = await createDemand({
+        await createDemand({
           title: formData.title,
           description: formData.description ?? '',
           status: formData.status,
@@ -199,10 +199,6 @@ export const NovaDemandaModal = () => {
           createdBy: currentUser.uid,
         });
 
-        const createdDemand = await getDemandById(demandId);
-        if (createdDemand) {
-          addDemand(createdDemand);
-        }
         toast.success('Demanda criada com sucesso!');
       } else if (demandModalMode === 'edit' && selectedDemandId) {
         const updateData = {
@@ -219,12 +215,7 @@ export const NovaDemandaModal = () => {
           ...(formData.createdAt && { createdAt: new Date(formData.createdAt) }),
         };
 
-
         await updateDemand(selectedDemandId, updateData);
-        const updatedDemand = await getDemandById(selectedDemandId);
-        if (updatedDemand) {
-          updateStoreDemand(selectedDemandId, updatedDemand);
-        }
         toast.success('Demanda atualizada com sucesso!');
       }
 
@@ -242,7 +233,6 @@ export const NovaDemandaModal = () => {
     setLoading(true);
     try {
       await deleteDemand(selectedDemandId);
-      removeDemand(selectedDemandId);
       toast.success('Demanda excluída com sucesso!');
       closeNovaDemanda();
     } catch (error) {

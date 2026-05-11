@@ -108,8 +108,39 @@ export default function AssessoresPage() {
 
   const renderUserCard = (user: User) => {
     const userDemands = demands.filter(d => d.assignees.includes(user.uid));
-    const activeDemands = userDemands.filter(d => d.status !== 'concluido').length;
-    const totalEstimated = userDemands.reduce((acc, d) => acc + d.estimatedHours, 0);
+    const activeDemandsList = userDemands.filter(d => d.status !== 'concluido');
+    const completedDemandsList = userDemands.filter(d => d.status === 'concluido');
+    
+    // Agrupar demandas ativas: Sprints contam como 1, demandas avulsas individualmente
+    const activeSprintIds = new Set<string>();
+    let individualActiveDemands = 0;
+    
+    activeDemandsList.forEach(d => {
+      if (d.sprintId) {
+        activeSprintIds.add(d.sprintId);
+      } else {
+        individualActiveDemands++;
+      }
+    });
+
+    const activeDemands = activeSprintIds.size + individualActiveDemands;
+
+    // Agrupar entregas (concluídas): Sprints contam como 1, demandas avulsas individualmente
+    const completedSprintIds = new Set<string>();
+    let individualCompletedDemands = 0;
+
+    completedDemandsList.forEach(d => {
+      if (d.sprintId) {
+        completedSprintIds.add(d.sprintId);
+      } else {
+        individualCompletedDemands++;
+      }
+    });
+
+    const completedItemsCount = completedSprintIds.size + individualCompletedDemands;
+
+    // Horas das demandas ENTREGUES (concluídas)
+    const totalEstimated = completedDemandsList.reduce((acc, d) => acc + d.estimatedHours, 0);
 
     const currentLimit = user.workloadLimit || 3;
     const isOverloaded = activeDemands >= currentLimit;
@@ -187,7 +218,7 @@ export default function AssessoresPage() {
             <div className="bg-zinc-900/40 rounded-2xl p-3 md:p-4 border border-white/[0.03] flex flex-col items-center justify-center group-hover:bg-zinc-900/60 transition-all">
               <Layers className="w-3.5 h-3.5 text-zinc-700 mb-2 group-hover:text-zinc-500 transition-colors" />
               <div className="text-lg md:text-xl font-black text-white leading-none">
-                {userDemands.filter(d => d.status === 'concluido').length}
+                {completedItemsCount}
               </div>
               <div className="text-[8px] uppercase font-black text-zinc-600 mt-2 tracking-widest">Entregas</div>
             </div>

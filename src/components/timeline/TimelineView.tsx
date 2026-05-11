@@ -20,6 +20,7 @@ import {
 import { ptBR } from 'date-fns/locale';
 import { Avatar } from '@/components/ui/Avatar';
 import { useDemandStore } from '@/store/useDemandStore';
+import { useSprintStore } from '@/store/useSprintStore';
 import { ChevronLeft, ChevronRight, Calendar, LayoutGrid } from 'lucide-react';
 import { cn, isDemandVisibleToUser } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -30,6 +31,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface TimelineViewProps {
   demands: Demand[];
   users: User[];
+}
+
+interface TimelineItem {
+  id: string;
+  title: string;
+  startDate: Date;
+  endDate: Date;
+  projectType: 'Interno' | 'Externo';
+  type: 'demand' | 'sprint';
+  sprintId?: string;
+  slotIndex?: number;
+  totalSlots?: number;
+  assignees: string[];
+  estimatedHours?: number;
+  createdAt?: Date;
+  deadline?: Date | null;
 }
 
 type ViewMode = 'dia' | 'semana' | 'ano';
@@ -43,6 +60,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
   const { user: currentUser } = useAuthStore();
   const { openDemanda } = useUIStore();
   const { searchQuery } = useDemandStore();
+  const { sprints } = useSprintStore();
   const [viewMode, setViewMode] = useState<ViewMode>('semana');
   const [density, setDensity] = useState<'standard' | 'compact'>('standard');
   const [zoomLevel, setZoomLevel] = useState(1); // 1 = 100%
@@ -197,64 +215,122 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
         (d) =>
           d.assignees.includes(user.uid) &&
           d.status !== 'concluido' &&
-          d.deadline !== null
+          (d.deadline !== null || d.sprintId !== null)
       );
 
-      const visibleDemands = userDemands.filter((d) => {
-        const dStart = d.startDate ?? d.createdAt;
-        const dEnd = d.deadline ?? addDays(dStart, 7);
-        return dStart <= range.end && dEnd >= range.start;
+      // Agrupar demandas por Sprint e demandas avulsas
+      const items: Omit<TimelineItem, 'slotIndex' | 'totalSlots'>[] = [];
+      const userSprintIds = new Set<string>();
+
+      userDemands.forEach(d => {
+        if (!d.sprintId) {
+          items.push({
+            id: d.id,
+            title: d.title,
+            startDate: d.startDate ?? d.createdAt,
+            endDate: d.deadline ?? addDays(d.startDate ?? d.createdAt, 7),
+            projectType: d.projectType,
+            type: 'demand',
+            assignees: d.assignees,
+            estimatedHours: d.estimatedHours,
+            createdAt: d.createdAt,
+            deadline: d.deadline
+          });
+        } else {
+          userSprintIds.add(d.sprintId);
+        }
+      });
+
+      userSprintIds.forEach(sid => {
+        const sprint = sprints.find(s => s.id === sid);
+        if (sprint) {
+          const userDemandsInSprint = userDemands.filter(d => d.sprintId === sid);
+          
+          // Encontrar o intervalo real das demandas do usuário nesta sprint
+          const dDates = userDemandsInSprint.map(d => {
+            let start = d.startDate;
+            let end = d.deadline;
+
+            if (!start) {
+              // Se não tem data de início, tentamos inferir do prazo ou da criação
+              if (end) {
+                // Se tem prazo, assume que começou até 7 dias antes, mas não antes da sprint
+                const inferredStart = addDays(end, -7);
+                start = inferredStart < sprint.startDate ? sprint.startDate : inferredStart;
+              } else {
+                start = d.createdAt;
+              }
+            }
+
+            if (!end) {
+              end = addDays(start, 7);
+            }
+
+            return { start, end };
+          });
+
+          const minStart = new Date(Math.min(...dDates.map(d => d.start.getTime())));
+          const maxEnd = new Date(Math.max(...dDates.map(d => d.end.getTime())));
+
+          const isExterno = sprint.tags.some((t) =>
+            ['externo', 'solar', 'vendas', 'projeto'].includes(t.toLowerCase())
+          );
+
+          items.push({
+            id: sprint.id,
+            title: `Sprint #${sprint.number}: ${sprint.title}`,
+            startDate: minStart,
+            endDate: maxEnd,
+            projectType: isExterno ? 'Externo' : 'Interno',
+            type: 'sprint',
+            sprintId: sprint.id,
+            assignees: [user.uid]
+          });
+        }
+      });
+
+      const visibleItems = items.filter((item) => {
+        return item.startDate <= range.end && item.endDate >= range.start;
       });
 
       // Lógica de cálculo de slots para sobreposição
-      const sorted = [...visibleDemands].sort((a, b) => {
-        const aStart = a.startDate ?? a.createdAt;
-        const bStart = b.startDate ?? b.createdAt;
-        return aStart.getTime() - bStart.getTime();
+      const sorted = [...visibleItems].sort((a, b) => {
+        return a.startDate.getTime() - b.startDate.getTime();
       });
 
-      const slots: Demand[][] = [];
-      sorted.forEach(demand => {
+      const slots: TimelineItem[][] = [];
+      sorted.forEach(item => {
         let placed = false;
-        const dStart = demand.startDate ?? demand.createdAt;
-
         for (let i = 0; i < slots.length; i++) {
           const lastInSlot = slots[i][slots[i].length - 1];
-          const lastEnd = lastInSlot.deadline ?? addDays(lastInSlot.startDate ?? lastInSlot.createdAt, 7);
-
-          if (dStart > lastEnd) {
-            slots[i].push(demand);
+          if (item.startDate > lastInSlot.endDate) {
+            slots[i].push(item);
             placed = true;
             break;
           }
         }
         if (!placed) {
-          slots.push([demand]);
+          slots.push([item]);
         }
       });
 
-      // Mapear cada demanda para seu slot e o total de slots na linha
-      const demandsWithLayout = visibleDemands.map(d => {
-        const slotIndex = slots.findIndex(slot => slot.some(sd => sd.id === d.id));
+      // Mapear cada item para seu slot e o total de slots na linha
+      const itemsWithLayout = visibleItems.map(item => {
+        const slotIndex = slots.findIndex(slot => slot.some(si => si.id === item.id && si.type === item.type));
         return {
-          ...d,
+          ...item,
           slotIndex,
           totalSlots: slots.length
         };
-      });
+      }) as TimelineItem[];
 
-      return { user, demands: demandsWithLayout };
+      return { user, demands: itemsWithLayout };
     });
-  }, [users, demands, range, searchQuery, currentUser, memberFilter]);
+  }, [users, demands, range, searchQuery, currentUser, memberFilter, sprints]);
 
-  interface TimelineDemand extends Demand {
-    slotIndex: number;
-    totalSlots: number;
-  }
-
-  const getBarProps = (demand: TimelineDemand) => {
-    const dStart = startOfDay(demand.startDate ?? demand.createdAt);
-    const dEnd = endOfDay(demand.deadline ?? addDays(dStart, 7));
+  const getBarProps = (item: TimelineItem) => {
+    const dStart = startOfDay(item.startDate);
+    const dEnd = endOfDay(item.endDate);
 
     const effectiveStart = dStart < range.start ? range.start : dStart;
     const effectiveEnd = dEnd > range.end ? range.end : dEnd;
@@ -265,8 +341,8 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
       ((differenceInDays(effectiveEnd, effectiveStart) + 1) / range.totalDays) * 100;
 
     // Altura e posicionamento vertical baseado nos slots
-    const height = 100 / (demand.totalSlots || 1);
-    const top = (demand.slotIndex || 0) * height;
+    const height = 100 / (item.totalSlots || 1);
+    const top = (item.slotIndex || 0) * height;
 
     return {
       style: {
@@ -274,10 +350,10 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
         width: `${widthPercent}%`,
         top: `${top}%`,
         height: `${height}%`,
-        paddingTop: demand.totalSlots > 1 ? '2px' : '0',
-        paddingBottom: demand.totalSlots > 1 ? '2px' : '0',
+        paddingTop: (item.totalSlots || 0) > 1 ? '2px' : '0',
+        paddingBottom: (item.totalSlots || 0) > 1 ? '2px' : '0',
       },
-      colorClass: PROJECT_COLORS[demand.projectType as keyof typeof PROJECT_COLORS] || PROJECT_COLORS.Interno,
+      colorClass: PROJECT_COLORS[item.projectType as keyof typeof PROJECT_COLORS] || PROJECT_COLORS.Interno,
     };
   };
 
@@ -575,14 +651,12 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                           "relative h-full flex flex-col justify-center",
                           density === 'compact' ? "gap-1" : "gap-3"
                         )}>
-                          {row.demands.map((demand) => {
-                            const { style, colorClass } = getBarProps(demand);
-                            const startDate = demand.startDate ?? demand.createdAt;
-                            const endDate = demand.deadline ?? addDays(startDate, 7);
+                          {row.demands.map((item) => {
+                            const { style, colorClass } = getBarProps(item);
 
                             return (
                               <motion.div
-                                key={demand.id}
+                                key={`${item.type}-${item.id}`}
                                 style={style}
                                 initial={false}
                                 whileHover={{ scale: 1.02 }}
@@ -594,21 +668,32 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                                   colorClass
                                 )}
                                 onClick={() => {
-                                  if (demand.sprintId) {
-                                    useUIStore.getState().openSprintDetalhes(demand.sprintId);
+                                  if (item.type === 'sprint') {
+                                    useUIStore.getState().openSprintDetalhes(item.id);
                                   } else {
-                                    openDemanda(demand.id, 'view');
+                                    openDemanda(item.id, 'view');
                                   }
                                 }}
                               >
-                                <span className="truncate w-full">{demand.title}</span>
+                                <span className="truncate w-full">
+                                  {item.type === 'sprint' && <span className="mr-2 opacity-60">[SPRINT]</span>}
+                                  {item.title}
+                                </span>
 
                                 <div className="absolute top-[120%] left-0 opacity-0 group-hover/bar:opacity-100 transition-all z-50 bg-zinc-900 border border-white/10 p-3 rounded-2xl shadow-2xl pointer-events-none scale-90 group-hover/bar:scale-100 min-w-[200px]">
-                                  <p className="text-xs font-black text-white mb-1">{demand.title}</p>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={cn(
+                                      "text-[8px] font-black px-1.5 py-0.5 rounded-full",
+                                      item.type === 'sprint' ? "bg-secondary text-white" : "bg-white/10 text-zinc-400"
+                                    )}>
+                                      {item.type === 'sprint' ? 'SPRINT' : 'DEMANDA'}
+                                    </span>
+                                    <p className="text-xs font-black text-white truncate">{item.title}</p>
+                                  </div>
                                   <div className="flex items-center gap-2 text-[8px] font-bold text-zinc-500 uppercase tracking-widest">
                                     <Calendar className="w-3 h-3" />
-                                    {format(startDate, 'dd MMM', { locale: ptBR })} —{' '}
-                                    {format(endDate, 'dd MMM', { locale: ptBR })}
+                                    {format(item.startDate, 'dd MMM', { locale: ptBR })} —{' '}
+                                    {format(item.endDate, 'dd MMM', { locale: ptBR })}
                                   </div>
                                 </div>
                               </motion.div>
