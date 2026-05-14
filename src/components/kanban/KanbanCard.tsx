@@ -82,10 +82,13 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
   }
 
 
+  const statusLower = String(demand.status).toLowerCase();
+  const isFinalStatus = statusLower.includes('revisao') || statusLower.includes('concluido');
+  
+  // Para demandas em revisão ou concluídas, não mostramos como atrasado (o relógio para)
   const isOverdue = demand.deadline && 
-    new Date(demand.deadline) < new Date() && 
-    demand.status !== 'em_revisao' && 
-    demand.status !== 'concluido';
+    !isFinalStatus && 
+    new Date(demand.deadline) < new Date();
   
   const daysSinceUpdate = differenceInDays(new Date(), new Date(demand.updatedAt));
   const isStagnant = demand.status === 'em_progresso' && daysSinceUpdate >= 5;
