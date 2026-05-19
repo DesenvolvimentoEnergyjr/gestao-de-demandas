@@ -21,6 +21,7 @@ interface UIState {
   setDemandModalMode: (mode: 'create' | 'view' | 'edit') => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
+  closeAllModals: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -33,8 +34,8 @@ export const useUIStore = create<UIState>((set) => ({
   sidebarOpen: false,
   selectedDemandId: null,
   demandModalMode: 'create',
-  openNovaDemanda: (status) => set({ 
-    novaDemandaOpen: true, 
+  openNovaDemanda: (status) => set({
+    novaDemandaOpen: true,
     novaDemandaInitialStatus: status || 'backlog',
     demandModalMode: 'create',
     selectedDemandId: null
@@ -44,12 +45,19 @@ export const useUIStore = create<UIState>((set) => ({
   closeNovaSprint: () => set({ novaSprintOpen: false }),
   openSprintDetalhes: (id) => set({ sprintDetalhesOpen: true, selectedSprintId: id }),
   closeSprintDetalhes: () => set({ sprintDetalhesOpen: false, selectedSprintId: null }),
-  openDemanda: (id, mode) => set({ 
-    novaDemandaOpen: true, 
-    selectedDemandId: id, 
-    demandModalMode: mode || 'view' 
+  openDemanda: (id, mode) => set({
+    novaDemandaOpen: true,
+    selectedDemandId: id,
+    demandModalMode: mode || 'view'
   }),
   setDemandModalMode: (mode) => set({ demandModalMode: mode }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
+  closeAllModals: () => set({
+    novaDemandaOpen: false,
+    novaSprintOpen: false,
+    sprintDetalhesOpen: false,
+    selectedDemandId: null,
+    selectedSprintId: null
+  }),
 }));

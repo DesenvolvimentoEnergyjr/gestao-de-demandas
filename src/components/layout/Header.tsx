@@ -38,7 +38,6 @@ export const Header = () => {
   const router = useRouter();
   const searchRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdowns on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
@@ -55,16 +54,15 @@ export const Header = () => {
 
   useEffect(() => {
     getUsers().then(setUsers).catch(console.error);
-    // Garantir que temos as sprints e demandas para a pesquisa global
     if (sprints.length === 0) getSprints().then(setSprints).catch(console.error);
     if (demands.length === 0) getDemands().then(setDemands).catch(console.error);
   }, [sprints.length, setSprints, demands.length, setDemands]);
 
   useEffect(() => {
     if (!user || demands.length === 0) return;
-    
+
     if (sessionStorage.getItem('notified_overdue_demands')) return;
-    
+
     const myDemands = demands.filter(d => d.assignees.includes(user.uid) && d.status !== 'concluido' && d.deadline);
     if (myDemands.length === 0) return;
 
@@ -86,7 +84,7 @@ export const Header = () => {
       setTimeout(() => toast.error(`Atenção: Você tem ${overdue.length} demanda(s) em atraso!`), 1000);
       hasNotified = true;
     }
-    
+
     if (expiringToday.length > 0) {
       setTimeout(() => toast.warning(`Aviso: Você tem ${expiringToday.length} demanda(s) vencendo hoje!`), 1500);
       hasNotified = true;
@@ -119,8 +117,8 @@ export const Header = () => {
     });
 
     // Sprints
-    sprints.filter(s => 
-      (s.title || '').toLowerCase().includes(term) || 
+    sprints.filter(s =>
+      (s.title || '').toLowerCase().includes(term) ||
       (s.objective || '').toLowerCase().includes(term) ||
       `sprint ${s.number}`.includes(term) ||
       `#${s.number}`.includes(term) ||
@@ -234,6 +232,7 @@ export const Header = () => {
         <div className="relative group w-40 md:w-52 lg:w-64" ref={searchRef}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600 group-focus-within:text-secondary transition-colors" />
           <input
+            id="global-search"
             type="text"
             placeholder="Buscar..."
             value={localSearch}

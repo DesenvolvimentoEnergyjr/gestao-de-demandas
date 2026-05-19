@@ -1,5 +1,16 @@
 import { z } from 'zod';
 
+// ─── Anexos ──────────────────────────────────────────────────────────────────
+
+export const attachmentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  url: z.string(),
+  mimeType: z.string(),
+  addedBy: z.string(),
+  addedAt: z.union([z.string(), z.date()]),
+});
+
 // ─── Demanda ────────────────────────────────────────────────────────────────
 
 export const demandaSchema = z
@@ -35,6 +46,8 @@ export const demandaSchema = z
       .max(999, 'Valor de horas muito alto.'),
 
     createdAt: z.string().optional(),
+
+    attachments: z.array(attachmentSchema).optional().default([]),
   })
   .refine(
     (data) => {
@@ -95,6 +108,10 @@ export const sprintSchema = z
       .max(10000, 'Valor de pontos muito alto.'),
 
     type: z.enum(['Interno', 'Externo'] as const).optional().default('Interno'),
+
+    attachments: z.array(attachmentSchema).optional().default([]),
+
+    notifiedUsers: z.array(z.string()).optional().default([]),
   })
   .refine(
     (data) => {
@@ -131,6 +148,7 @@ export const sprintUpdateSchema = z.object({
   endDate: z.union([z.string(), z.date()]).optional(),
   totalPoints: z.number().min(1).max(10000).optional(),
   type: z.enum(['Interno', 'Externo'] as const).optional(),
+  attachments: z.array(attachmentSchema).optional(),
 }).refine(
   (data) => {
     if (data.startDate && data.endDate) {
@@ -143,20 +161,20 @@ export const sprintUpdateSchema = z.object({
     path: ['endDate'],
   }
 )
-.refine(
-  (data) => {
-    if (!data.startDate) return true;
-    return new Date(data.startDate).getFullYear() <= new Date().getFullYear();
-  },
-  { message: 'A data de início não pode ser para o ano que vem.', path: ['startDate'] }
-)
-.refine(
-  (data) => {
-    if (!data.endDate) return true;
-    return new Date(data.endDate).getFullYear() <= new Date().getFullYear();
-  },
-  { message: 'A data de término não pode ser para o ano que vem.', path: ['endDate'] }
-);
+  .refine(
+    (data) => {
+      if (!data.startDate) return true;
+      return new Date(data.startDate).getFullYear() <= new Date().getFullYear();
+    },
+    { message: 'A data de início não pode ser para o ano que vem.', path: ['startDate'] }
+  )
+  .refine(
+    (data) => {
+      if (!data.endDate) return true;
+      return new Date(data.endDate).getFullYear() <= new Date().getFullYear();
+    },
+    { message: 'A data de término não pode ser para o ano que vem.', path: ['endDate'] }
+  );
 
 export type SprintFormData = z.infer<typeof sprintSchema>;
 export type SprintUpdateData = z.infer<typeof sprintUpdateSchema>;

@@ -31,13 +31,13 @@ const COLUMNS: { id: DemandStatus; title: string; color: string }[] = [
   { id: 'concluido', title: 'Concluído', color: '#0baf4d' },
 ];
 
-export const KanbanBoard = ({ 
-  users = [], 
-  activeFilter = 'todas', 
+export const KanbanBoard = ({
+  users = [],
+  activeFilter = 'todas',
   selectedSprintId = 'all',
   highlightedId = null
-}: { 
-  users?: User[]; 
+}: {
+  users?: User[];
   activeFilter?: string;
   selectedSprintId?: string;
   highlightedId?: string | null;
@@ -51,8 +51,8 @@ export const KanbanBoard = ({
       demands.filter(
         (d) => {
           const matchesSearch = (d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          d.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
-          
+            d.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
+
           if (!matchesSearch) return false;
 
           if (!isDemandVisibleToUser(d, currentUser, users)) return false;
@@ -120,15 +120,68 @@ export const KanbanBoard = ({
 
   const activeDemand = activeId ? demands.find((d) => d.id === activeId) : null;
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (activeId) return;
+
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+
+    if (target.hasAttribute('data-kanban-card')) {
+      const colIndex = parseInt(target.getAttribute('data-col-index') || '0', 10);
+      const cardIndex = parseInt(target.getAttribute('data-card-index') || '0', 10);
+
+      let nextCol = colIndex;
+      let nextCard = cardIndex;
+
+      if (e.key === 'ArrowRight') {
+        nextCol += 1;
+        nextCard = 0;
+      } else if (e.key === 'ArrowLeft') {
+        nextCol -= 1;
+        nextCard = 0;
+      } else if (e.key === 'ArrowDown') {
+        nextCard += 1;
+      } else if (e.key === 'ArrowUp') {
+        nextCard -= 1;
+      } else {
+        return;
+      }
+
+      e.preventDefault();
+
+      let nextCardElement = document.querySelector(`[data-kanban-card="true"][data-col-index="${nextCol}"][data-card-index="${nextCard}"]`) as HTMLElement;
+
+      if (!nextCardElement && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+        let fallbackCol = nextCol;
+        while (fallbackCol >= 0 && fallbackCol < COLUMNS.length) {
+          const firstCard = document.querySelector(`[data-kanban-card="true"][data-col-index="${fallbackCol}"][data-card-index="0"]`) as HTMLElement;
+          if (firstCard) {
+            nextCardElement = firstCard;
+            break;
+          }
+          fallbackCol += e.key === 'ArrowRight' ? 1 : -1;
+        }
+      }
+
+      if (nextCardElement) {
+        nextCardElement.focus();
+        nextCardElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  };
+
   return (
-    <div className="flex h-full w-full gap-3 md:gap-4 overflow-x-auto pb-6 bg-bg-section/40 rounded-xl md:rounded-[40px] px-2 md:px-4 pt-2 md:pt-4 border border-white/5 snap-x snap-mandatory">
+    <div
+      className="flex h-full w-full gap-3 md:gap-4 overflow-x-auto pb-6 bg-bg-section/40 rounded-xl md:rounded-[40px] px-2 md:px-4 pt-2 md:pt-4 border border-white/5 snap-x snap-mandatory"
+      onKeyDown={handleKeyDown}
+    >
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {COLUMNS.map((column) => (
+        {COLUMNS.map((column, index) => (
           <KanbanColumn
             key={column.id}
             id={column.id}
@@ -137,6 +190,7 @@ export const KanbanBoard = ({
             demands={filteredDemands.filter((d) => d.status === column.id)}
             users={users}
             highlightedId={highlightedId}
+            columnIndex={index}
           />
         ))}
 

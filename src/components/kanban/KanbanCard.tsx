@@ -5,7 +5,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Demand, User } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
-import { Calendar, Clock, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, MessageSquare, AlertTriangle, Paperclip } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { differenceInDays } from 'date-fns';
@@ -16,6 +16,8 @@ interface KanbanCardProps {
   users?: User[];
   isOverlay?: boolean;
   isHighlighted?: boolean;
+  columnIndex?: number;
+  cardIndex?: number;
 }
 
 const tagColorMap: Record<string, string> = {
@@ -48,7 +50,7 @@ function getTagColor(tag: string): string {
   return tagColorMap[tag.toLowerCase()] ?? 'text-zinc-400 bg-zinc-400/10';
 }
 
-export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOverlay, isHighlighted }) => {
+export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOverlay, isHighlighted, columnIndex, cardIndex }) => {
   const { openDemanda } = useUIStore();
   const cardRef = React.useRef<HTMLDivElement | null>(null);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -145,6 +147,9 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
         isHighlighted ? 'bg-secondary/5' : 'bg-gradient-to-br from-bg-surface to-bg-surface group-hover:from-bg-surface group-hover:to-secondary/5',
         isOverlay && 'shadow-2xl scale-[1.02] z-50'
       )}
+      data-kanban-card="true"
+      data-col-index={columnIndex}
+      data-card-index={cardIndex}
     >
       {/* Clipping container for the priority bar to follow rounded corners */}
       <div className="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none">
@@ -205,6 +210,12 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
             <span className="text-[10px] text-zinc-500 flex items-center gap-1">
               <MessageSquare className="w-3 h-3" />
               {demand.comments.length}
+            </span>
+          )}
+          {demand.attachments && demand.attachments.length > 0 && (
+            <span className="text-[10px] text-zinc-500 flex items-center gap-1" title={`${demand.attachments.length} anexo(s)`}>
+              <Paperclip className="w-3 h-3" />
+              {demand.attachments.length}
             </span>
           )}
           {demand.deadline && (

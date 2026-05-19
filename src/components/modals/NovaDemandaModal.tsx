@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, ArrowRight, Pencil, Trash2, Clock, Users, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, ArrowRight, Pencil, Trash2, Clock, Users, ChevronUp, ChevronDown, Paperclip, Plus } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
 import { useSprintStore } from '@/store/useSprintStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -10,12 +10,14 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Avatar } from '@/components/ui/Avatar';
-import { createDemand, getDemandById, getUsers, updateDemand, deleteDemand } from '@/lib/firestore';
+import { createDemand, getDemandById, getUsers, updateDemand, deleteDemand, updateSprint } from '@/lib/firestore';
 
 import { User, DemandStatus, Priority } from '@/types';
 import { cn } from '@/lib/utils';
 import { demandaSchema, DemandaFormData } from '@/lib/schemas';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { DriveAttachment } from '@/components/ui/DriveAttachment';
+import { parseDriveLink } from '@/lib/drive';
 import { toast } from '@/store/useToastStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -65,6 +67,7 @@ const initialFormData = (status: DemandStatus): FormData => ({
   estimatedHours: 0,
   projectType: 'Interno',
   createdAt: '',
+  attachments: [],
 });
 
 export const NovaDemandaModal = () => {
@@ -86,6 +89,23 @@ export const NovaDemandaModal = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [formData, setFormData] = useState<FormData>(initialFormData('backlog'));
+
+  // Link Attachment State
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [linkName, setLinkName] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
+
+  const handleAddLink = () => {
+    if (!linkUrl.trim() || !currentUser) return;
+    const newAttachment = parseDriveLink(linkUrl, linkName, currentUser.uid);
+    setFormData(prev => ({
+      ...prev,
+      attachments: [...(prev.attachments || []), newAttachment]
+    }));
+    setLinkUrl('');
+    setLinkName('');
+    setShowLinkInput(false);
+  };
 
   // Carregar dados ao abrir o modal
   useEffect(() => {
@@ -116,6 +136,7 @@ export const NovaDemandaModal = () => {
               startDate: d.startDate instanceof Date ? d.startDate.toISOString().split('T')[0] : d.startDate || '',
               deadline: d.deadline instanceof Date ? d.deadline.toISOString().split('T')[0] : d.deadline || '',
               projectType: d.projectType || 'Interno',
+              attachments: d.attachments || [],
             });
           }
         } else if (demandModalMode === 'create') {
@@ -161,7 +182,6 @@ export const NovaDemandaModal = () => {
     e.preventDefault();
     if (!currentUser) return;
 
-    // ── Zod validation ──────────────────────────────────────────────────────
     const result = demandaSchema.safeParse(formData);
     if (!result.success) {
       const fieldErrors: Partial<Record<keyof FormData, string>> = {};
@@ -173,7 +193,6 @@ export const NovaDemandaModal = () => {
       return;
     }
     setFormErrors({});
-    // ────────────────────────────────────────────────────────────────────────
 
     setLoading(true);
 
@@ -191,6 +210,10 @@ export const NovaDemandaModal = () => {
           deadline: formData.deadline ? new Date(formData.deadline) : null,
           estimatedHours: Number(formData.estimatedHours),
           projectType: formData.projectType,
+          attachments: (formData.attachments || []).map(att => ({
+            ...att,
+            addedAt: new Date(att.addedAt)
+          })),
           createdAt: formData.createdAt ? new Date(formData.createdAt) : new Date(),
           completedHours: 0,
           subtasks: [],
@@ -200,6 +223,44 @@ export const NovaDemandaModal = () => {
         });
 
         toast.success('Demanda criada com sucesso!');
+
+        // Integrações (Email e Calendar)
+        const assignees = formData.assignees || [];
+        let newSprintAssignees: string[] = [];
+        let sprintData = null;
+
+        if (formData.sprintId) {
+          const s = sprints.find(sp => sp.id === formData.sprintId);
+          if (s) {
+            sprintData = s;
+            const notified = s.notifiedUsers || [];
+            newSprintAssignees = assignees.filter(id => !notified.includes(id));
+            
+            if (newSprintAssignees.length > 0) {
+              await updateSprint(s.id, { notifiedUsers: [...notified, ...newSprintAssignees] });
+            }
+          }
+        }
+
+        const assigneeEmails = allUsers.filter(u => assignees.includes(u.uid)).map(u => u.email);
+        const newSprintEmails = allUsers.filter(u => newSprintAssignees.includes(u.uid)).map(u => u.email);
+
+        fetch('/api/integrations/notify-demand', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            demand: { 
+              title: formData.title, 
+              deadline: formData.deadline,
+              description: formData.description,
+              attachments: formData.attachments || []
+            },
+            sprint: sprintData,
+            emails: assigneeEmails,
+            newSprintAssignees: newSprintEmails
+          })
+        }).catch(console.error);
+
       } else if (demandModalMode === 'edit' && selectedDemandId) {
         const updateData = {
           title: formData.title,
@@ -212,6 +273,10 @@ export const NovaDemandaModal = () => {
           deadline: formData.deadline ? new Date(formData.deadline) : null,
           estimatedHours: Number(formData.estimatedHours),
           projectType: formData.projectType,
+          attachments: (formData.attachments || []).map(att => ({
+            ...att,
+            addedAt: new Date(att.addedAt)
+          })),
           ...(formData.createdAt && { createdAt: new Date(formData.createdAt) }),
         };
 
@@ -374,6 +439,110 @@ export const NovaDemandaModal = () => {
                             <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.description}</p>
                           )}
                         </>
+                      )}
+                    </div>
+
+                    {/* Attachments Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                          <Paperclip className="w-3.5 h-3.5" />
+                          Documentos Anexos
+                        </label>
+                        {!isView && (
+                          <div className="flex items-center gap-2">
+                            <AnimatePresence>
+                              {showLinkInput ? (
+                                <motion.div
+                                  initial={{ opacity: 0, x: 20 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  exit={{ opacity: 0, x: 20 }}
+                                  className="flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-lg p-1 pr-2"
+                                >
+                                  <input
+                                    type="text"
+                                    placeholder="Nome (opcional)"
+                                    value={linkName}
+                                    onChange={(e) => setLinkName(e.target.value)}
+                                    className="bg-transparent border-none text-[10px] text-white focus:outline-none focus:ring-0 rounded-md w-24 pl-3 placeholder:text-zinc-600"
+                                  />
+                                  <div className="w-px h-4 bg-white/10" />
+                                  <input
+                                    type="url"
+                                    placeholder="Cole o link aqui..."
+                                    value={linkUrl}
+                                    onChange={(e) => setLinkUrl(e.target.value)}
+                                    className="bg-transparent border-none text-[10px] text-white focus:outline-none focus:ring-0 rounded-md w-40 px-2 placeholder:text-zinc-600"
+                                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddLink())}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={handleAddLink}
+                                    className="w-5 h-5 flex items-center justify-center bg-secondary/20 text-secondary rounded-md hover:bg-secondary/30 transition-all"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowLinkInput(false);
+                                      setLinkUrl('');
+                                      setLinkName('');
+                                    }}
+                                    className="w-5 h-5 flex items-center justify-center text-zinc-500 hover:text-white transition-all ml-1"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </motion.div>
+                              ) : (
+                                <motion.button
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  exit={{ opacity: 0 }}
+                                  type="button"
+                                  onClick={() => setShowLinkInput(true)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-white/5 rounded-lg text-[9px] font-bold text-zinc-400 hover:text-white hover:border-white/10 transition-all uppercase tracking-widest active:scale-95"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  Adicionar Link
+                                </motion.button>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        )}
+                      </div>
+
+                      {formData.attachments && formData.attachments.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {formData.attachments.map((att) => (
+                            <DriveAttachment
+                              key={att.id}
+                              attachment={{
+                                ...att,
+                                addedAt: att.addedAt instanceof Date ? att.addedAt : new Date(att.addedAt)
+                              }}
+                              isReadOnly={isView}
+                              onRemove={(id) => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  attachments: prev.attachments?.filter(a => a.id !== id) || []
+                                }));
+                              }}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center p-6 bg-zinc-950/50 border border-dashed border-white/5 rounded-2xl">
+                          <Paperclip className="w-6 h-6 text-zinc-700 mb-2" />
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center">
+                            Nenhum documento anexado
+                          </p>
+                          {!isView && (
+                            <p className="text-[8px] font-medium text-zinc-600 text-center mt-1 max-w-[200px]">
+                              Vincule planilhas, apresentações ou documentos do Google Workspace.
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
 

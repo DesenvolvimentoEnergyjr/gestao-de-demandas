@@ -20,9 +20,10 @@ interface KanbanColumnProps {
   demands: Demand[];
   users?: User[];
   highlightedId?: string | null;
+  columnIndex?: number;
 }
 
-export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, demands, users = [], highlightedId = null }) => {
+export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, demands, users = [], highlightedId = null, columnIndex = 0 }) => {
   const { setNodeRef, isOver } = useDroppable({ id });
   const { openNovaDemanda } = useUIStore();
   const { user } = useAuthStore();
@@ -72,12 +73,14 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, de
           items={demands.map(d => d.id)}
           strategy={verticalListSortingStrategy}
         >
-          {demands.map((demand) => (
+          {demands.map((demand, index) => (
             <KanbanCard 
               key={demand.id} 
               demand={demand} 
               users={users} 
               isHighlighted={demand.id === highlightedId}
+              columnIndex={columnIndex}
+              cardIndex={index}
             />
           ))}
         </SortableContext>

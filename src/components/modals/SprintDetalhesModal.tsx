@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, Target, TrendingUp, Layers, CheckCircle2, Clock, Pencil, Trash2, Save, RotateCcw, FileText } from 'lucide-react';
+import { X, Calendar, Target, TrendingUp, Layers, CheckCircle2, Clock, Pencil, Trash2, Save, RotateCcw, FileText, Paperclip, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/store/useUIStore';
 import { useSprintStore } from '@/store/useSprintStore';
@@ -16,6 +16,8 @@ import { differenceInWeeks, addDays, format } from 'date-fns';
 import { Input } from '@/components/ui/Input';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { sprintUpdateSchema } from '@/lib/schemas';
+import { DriveAttachment } from '@/components/ui/DriveAttachment';
+import { parseDriveLink } from '@/lib/drive';
 import { toast } from '@/store/useToastStore';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -57,8 +59,8 @@ const containerVariants: Variants = {
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 15 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: { type: 'spring', damping: 25, stiffness: 300 }
   }
@@ -80,6 +82,23 @@ export const SprintDetalhesModal = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Link Attachment State
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [linkName, setLinkName] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
+
+  const handleAddLink = () => {
+    if (!linkUrl.trim() || !currentUser) return;
+    const newAttachment = parseDriveLink(linkUrl, linkName, currentUser.uid);
+    setEditFormData(prev => ({
+      ...prev,
+      attachments: [...(prev.attachments || []), newAttachment]
+    }));
+    setLinkUrl('');
+    setLinkName('');
+    setShowLinkInput(false);
+  };
 
   const handleExport = async () => {
     if (!sprint) return;
@@ -161,9 +180,7 @@ export const SprintDetalhesModal = () => {
       const idealProgress = Math.round((i / totalWeeks) * 100);
 
       let actualProgress: number | null = null;
-      // We compute actual progress if pointDate is before today or it is the first point
       if (pointDate <= addDays(now, 7) || i === 0) {
-        // If i=0, actual is 0
         if (i === 0) {
           actualProgress = 0;
         } else {
@@ -195,6 +212,7 @@ export const SprintDetalhesModal = () => {
       description: sprint.description,
       storyPoints: sprint.storyPoints,
       status: sprint.status,
+      attachments: sprint.attachments || [],
     });
     setIsEditMode(true);
     setFormErrors({});
@@ -203,7 +221,6 @@ export const SprintDetalhesModal = () => {
   const handleSave = async () => {
     if (!selectedSprintId || !editFormData) return;
 
-    // ── Zod validation ──────────────────────────────────────────────────────
     const result = sprintUpdateSchema.safeParse(editFormData);
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
@@ -215,7 +232,6 @@ export const SprintDetalhesModal = () => {
       return;
     }
     setFormErrors({});
-    // ────────────────────────────────────────────────────────────────────────
 
     setLoading(true);
     try {
@@ -280,563 +296,668 @@ export const SprintDetalhesModal = () => {
                   return (
                     <>
                       {/* Header */}
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="p-6 md:p-10 pb-6 flex items-start justify-between relative z-10 gap-4"
                       >
-                  <div className="space-y-4 min-w-0">
-                    <div className="min-w-0">
-                      {isEditMode ? (
-                        <>
-                          <Input
-                            value={editFormData.title}
-                            onChange={(e) => setEditFormData(prev => ({ ...prev, title: e.target.value }))}
-                            className={cn(
-                              "text-2xl md:text-4xl font-black text-white bg-white/5 border-white/10 h-auto py-2",
-                              formErrors.title && "border-red-500/50 focus:border-red-500"
-                            )}
-                          />
-                          {formErrors.title && (
-                            <p className="text-[10px] text-red-400 font-semibold ml-1">{formErrors.title}</p>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <h2 className="text-2xl md:text-4xl font-black text-white tracking-tighter leading-tight truncate">
-                            {sprint.title}
-                          </h2>
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 mt-4">
-                            <div className="flex items-center gap-2 text-zinc-400">
-                              <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-zinc-600" />
-                              <span className="text-[10px] md:text-xs font-bold whitespace-nowrap">
-                                {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-zinc-400">
-                              <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-zinc-600" />
-                              <span className="text-[10px] md:text-xs font-bold whitespace-nowrap">
-                                {sprint.storyPoints.total} Pontos
-                              </span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3" data-html2canvas-ignore>
-                    {!isEditMode && currentUser?.role === 'diretor' && (
-                      <>
-                          <button
-                            onClick={handleStartEdit}
-                            className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-90"
-                            title="Editar Ciclo"
-                          >
-                            <Pencil className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={handleExport}
-                            disabled={isExporting}
-                            className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-secondary hover:bg-secondary/10 transition-all active:scale-90 disabled:opacity-50"
-                            title="Exportar como PDF (Captura de Tela)"
-                          >
-                            {isExporting ? <div className="w-5 h-5 border-2 border-secondary/20 border-t-secondary rounded-full animate-spin" /> : <FileText className="w-5 h-5" />}
-                          </button>
-                        {showDeleteConfirm ? (
-                          <div className="flex items-center gap-2 animate-in slide-in-from-right-2">
-                            <button
-                              onClick={handleDelete}
-                              disabled={loading}
-                              className="px-4 h-12 rounded-2xl bg-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-red-500/20"
-                            >
-                              {loading ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                              Confirmar
-                            </button>
-                            <button
-                              onClick={() => setShowDeleteConfirm(false)}
-                              className="px-4 h-12 rounded-2xl bg-zinc-800 text-zinc-400 text-[10px] font-black uppercase tracking-widest hover:text-white hover:bg-zinc-700 transition-all active:scale-95"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setShowDeleteConfirm(true)}
-                            className="w-12 h-12 rounded-2xl bg-red-500/5 border border-red-500/10 flex items-center justify-center text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-all active:scale-90"
-                            title="Excluir Ciclo"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        )}
-                      </>
-                    )}
-                    {isEditMode && currentUser?.role === 'diretor' && (
-                      <>
-                        <button
-                          onClick={handleSave}
-                          disabled={loading}
-                          className="w-12 h-12 rounded-2xl bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary hover:bg-secondary/20 transition-all active:scale-90"
-                          title="Salvar Alterações"
-                        >
-                          {loading ? <div className="w-5 h-5 border-2 border-secondary/20 border-t-secondary rounded-full animate-spin" /> : <Save className="w-5 h-5" />}
-                        </button>
-                        <button
-                          onClick={() => setIsEditMode(false)}
-                          className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-90"
-                          title="Cancelar"
-                        >
-                          <RotateCcw className="w-5 h-5" />
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={closeSprintDetalhes}
-                      className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-90"
-                    >
-                      <X className="w-6 h-6" />
-                    </button>
-                  </div>
-                </motion.div>
-
-                {/* Body */}
-                <motion.div 
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="flex-1 overflow-y-auto px-6 md:px-10 pb-10 space-y-8 md:space-y-10 no-scrollbar relative z-10"
-                >
-
-          {isEditMode && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 bg-white/[0.02] border border-white/5 rounded-[32px] p-6 md:p-8">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                  Início do Ciclo
-                </label>
-                <div className="relative">
-                  <DatePicker
-                    value={editFormData.startDate ? format(new Date(editFormData.startDate), 'yyyy-MM-dd') : ''}
-                    onChange={(date) => setEditFormData(prev => ({ ...prev, startDate: new Date(date) }))}
-                    error={!!formErrors.startDate}
-                  />
-                </div>
-                {formErrors.startDate && (
-                  <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.startDate}</p>
-                )}
-              </div>
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                  Previsão de Término
-                </label>
-                <div className="relative">
-                  <DatePicker
-                    value={editFormData.endDate ? format(new Date(editFormData.endDate), 'yyyy-MM-dd') : ''}
-                    onChange={(date) => setEditFormData(prev => ({ ...prev, endDate: new Date(date) }))}
-                    error={!!formErrors.endDate}
-                  />
-                </div>
-                {formErrors.endDate && (
-                  <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.endDate}</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Progress + Objective */}
-          <div className={cn(
-            "grid gap-6",
-            currentUser?.role === 'diretor' ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1"
-          )}>
-            {currentUser?.role === 'diretor' && (
-              <motion.div variants={itemVariants} className="col-span-1 md:col-span-2 bg-white/[0.02] border border-white/5 rounded-[2rem] md:rounded-[32px] p-6 md:p-8">
-                <div className="flex justify-between items-end mb-6">
-                  <div className="space-y-1">
-                    <h4 className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">
-                      Progresso Geral
-                    </h4>
-                    <div className="text-3xl font-black text-white">{Math.round(progress)}%</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">
-                      Status de Entrega
-                    </div>
-                    <div className="text-sm font-black text-white">
-                      {sprint.storyPoints.completed} / {sprint.storyPoints.total} PTS
-                    </div>
-                  </div>
-                </div>
-                <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden shadow-inner">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ duration: 1, ease: 'easeOut', delay: 0.5 }}
-                    className="h-full bg-secondary shadow-[0_0_20px_rgba(11,175,77,0.4)]"
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            <motion.div 
-              variants={itemVariants}
-              className={cn(
-                "bg-secondary/5 border border-secondary/10 rounded-[2rem] md:rounded-[32px] p-6 md:p-8 flex flex-col justify-center",
-                isEditMode && "ring-2 ring-secondary",
-                currentUser?.role !== 'diretor' && "col-span-1"
-              )}
-            >
-              <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center mb-4">
-                <Target className="w-5 h-5 text-secondary" />
-              </div>
-              <h4 className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] mb-2">
-                Meta Principal
-              </h4>
-              {isEditMode ? (
-                <textarea
-                  value={editFormData.objective}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, objective: e.target.value }))}
-                  className={cn(
-                    "bg-transparent border-none text-sm font-bold text-zinc-300 leading-relaxed focus:ring-0 w-full resize-none h-24 p-0",
-                    formErrors.objective && "text-red-400"
-                  )}
-                  placeholder="Qual a meta deste ciclo?"
-                />
-              ) : (
-                <p className="text-sm font-bold text-zinc-300 leading-relaxed">{sprint.objective}</p>
-              )}
-              {isEditMode && formErrors.objective && (
-                <p className="text-[10px] text-red-400 font-semibold mt-2">{formErrors.objective}</p>
-              )}
-            </motion.div>
-          </div>
-
-          {/* Burn-up Chart */}
-          {chartData && chartData.length > 1 && !isEditMode && (
-            <motion.div variants={itemVariants} className="bg-white/[0.02] border border-white/5 rounded-[2rem] md:rounded-[32px] p-6 md:p-8 overflow-hidden">
-              <div className="flex items-center gap-2 mb-6">
-                <TrendingUp className="w-4 h-4 text-secondary" />
-                <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
-                  Gráfico de Acompanhamento (Burn-up)
-                </h4>
-              </div>
-
-              <div className="relative w-full aspect-[1000/500] md:aspect-[1000/400] mt-4">
-                <svg viewBox="0 0 1000 500" className="w-full h-full overflow-visible">
-                  <defs>
-                    <linearGradient id="idealGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="rgba(255,255,255,0.1)" />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-                    </linearGradient>
-                    <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="rgba(11, 175, 77, 0.4)" />
-                      <stop offset="100%" stopColor="rgba(11, 175, 77, 0)" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Grid lines */}
-                  {[0, 25, 50, 75, 100].map(percent => {
-                    const y = 450 - (percent / 100) * 400;
-                    return (
-                      <g key={percent}>
-                        <line x1="50" y1={y} x2="950" y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="4 4" />
-                        <text x="40" y={y + 4} fill="rgba(255,255,255,0.3)" fontSize="14" fontWeight="bold" textAnchor="end" className="hidden md:block">{percent}%</text>
-                      </g>
-                    );
-                  })}
-
-                  {/* Ideal Line & Area */}
-                  <path
-                    d={`M ${chartData.map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.ideal / 100) * 400}`).join(' L ')}`}
-                    fill="none"
-                    stroke="rgba(255,255,255,0.2)"
-                    strokeWidth="2"
-                    strokeDasharray="8 8"
-                  />
-                  <path
-                    d={`M 50,450 L ${chartData.map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.ideal / 100) * 400}`).join(' L ')} L 950,450 Z`}
-                    fill="url(#idealGrad)"
-                  />
-
-                  {/* Actual Line & Area */}
-                  {chartData.filter(d => d.actual !== null).length > 0 && (
-                    <>
-                      <path
-                        d={`M 50,450 L ${chartData.filter(d => d.actual !== null).map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.actual! / 100) * 400}`).join(' L ')} L ${50 + ((chartData.filter(d => d.actual !== null).length - 1) / (chartData.length - 1)) * 900},450 Z`}
-                        fill="url(#actualGrad)"
-                      />
-                      <path
-                        d={`M ${chartData.filter(d => d.actual !== null).map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.actual! / 100) * 400}`).join(' L ')}`}
-                        fill="none"
-                        stroke="#0baf4d"
-                        strokeWidth="4"
-                        style={{ filter: 'drop-shadow(0px 0px 12px rgba(11, 175, 77, 0.6))' }}
-                      />
-
-                      {/* Dots */}
-                      {chartData.filter(d => d.actual !== null).map((d, i) => (
-                        <circle
-                          key={i}
-                          cx={50 + (d.week / (chartData.length - 1)) * 900}
-                          cy={450 - (d.actual! / 100) * 400}
-                          r="6"
-                          fill="#0f0f0f"
-                          stroke="#0baf4d"
-                          strokeWidth="3"
-                        />
-                      ))}
-                    </>
-                  )}
-
-                  {/* X Axis Labels */}
-                  {chartData.map((d, i) => {
-                    return (
-                      <text
-                        key={i}
-                        x={50 + (i / (chartData.length - 1)) * 900}
-                        y="485"
-                        fill="rgba(255,255,255,0.5)"
-                        fontSize="14"
-                        fontWeight="bold"
-                        textAnchor="middle"
-                        className="hidden md:block"
-                      >
-                        {d.label}
-                      </text>
-                    );
-                  })}
-                </svg>
-              </div>
-
-              <div className="flex items-center justify-center gap-6 mt-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-0.5 bg-white/20 border border-white/20 border-dashed" />
-                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Ritmo Ideal</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-1 bg-secondary rounded-full shadow-[0_0_8px_rgba(11,175,77,0.5)]" />
-                  <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Progresso Real</span>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Description + Metrics */}
-          <motion.div 
-            variants={itemVariants}
-            className={cn(
-              "grid gap-10",
-              currentUser?.role === 'diretor' ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
-            )}
-          >
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-zinc-500" />
-                <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
-                  Contexto do Ciclo
-                </h4>
-              </div>
-              {isEditMode ? (
-                <>
-                  <textarea
-                    value={editFormData.description}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className={cn(
-                      "w-full bg-white/[0.02] border border-white/5 rounded-2xl p-4 text-sm text-zinc-400 leading-relaxed font-medium focus:border-secondary transition-all resize-none h-32",
-                      formErrors.description && "border-red-500/50"
-                    )}
-                    placeholder="Detalhes adicionais..."
-                  />
-                  {formErrors.description && (
-                    <p className="text-[10px] text-red-400 font-semibold ml-1">{formErrors.description}</p>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-zinc-400 leading-relaxed font-medium">
-                  {sprint.description ||
-                    'Este ciclo foca na aceleração de entregas críticas e alinhamento estratégico com os objetivos do trimestre.'}
-                </p>
-              )}
-            </div>
-
-            {currentUser?.role === 'diretor' && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-zinc-500" />
-                  <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
-                    Métricas de Eficiência
-                  </h4>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl">
-                    <div className="text-xl font-black text-white">{sprintDemands.length}</div>
-                    <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest mt-1">
-                      Demandas Totais
-                    </div>
-                  </div>
-                  <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl">
-                    <div className="text-xl font-black text-secondary">
-                      {sprintDemands.filter((d) => d.status === 'concluido').length}
-                    </div>
-                    <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest mt-1">
-                      Concluídas
-                    </div>
-                  </div>
-                  <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl">
-                    <div className="text-xl font-black text-white">
-                      {sprintDemands.filter((d) => d.status === 'em_progresso').length}
-                    </div>
-                    <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest mt-1">
-                      Em Progresso
-                    </div>
-                  </div>
-                  <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl">
-                    <div className="text-xl font-black text-red-400">
-                      {
-                        mounted ? sprintDemands.filter(
-                          (d) =>
-                            d.deadline &&
-                            new Date(d.deadline) < new Date() &&
-                            d.status !== 'concluido'
-                        ).length : 0
-                      }
-                    </div>
-                    <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest mt-1">
-                      Atrasadas
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </motion.div>
-
-          {/* Weekly Scope Groups */}
-          <motion.div variants={itemVariants} className="space-y-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-secondary" />
-                <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
-                  Planejamento Semanal
-                </h4>
-              </div>
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                Ciclo de {weekGroups.length} {weekGroups.length === 1 ? 'Semana' : 'Semanas'}
-              </span>
-            </div>
-
-            <div className="space-y-12">
-              {weekGroups.map((group, idx) => (
-                <motion.div 
-                  key={idx} 
-                  variants={itemVariants}
-                  className="relative pl-8 border-l border-white/[0.05]"
-                >
-                  {/* Week Indicator */}
-                  <div className="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-zinc-800 border-2 border-[#101010]" />
-
-                  <div className="flex flex-col gap-1 mb-6">
-                    <h5 className="text-sm font-black text-secondary uppercase tracking-wider">{group.label}</h5>
-                    <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">{group.period}</p>
-                  </div>
-
-                  <div className="space-y-3">
-                    {group.demands.length > 0 ? (
-                      group.demands.map((demand) => {
-                        const isOverdue =
-                          demand.deadline &&
-                          mounted &&
-                          new Date(demand.deadline) < new Date() &&
-                          demand.status !== 'concluido';
-
-                        return (
-                          <motion.div
-                            key={demand.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: 0.1 }}
-                            onClick={() => {
-                              closeSprintDetalhes();
-                              router.push(`/kanban?demandId=${demand.id}`);
-                            }}
-                            className="group bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 hover:border-white/10 rounded-2xl p-5 flex items-center justify-between transition-all cursor-pointer"
-                          >
-                            <div className="flex items-center gap-4 min-w-0">
-                              <div
-                                className={cn(
-                                  'w-2 h-2 rounded-full shrink-0',
-                                  demand.status === 'concluido'
-                                    ? 'bg-secondary'
-                                    : isOverdue
-                                      ? 'bg-red-400'
-                                      : 'bg-zinc-600'
+                        <div className="space-y-4 min-w-0">
+                          <div className="min-w-0">
+                            {isEditMode ? (
+                              <>
+                                <Input
+                                  value={editFormData.title}
+                                  onChange={(e) => setEditFormData(prev => ({ ...prev, title: e.target.value }))}
+                                  className={cn(
+                                    "text-2xl md:text-4xl font-black text-white bg-white/5 border-white/10 h-auto py-2",
+                                    formErrors.title && "border-red-500/50 focus:border-red-500"
+                                  )}
+                                />
+                                {formErrors.title && (
+                                  <p className="text-[10px] text-red-400 font-semibold ml-1">{formErrors.title}</p>
                                 )}
+                              </>
+                            ) : (
+                              <>
+                                <h2 className="text-2xl md:text-4xl font-black text-white tracking-tighter leading-tight truncate">
+                                  {sprint.title}
+                                </h2>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 mt-4">
+                                  <div className="flex items-center gap-2 text-zinc-400">
+                                    <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-zinc-600" />
+                                    <span className="text-[10px] md:text-xs font-bold whitespace-nowrap">
+                                      {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-zinc-400">
+                                    <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-zinc-600" />
+                                    <span className="text-[10px] md:text-xs font-bold whitespace-nowrap">
+                                      {sprint.storyPoints.total} Pontos
+                                    </span>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3" data-html2canvas-ignore>
+                          {!isEditMode && currentUser?.role === 'diretor' && (
+                            <>
+                              <button
+                                onClick={handleStartEdit}
+                                className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-90"
+                                title="Editar Ciclo"
+                              >
+                                <Pencil className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={handleExport}
+                                disabled={isExporting}
+                                className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-secondary hover:bg-secondary/10 transition-all active:scale-90 disabled:opacity-50"
+                                title="Exportar como PDF (Captura de Tela)"
+                              >
+                                {isExporting ? <div className="w-5 h-5 border-2 border-secondary/20 border-t-secondary rounded-full animate-spin" /> : <FileText className="w-5 h-5" />}
+                              </button>
+                              {showDeleteConfirm ? (
+                                <div className="flex items-center gap-2 animate-in slide-in-from-right-2">
+                                  <button
+                                    onClick={handleDelete}
+                                    disabled={loading}
+                                    className="px-4 h-12 rounded-2xl bg-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-red-500/20"
+                                  >
+                                    {loading ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    Confirmar
+                                  </button>
+                                  <button
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    className="px-4 h-12 rounded-2xl bg-zinc-800 text-zinc-400 text-[10px] font-black uppercase tracking-widest hover:text-white hover:bg-zinc-700 transition-all active:scale-95"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setShowDeleteConfirm(true)}
+                                  className="w-12 h-12 rounded-2xl bg-red-500/5 border border-red-500/10 flex items-center justify-center text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-all active:scale-90"
+                                  title="Excluir Ciclo"
+                                >
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
+                              )}
+                            </>
+                          )}
+                          {isEditMode && currentUser?.role === 'diretor' && (
+                            <>
+                              <button
+                                onClick={handleSave}
+                                disabled={loading}
+                                className="w-12 h-12 rounded-2xl bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary hover:bg-secondary/20 transition-all active:scale-90"
+                                title="Salvar Alterações"
+                              >
+                                {loading ? <div className="w-5 h-5 border-2 border-secondary/20 border-t-secondary rounded-full animate-spin" /> : <Save className="w-5 h-5" />}
+                              </button>
+                              <button
+                                onClick={() => setIsEditMode(false)}
+                                className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-90"
+                                title="Cancelar"
+                              >
+                                <RotateCcw className="w-5 h-5" />
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={closeSprintDetalhes}
+                            className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-90"
+                          >
+                            <X className="w-6 h-6" />
+                          </button>
+                        </div>
+                      </motion.div>
+
+                      {/* Body */}
+                      <motion.div
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="flex-1 overflow-y-auto px-6 md:px-10 pb-10 space-y-8 md:space-y-10 no-scrollbar relative z-10"
+                      >
+
+                        {isEditMode && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 bg-white/[0.02] border border-white/5 rounded-[32px] p-6 md:p-8">
+                            <div className="space-y-3">
+                              <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                                Início do Ciclo
+                              </label>
+                              <div className="relative">
+                                <DatePicker
+                                  value={editFormData.startDate ? format(new Date(editFormData.startDate), 'yyyy-MM-dd') : ''}
+                                  onChange={(date) => setEditFormData(prev => ({ ...prev, startDate: new Date(date) }))}
+                                  error={!!formErrors.startDate}
+                                />
+                              </div>
+                              {formErrors.startDate && (
+                                <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.startDate}</p>
+                              )}
+                            </div>
+                            <div className="space-y-3">
+                              <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                                Previsão de Término
+                              </label>
+                              <div className="relative">
+                                <DatePicker
+                                  value={editFormData.endDate ? format(new Date(editFormData.endDate), 'yyyy-MM-dd') : ''}
+                                  onChange={(date) => setEditFormData(prev => ({ ...prev, endDate: new Date(date) }))}
+                                  error={!!formErrors.endDate}
+                                />
+                              </div>
+                              {formErrors.endDate && (
+                                <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">{formErrors.endDate}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Progress + Objective */}
+                        <div className={cn(
+                          "grid gap-6",
+                          currentUser?.role === 'diretor' ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1"
+                        )}>
+                          {currentUser?.role === 'diretor' && (
+                            <motion.div variants={itemVariants} className="col-span-1 md:col-span-2 bg-white/[0.02] border border-white/5 rounded-[2rem] md:rounded-[32px] p-6 md:p-8">
+                              <div className="flex justify-between items-end mb-6">
+                                <div className="space-y-1">
+                                  <h4 className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">
+                                    Progresso Geral
+                                  </h4>
+                                  <div className="text-3xl font-black text-white">{Math.round(progress)}%</div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">
+                                    Status de Entrega
+                                  </div>
+                                  <div className="text-sm font-black text-white">
+                                    {sprint.storyPoints.completed} / {sprint.storyPoints.total} PTS
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden shadow-inner">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${progress}%` }}
+                                  transition={{ duration: 1, ease: 'easeOut', delay: 0.5 }}
+                                  className="h-full bg-secondary shadow-[0_0_20px_rgba(11,175,77,0.4)]"
+                                />
+                              </div>
+                            </motion.div>
+                          )}
+
+                          <motion.div
+                            variants={itemVariants}
+                            className={cn(
+                              "bg-secondary/5 border border-secondary/10 rounded-[2rem] md:rounded-[32px] p-6 md:p-8 flex flex-col justify-center",
+                              isEditMode && "ring-2 ring-secondary",
+                              currentUser?.role !== 'diretor' && "col-span-1"
+                            )}
+                          >
+                            <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center mb-4">
+                              <Target className="w-5 h-5 text-secondary" />
+                            </div>
+                            <h4 className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] mb-2">
+                              Meta Principal
+                            </h4>
+                            {isEditMode ? (
+                              <textarea
+                                value={editFormData.objective}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, objective: e.target.value }))}
+                                className={cn(
+                                  "bg-transparent border-none text-sm font-bold text-zinc-300 leading-relaxed focus:ring-0 w-full resize-none h-24 p-0",
+                                  formErrors.objective && "text-red-400"
+                                )}
+                                placeholder="Qual a meta deste ciclo?"
                               />
-                              <div className="min-w-0">
-                                <h5 className="text-sm font-black text-white group-hover:text-secondary transition-colors truncate">
-                                  {demand.title}
-                                </h5>
-                                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                                  <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    {demand.estimatedHours}h
-                                  </span>
-                                  <span className="text-zinc-800">•</span>
-                                  <span className={cn(
-                                    'text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded',
-                                    demand.priority === 'urgente' ? 'text-red-400 bg-red-400/10' : 'text-zinc-500 bg-zinc-800'
-                                  )}>
-                                    {demand.priority}
-                                  </span>
+                            ) : (
+                              <p className="text-sm font-bold text-zinc-300 leading-relaxed">{sprint.objective}</p>
+                            )}
+                            {isEditMode && formErrors.objective && (
+                              <p className="text-[10px] text-red-400 font-semibold mt-2">{formErrors.objective}</p>
+                            )}
+                          </motion.div>
+                        </div>
+
+                        {/* Burn-up Chart */}
+                        {chartData && chartData.length > 1 && !isEditMode && (
+                          <motion.div variants={itemVariants} className="bg-white/[0.02] border border-white/5 rounded-[2rem] md:rounded-[32px] p-6 md:p-8 overflow-hidden">
+                            <div className="flex items-center gap-2 mb-6">
+                              <TrendingUp className="w-4 h-4 text-secondary" />
+                              <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
+                                Gráfico de Acompanhamento (Burn-up)
+                              </h4>
+                            </div>
+
+                            <div className="relative w-full aspect-[1000/500] md:aspect-[1000/400] mt-4">
+                              <svg viewBox="0 0 1000 500" className="w-full h-full overflow-visible">
+                                <defs>
+                                  <linearGradient id="idealGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="rgba(255,255,255,0.1)" />
+                                    <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                                  </linearGradient>
+                                  <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="rgba(11, 175, 77, 0.4)" />
+                                    <stop offset="100%" stopColor="rgba(11, 175, 77, 0)" />
+                                  </linearGradient>
+                                </defs>
+
+                                {/* Grid lines */}
+                                {[0, 25, 50, 75, 100].map(percent => {
+                                  const y = 450 - (percent / 100) * 400;
+                                  return (
+                                    <g key={percent}>
+                                      <line x1="50" y1={y} x2="950" y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="4 4" />
+                                      <text x="40" y={y + 4} fill="rgba(255,255,255,0.3)" fontSize="14" fontWeight="bold" textAnchor="end" className="hidden md:block">{percent}%</text>
+                                    </g>
+                                  );
+                                })}
+
+                                {/* Ideal Line & Area */}
+                                <path
+                                  d={`M ${chartData.map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.ideal / 100) * 400}`).join(' L ')}`}
+                                  fill="none"
+                                  stroke="rgba(255,255,255,0.2)"
+                                  strokeWidth="2"
+                                  strokeDasharray="8 8"
+                                />
+                                <path
+                                  d={`M 50,450 L ${chartData.map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.ideal / 100) * 400}`).join(' L ')} L 950,450 Z`}
+                                  fill="url(#idealGrad)"
+                                />
+
+                                {/* Actual Line & Area */}
+                                {chartData.filter(d => d.actual !== null).length > 0 && (
+                                  <>
+                                    <path
+                                      d={`M 50,450 L ${chartData.filter(d => d.actual !== null).map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.actual! / 100) * 400}`).join(' L ')} L ${50 + ((chartData.filter(d => d.actual !== null).length - 1) / (chartData.length - 1)) * 900},450 Z`}
+                                      fill="url(#actualGrad)"
+                                    />
+                                    <path
+                                      d={`M ${chartData.filter(d => d.actual !== null).map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.actual! / 100) * 400}`).join(' L ')}`}
+                                      fill="none"
+                                      stroke="#0baf4d"
+                                      strokeWidth="4"
+                                      style={{ filter: 'drop-shadow(0px 0px 12px rgba(11, 175, 77, 0.6))' }}
+                                    />
+
+                                    {/* Dots */}
+                                    {chartData.filter(d => d.actual !== null).map((d, i) => (
+                                      <circle
+                                        key={i}
+                                        cx={50 + (d.week / (chartData.length - 1)) * 900}
+                                        cy={450 - (d.actual! / 100) * 400}
+                                        r="6"
+                                        fill="#0f0f0f"
+                                        stroke="#0baf4d"
+                                        strokeWidth="3"
+                                      />
+                                    ))}
+                                  </>
+                                )}
+
+                                {/* X Axis Labels */}
+                                {chartData.map((d, i) => {
+                                  return (
+                                    <text
+                                      key={i}
+                                      x={50 + (i / (chartData.length - 1)) * 900}
+                                      y="485"
+                                      fill="rgba(255,255,255,0.5)"
+                                      fontSize="14"
+                                      fontWeight="bold"
+                                      textAnchor="middle"
+                                      className="hidden md:block"
+                                    >
+                                      {d.label}
+                                    </text>
+                                  );
+                                })}
+                              </svg>
+                            </div>
+
+                            <div className="flex items-center justify-center gap-6 mt-6">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-0.5 bg-white/20 border border-white/20 border-dashed" />
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Ritmo Ideal</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-1 bg-secondary rounded-full shadow-[0_0_8px_rgba(11,175,77,0.5)]" />
+                                <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Progresso Real</span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+
+                        {/* Description + Metrics */}
+                        <motion.div
+                          variants={itemVariants}
+                          className={cn(
+                            "grid gap-10",
+                            currentUser?.role === 'diretor' ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
+                          )}
+                        >
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-2">
+                              <Layers className="w-4 h-4 text-zinc-500" />
+                              <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
+                                Contexto do Ciclo
+                              </h4>
+                            </div>
+                            {isEditMode ? (
+                              <>
+                                <textarea
+                                  value={editFormData.description}
+                                  onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
+                                  className={cn(
+                                    "w-full bg-white/[0.02] border border-white/5 rounded-2xl p-4 text-sm text-zinc-400 leading-relaxed font-medium focus:border-secondary transition-all resize-none h-32",
+                                    formErrors.description && "border-red-500/50"
+                                  )}
+                                  placeholder="Detalhes adicionais..."
+                                />
+                                {formErrors.description && (
+                                  <p className="text-[10px] text-red-400 font-semibold ml-1">{formErrors.description}</p>
+                                )}
+                              </>
+                            ) : (
+                              <p className="text-sm text-zinc-400 leading-relaxed font-medium">
+                                {sprint.description ||
+                                  'Este ciclo foca na aceleração de entregas críticas e alinhamento estratégico com os objetivos do trimestre.'}
+                              </p>
+                            )}
+                          </div>
+
+                          {currentUser?.role === 'diretor' && (
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-2">
+                                <TrendingUp className="w-4 h-4 text-zinc-500" />
+                                <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
+                                  Métricas de Eficiência
+                                </h4>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl">
+                                  <div className="text-xl font-black text-white">{sprintDemands.length}</div>
+                                  <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest mt-1">
+                                    Demandas Totais
+                                  </div>
+                                </div>
+                                <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl">
+                                  <div className="text-xl font-black text-secondary">
+                                    {sprintDemands.filter((d) => d.status === 'concluido').length}
+                                  </div>
+                                  <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest mt-1">
+                                    Concluídas
+                                  </div>
+                                </div>
+                                <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl">
+                                  <div className="text-xl font-black text-white">
+                                    {sprintDemands.filter((d) => d.status === 'em_progresso').length}
+                                  </div>
+                                  <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest mt-1">
+                                    Em Progresso
+                                  </div>
+                                </div>
+                                <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl">
+                                  <div className="text-xl font-black text-red-400">
+                                    {
+                                      mounted ? sprintDemands.filter(
+                                        (d) =>
+                                          d.deadline &&
+                                          new Date(d.deadline) < new Date() &&
+                                          d.status !== 'concluido'
+                                      ).length : 0
+                                    }
+                                  </div>
+                                  <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest mt-1">
+                                    Atrasadas
+                                  </div>
                                 </div>
                               </div>
                             </div>
+                          )}
+                        </motion.div>
 
-                            <div className="flex -space-x-2 shrink-0 ml-4 overflow-x-auto no-scrollbar max-w-[80px]">
-                              {demand.assignees.map((uid) => {
-                                const u = users.find((user) => user.uid === uid);
-                                return (
-                                  <div key={uid} className="relative group shrink-0">
-                                    <Avatar
-                                      src={u?.photoURL}
-                                      alt={u?.name ?? uid}
-                                      size="sm"
-                                      className="border-2 border-[#101010]"
-                                      fallback={uid.substring(0, 1).toUpperCase()}
-                                    />
-                                    {/* Tooltip */}
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-2xl">
-                                      <span className="text-[10px] font-black text-white uppercase tracking-widest">{u?.name ?? uid}</span>
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                        {/* Attachments Section */}
+                        <motion.div variants={itemVariants} className="space-y-4 bg-white/[0.02] border border-white/5 rounded-[2rem] md:rounded-[32px] p-6 md:p-8">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                              <Paperclip className="w-4 h-4 text-zinc-500" />
+                              <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
+                                Documentos da Sprint
+                              </h4>
                             </div>
-                          </motion.div>
-                        );
-                      })
-                    ) : (
-                      <div className="py-4 px-6 rounded-2xl border border-dashed border-white/5 text-[10px] font-medium text-zinc-700 uppercase tracking-widest">
-                        Sem entregas planejadas
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </motion.div>
+                            {isEditMode && currentUser?.role === 'diretor' && (
+                              <div className="flex items-center gap-2">
+                                <AnimatePresence>
+                                  {showLinkInput ? (
+                                    <motion.div
+                                      initial={{ opacity: 0, x: 20 }}
+                                      animate={{ opacity: 1, x: 0 }}
+                                      exit={{ opacity: 0, x: 20 }}
+                                      className="flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-lg p-1 pr-2"
+                                    >
+                                      <input
+                                        type="text"
+                                        placeholder="Nome (opcional)"
+                                        value={linkName}
+                                        onChange={(e) => setLinkName(e.target.value)}
+                                        className="bg-transparent border-none text-[10px] text-white focus:outline-none focus:ring-0 rounded-md w-24 pl-3 placeholder:text-zinc-600"
+                                      />
+                                      <div className="w-px h-4 bg-white/10" />
+                                      <input
+                                        type="url"
+                                        placeholder="Cole o link aqui..."
+                                        value={linkUrl}
+                                        onChange={(e) => setLinkUrl(e.target.value)}
+                                        className="bg-transparent border-none text-[10px] text-white focus:outline-none focus:ring-0 rounded-md w-40 px-2 placeholder:text-zinc-600"
+                                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddLink())}
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={handleAddLink}
+                                        className="w-5 h-5 flex items-center justify-center bg-secondary/20 text-secondary rounded-md hover:bg-secondary/30 transition-all"
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setShowLinkInput(false);
+                                          setLinkUrl('');
+                                          setLinkName('');
+                                        }}
+                                        className="w-5 h-5 flex items-center justify-center text-zinc-500 hover:text-white transition-all ml-1"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </motion.div>
+                                  ) : (
+                                    <motion.button
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      exit={{ opacity: 0 }}
+                                      type="button"
+                                      onClick={() => setShowLinkInput(true)}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-white/5 rounded-lg text-[9px] font-bold text-zinc-400 hover:text-white hover:border-white/10 transition-all uppercase tracking-widest active:scale-95"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                      Adicionar Link
+                                    </motion.button>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            )}
+                          </div>
 
-        {/* Footer */}
-        <div className="p-6 md:p-8 border-t border-white/5 bg-zinc-950/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
-          <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-[0.3em] text-center sm:text-left">
-            Energy Júnior • Bate Meta pra Valer
-          </p>
-          <button
-            onClick={closeSprintDetalhes}
-            className="w-full sm:w-auto px-8 py-3 bg-secondary text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all"
-          >
-            Entendido
-          </button>
-        </div>
+                          {(isEditMode ? editFormData.attachments : sprint.attachments) && (isEditMode ? editFormData.attachments : sprint.attachments)!.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                              {(isEditMode ? editFormData.attachments : sprint.attachments)!.map((att) => (
+                                <DriveAttachment
+                                  key={att.id}
+                                  attachment={att}
+                                  isReadOnly={!isEditMode}
+                                  onRemove={(id) => {
+                                    if (isEditMode) {
+                                      setEditFormData((prev) => ({
+                                        ...prev,
+                                        attachments: prev.attachments?.filter(a => a.id !== id) || []
+                                      }));
+                                    }
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center p-6 bg-zinc-950/50 border border-dashed border-white/5 rounded-2xl">
+                              <Paperclip className="w-6 h-6 text-zinc-700 mb-2" />
+                              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center">
+                                Nenhum documento anexado
+                              </p>
+                              {isEditMode && (
+                                <p className="text-[8px] font-medium text-zinc-600 text-center mt-1 max-w-[200px]">
+                                  Vincule a ata de planejamento, OKRs ou relatórios do Google Workspace.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </motion.div>
+
+                        {/* Weekly Scope Groups */}
+                        <motion.div variants={itemVariants} className="space-y-8">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-secondary" />
+                              <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
+                                Planejamento Semanal
+                              </h4>
+                            </div>
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                              Ciclo de {weekGroups.length} {weekGroups.length === 1 ? 'Semana' : 'Semanas'}
+                            </span>
+                          </div>
+
+                          <div className="space-y-12">
+                            {weekGroups.map((group, idx) => (
+                              <motion.div
+                                key={idx}
+                                variants={itemVariants}
+                                className="relative pl-8 border-l border-white/[0.05]"
+                              >
+                                {/* Week Indicator */}
+                                <div className="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-zinc-800 border-2 border-[#101010]" />
+
+                                <div className="flex flex-col gap-1 mb-6">
+                                  <h5 className="text-sm font-black text-secondary uppercase tracking-wider">{group.label}</h5>
+                                  <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">{group.period}</p>
+                                </div>
+
+                                <div className="space-y-3">
+                                  {group.demands.length > 0 ? (
+                                    group.demands.map((demand) => {
+                                      const isOverdue =
+                                        demand.deadline &&
+                                        mounted &&
+                                        new Date(demand.deadline) < new Date() &&
+                                        demand.status !== 'concluido';
+
+                                      return (
+                                        <motion.div
+                                          key={demand.id}
+                                          initial={{ opacity: 0, x: -20 }}
+                                          whileInView={{ opacity: 1, x: 0 }}
+                                          viewport={{ once: true }}
+                                          transition={{ delay: 0.1 }}
+                                          onClick={() => {
+                                            closeSprintDetalhes();
+                                            router.push(`/kanban?demandId=${demand.id}`);
+                                          }}
+                                          className="group bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 hover:border-white/10 rounded-2xl p-5 flex items-center justify-between transition-all cursor-pointer"
+                                        >
+                                          <div className="flex items-center gap-4 min-w-0">
+                                            <div
+                                              className={cn(
+                                                'w-2 h-2 rounded-full shrink-0',
+                                                demand.status === 'concluido'
+                                                  ? 'bg-secondary'
+                                                  : isOverdue
+                                                    ? 'bg-red-400'
+                                                    : 'bg-zinc-600'
+                                              )}
+                                            />
+                                            <div className="min-w-0">
+                                              <h5 className="text-sm font-black text-white group-hover:text-secondary transition-colors truncate">
+                                                {demand.title}
+                                              </h5>
+                                              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                                                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+                                                  <Clock className="w-3 h-3" />
+                                                  {demand.estimatedHours}h
+                                                </span>
+                                                <span className="text-zinc-800">•</span>
+                                                <span className={cn(
+                                                  'text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded',
+                                                  demand.priority === 'urgente' ? 'text-red-400 bg-red-400/10' : 'text-zinc-500 bg-zinc-800'
+                                                )}>
+                                                  {demand.priority}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          <div className="flex -space-x-2 shrink-0 ml-4 overflow-x-auto no-scrollbar max-w-[80px]">
+                                            {demand.assignees.map((uid) => {
+                                              const u = users.find((user) => user.uid === uid);
+                                              return (
+                                                <div key={uid} className="relative group shrink-0">
+                                                  <Avatar
+                                                    src={u?.photoURL}
+                                                    alt={u?.name ?? uid}
+                                                    size="sm"
+                                                    className="border-2 border-[#101010]"
+                                                    fallback={uid.substring(0, 1).toUpperCase()}
+                                                  />
+                                                  {/* Tooltip */}
+                                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-2xl">
+                                                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{u?.name ?? uid}</span>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </motion.div>
+                                      );
+                                    })
+                                  ) : (
+                                    <div className="py-4 px-6 rounded-2xl border border-dashed border-white/5 text-[10px] font-medium text-zinc-700 uppercase tracking-widest">
+                                      Sem entregas planejadas
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      </motion.div>
+
+                      {/* Footer */}
+                      <div className="p-6 md:p-8 border-t border-white/5 bg-zinc-950/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
+                        <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-[0.3em] text-center sm:text-left">
+                          Energy Júnior • Bate Meta pra Valer
+                        </p>
+                        <button
+                          onClick={closeSprintDetalhes}
+                          className="w-full sm:w-auto px-8 py-3 bg-secondary text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                        >
+                          Entendido
+                        </button>
+                      </div>
                     </>
                   );
                 })()}

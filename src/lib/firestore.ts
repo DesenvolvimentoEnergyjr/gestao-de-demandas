@@ -56,6 +56,7 @@ export const subscribeToDemands = (
       deadline: toDateOrNull(d.data().deadline),
       createdAt: toDate(d.data().createdAt),
       updatedAt: toDate(d.data().updatedAt),
+      attachments: d.data().attachments?.map((a: { addedAt: unknown }) => ({ ...a, addedAt: toDate(a.addedAt) })) || [],
     })) as Demand[];
     callback(demands);
   }, (error) => {
@@ -138,6 +139,7 @@ export const getDemands = async (filters?: {
     deadline: toDateOrNull(d.data().deadline),
     createdAt: toDate(d.data().createdAt),
     updatedAt: toDate(d.data().updatedAt),
+    attachments: d.data().attachments?.map((a: { addedAt: unknown }) => ({ ...a, addedAt: toDate(a.addedAt) })) || [],
   })) as Demand[];
 };
 
@@ -152,6 +154,7 @@ export const getDemandById = async (id: string): Promise<Demand | null> => {
     deadline: toDateOrNull(d.deadline),
     createdAt: toDate(d.createdAt),
     updatedAt: toDate(d.updatedAt),
+    attachments: d.attachments?.map((a: { addedAt: unknown }) => ({ ...a, addedAt: toDate(a.addedAt) })) || [],
   } as Demand;
 };
 

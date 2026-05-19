@@ -17,8 +17,8 @@ import { FloatingNotificationButton } from '@/components/layout/FloatingNotifica
 import { Menu } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
 import { cn } from '@/lib/utils';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
-// Dynamic imports for heavy modals to improve initial load performance
 const NovaDemandaModal = dynamic(() => import('@/components/modals/NovaDemandaModal').then(mod => mod.NovaDemandaModal), { ssr: false });
 const SprintDetalhesModal = dynamic(() => import('@/components/modals/SprintDetalhesModal').then(mod => mod.SprintDetalhesModal), { ssr: false });
 const NovaSprintModal = dynamic(() => import('@/components/modals/NovaSprintModal').then(mod => mod.NovaSprintModal), { ssr: false });
@@ -28,6 +28,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  useKeyboardShortcuts();
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading, setUser, setLoading } = useAuthStore();
@@ -46,7 +47,7 @@ export default function DashboardLayout({
     const unsubscribeAuth = onAuthChange(async (firebaseUser) => {
       if (firebaseUser) {
         unsubscribeNotifications = subscribeNotifications(firebaseUser.uid);
-        
+
         unsubscribeDemands = subscribeToDemands((data) => {
           setDemands(data);
         });
@@ -145,7 +146,7 @@ export default function DashboardLayout({
               <Header />
             </div>
 
-            <motion.div 
+            <motion.div
               key={pathname}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

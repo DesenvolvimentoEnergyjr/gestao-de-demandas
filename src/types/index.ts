@@ -21,6 +21,15 @@ export interface AppNotification {
   createdAt: Date;
 }
 
+export interface Attachment {
+  id: string;
+  name: string;
+  url: string;
+  mimeType: string;
+  addedBy: string;
+  addedAt: Date;
+}
+
 export interface User {
   uid: string;
   name: string;
@@ -56,6 +65,7 @@ export interface Demand {
   subtasks: Subtask[];
   comments: Comment[];
   activityLog: ActivityEntry[];
+  attachments?: Attachment[];
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -93,6 +103,8 @@ export interface Sprint {
   storyPoints: { total: number; completed: number };
   status: 'planned' | 'active' | 'completed';
   demandIds: string[];
+  attachments?: Attachment[];
+  notifiedUsers?: string[];
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
