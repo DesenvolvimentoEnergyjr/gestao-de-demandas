@@ -26,6 +26,8 @@ const initialFormData = (): FormData => ({
   endDate: '',
   totalPoints: 50,
   type: 'Interno',
+  attachments: [],
+  notifiedUsers: [],
 });
 
 export const NovaSprintModal = () => {
