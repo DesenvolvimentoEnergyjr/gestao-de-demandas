@@ -6,7 +6,7 @@ import { ToastContainer } from '@/components/ui/Toast';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Energy Júnior - Gestão de Demandas',
+  title: 'Gestão de Demandas - Energy Júnior',
   description: 'Sistema interno de gestão de demandas e projetos da Energy Júnior.',
   icons: {
     icon: '/logo-energy.svg',

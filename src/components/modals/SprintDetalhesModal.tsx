@@ -133,6 +133,18 @@ export const SprintDetalhesModal = () => {
     [demands, selectedSprintId]
   );
 
+  const totalHours = useMemo(
+    () => sprintDemands.reduce((acc, d) => acc + (d.estimatedHours || 0), 0),
+    [sprintDemands]
+  );
+
+  const completedHours = useMemo(
+    () => sprintDemands
+      .filter((d) => d.status === 'concluido')
+      .reduce((acc, d) => acc + (d.estimatedHours || 0), 0),
+    [sprintDemands]
+  );
+
   // Agrupamento por Semana
   const weekGroups = useMemo(() => {
     if (!sprint) return [];
@@ -164,9 +176,7 @@ export const SprintDetalhesModal = () => {
   const chartData = useMemo(() => {
     if (!sprint || weekGroups.length === 0) return null;
 
-    const totalEffort = sprintDemands.length > 0
-      ? sprintDemands.reduce((acc, d) => acc + (d.estimatedHours || 1), 0)
-      : 1;
+    const totalEffort = totalHours > 0 ? totalHours : 1;
 
     const start = new Date(sprint.startDate);
     start.setHours(0, 0, 0, 0);
@@ -186,7 +196,7 @@ export const SprintDetalhesModal = () => {
         } else {
           const completedEffort = sprintDemands
             .filter(d => d.status === 'concluido' && d.updatedAt && new Date(d.updatedAt) <= pointDate)
-            .reduce((acc, d) => acc + (d.estimatedHours || 1), 0);
+            .reduce((acc, d) => acc + (d.estimatedHours || 0), 0);
           actualProgress = Math.round((completedEffort / totalEffort) * 100);
         }
       }
@@ -290,8 +300,8 @@ export const SprintDetalhesModal = () => {
             ) : (
               <>
                 {(() => {
-                  const progress = sprint.storyPoints.total > 0
-                    ? (sprint.storyPoints.completed / sprint.storyPoints.total) * 100
+                  const progress = totalHours > 0
+                    ? (completedHours / totalHours) * 100
                     : 0;
                   return (
                     <>
@@ -332,7 +342,7 @@ export const SprintDetalhesModal = () => {
                                   <div className="flex items-center gap-2 text-zinc-400">
                                     <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-zinc-600" />
                                     <span className="text-[10px] md:text-xs font-bold whitespace-nowrap">
-                                      {sprint.storyPoints.total} Pontos
+                                      {totalHours} Horas
                                     </span>
                                   </div>
                                 </div>
@@ -474,10 +484,10 @@ export const SprintDetalhesModal = () => {
                                 </div>
                                 <div className="text-right">
                                   <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">
-                                    Status de Entrega
+                                    Horas Entregues
                                   </div>
                                   <div className="text-sm font-black text-white">
-                                    {sprint.storyPoints.completed} / {sprint.storyPoints.total} PTS
+                                    {completedHours}h / {totalHours}h
                                   </div>
                                 </div>
                               </div>

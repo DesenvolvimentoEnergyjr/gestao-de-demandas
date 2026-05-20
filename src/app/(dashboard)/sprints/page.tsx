@@ -7,7 +7,6 @@ import { Calendar, Target, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { formatDate, cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/useAuthStore';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { useUIStore } from '@/store/useUIStore';
 import { useSprintStore } from '@/store/useSprintStore';
 import { useDemandStore } from '@/store/useDemandStore';
@@ -127,8 +126,13 @@ export default function SprintsPage() {
 
   const renderSprintCard = (sprint: Sprint) => {
     const styles = getSprintStyles(sprint);
-    const progressPct = sprint.storyPoints.total > 0
-      ? (sprint.storyPoints.completed / sprint.storyPoints.total) * 100
+    const sprintDemands = demands.filter((d) => d.sprintId === sprint.id);
+    const totalHours = sprintDemands.reduce((acc, d) => acc + (d.estimatedHours || 0), 0);
+    const completedHours = sprintDemands
+      .filter((d) => d.status === 'concluido')
+      .reduce((acc, d) => acc + (d.estimatedHours || 0), 0);
+    const progressPct = totalHours > 0
+      ? (completedHours / totalHours) * 100
       : 0;
 
     return (
@@ -163,9 +167,9 @@ export default function SprintsPage() {
 
         <div className="space-y-3 mt-auto pt-6 border-t border-white/5">
           <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-zinc-600">
-            <span>Progresso de Pontos</span>
+            <span>Progresso de Horas</span>
             <span className="text-zinc-300 font-black">
-              {sprint.storyPoints?.completed || 0} / {sprint.storyPoints?.total || 0} PTS
+              {completedHours}h / {totalHours}h
             </span>
           </div>
           <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
@@ -190,19 +194,7 @@ export default function SprintsPage() {
 
   return (
     <div className="h-full flex flex-col gap-6 md:gap-8 px-4 sm:px-6 lg:px-8">
-      <PageHeader
-        title="Ciclos de Sprints"
-        description="Planeje e acompanhe os ciclos de entrega da equipe com foco em metas e resultados."
-      >
-        {user?.role === 'diretor' && (
-          <Button onClick={openNovaSprint} className="gap-2 shadow-lg shadow-secondary/10 px-6 h-11">
-            <Plus className="w-4 h-4" />
-            Nova Sprint
-          </Button>
-        )}
-      </PageHeader>
-
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 mt-4 md:mt-0">
         <div className="flex flex-wrap items-center gap-2 md:gap-3">
           {FILTERS.map((filter) => (
             <button
@@ -220,15 +212,27 @@ export default function SprintsPage() {
           ))}
         </div>
 
-        <div className="relative w-full md:w-64">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
-          <input
-            type="text"
-            placeholder="Pesquisar sprints..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#111111] border border-white/5 rounded-full py-2.5 pl-11 pr-4 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary/50 transition-all"
-          />
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          {user?.role === 'diretor' && (
+            <Button
+              onClick={openNovaSprint}
+              className="gap-2 shadow-lg shadow-secondary/10 px-6 h-10 text-xs shrink-0 rounded-full"
+            >
+              <Plus className="w-4 h-4" />
+              Nova Sprint
+            </Button>
+          )}
+
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+            <input
+              type="text"
+              placeholder="Pesquisar sprints..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#111111] border border-white/5 rounded-full py-2.5 pl-11 pr-4 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary/50 transition-all"
+            />
+          </div>
         </div>
       </div>
 

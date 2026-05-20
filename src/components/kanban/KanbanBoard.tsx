@@ -61,6 +61,11 @@ export const KanbanBoard = ({
             if (!d.assignees.includes(currentUser.uid)) return false;
           }
 
+          if (activeFilter.startsWith('membro_')) {
+            const memberId = activeFilter.replace('membro_', '');
+            if (!d.assignees.includes(memberId)) return false;
+          }
+
           if (selectedSprintId !== 'all') {
             if (d.sprintId !== selectedSprintId) return false;
           }

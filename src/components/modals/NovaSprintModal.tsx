@@ -24,7 +24,7 @@ const initialFormData = (): FormData => ({
   objective: '',
   startDate: '', // Vazio para evitar mismatch
   endDate: '',
-  totalPoints: 50,
+  totalPoints: 0,
   type: 'Interno',
   attachments: [],
   notifiedUsers: [],
@@ -77,7 +77,7 @@ export const NovaSprintModal = () => {
         endDate: new Date(formData.endDate),
         status: 'planned',
         tags: [formData.type],
-        storyPoints: { total: Number(formData.totalPoints), completed: 0 },
+        storyPoints: { total: 0, completed: 0 },
         demandIds: [],
         createdBy: currentUser?.uid ?? 'unknown',
       };
@@ -223,58 +223,36 @@ export const NovaSprintModal = () => {
                 </div>
               </div>
 
-              {/* Pontos e Tipo */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                    Meta de Pontos
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      min={1}
-                      value={formData.totalPoints}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, totalPoints: Number(e.target.value) }))
-                      }
-                      className="bg-zinc-950 border-white/[0.03] h-12 text-sm rounded-xl px-4 pr-12 font-bold"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-600 uppercase pointer-events-none">
-                      PTS
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                    Tipo de Sprint
-                  </label>
-                  <div className="flex p-1 bg-zinc-950 border border-white/[0.03] rounded-xl h-12">
-                    <button
-                      type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, type: 'Interno' }))}
-                      className={cn(
-                        'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
-                        formData.type === 'Interno'
-                          ? 'bg-white text-black shadow-lg shadow-white/10'
-                          : 'text-zinc-600 hover:text-white/40'
-                      )}
-                    >
-                      Interno
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, type: 'Externo' }))}
-                      className={cn(
-                        'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
-                        formData.type === 'Externo'
-                          ? 'bg-secondary text-white shadow-lg shadow-secondary/10'
-                          : 'text-zinc-600 hover:text-white/40'
-                      )}
-                    >
-                      Externo
-                    </button>
-                  </div>
+              {/* Tipo de Sprint */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                  Tipo de Sprint
+                </label>
+                <div className="flex p-1 bg-zinc-950 border border-white/[0.03] rounded-xl h-12">
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, type: 'Interno' }))}
+                    className={cn(
+                      'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
+                      formData.type === 'Interno'
+                        ? 'bg-white text-black shadow-lg shadow-white/10'
+                        : 'text-zinc-600 hover:text-white/40'
+                    )}
+                  >
+                    Interno
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, type: 'Externo' }))}
+                    className={cn(
+                      'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
+                      formData.type === 'Externo'
+                        ? 'bg-secondary text-white shadow-lg shadow-secondary/10'
+                        : 'text-zinc-600 hover:text-white/40'
+                    )}
+                  >
+                    Externo
+                  </button>
                 </div>
               </div>
 

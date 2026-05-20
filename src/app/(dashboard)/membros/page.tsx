@@ -10,7 +10,6 @@ import { Mail, Activity, Clock, Layers, Target, TrendingUp, AlertCircle, Pencil 
 import { cn } from '@/lib/utils';
 import { AssessorHistoryModal } from '@/components/modals/AssessorHistoryModal';
 import { AssessorEditModal } from '@/components/modals/AssessorEditModal';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Skeleton } from '@/components/ui/Skeleton';
 
@@ -263,33 +262,27 @@ export default function AssessoresPage() {
 
   return (
     <div className="h-full flex flex-col gap-6 md:gap-10 overflow-y-auto no-scrollbar pb-12 px-4 sm:px-6 lg:px-8">
-      {/* Header Area */}
-      <PageHeader
-        title="Membros"
-        description="Monitore a carga de trabalho, produtividade e disponibilidade dos membros da Energy Júnior em tempo real."
-      >
-        {/* Quick Stats Summary */}
-        <div className="flex items-center gap-3 md:gap-4">
-          <div className="px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
-              <Target className="w-4 h-4 text-secondary" />
-            </div>
-            <div>
-              <div className="text-xs font-black text-white leading-none">{users.length}</div>
-              <div className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider mt-1">Membros</div>
-            </div>
+      {/* Quick Stats Summary */}
+      <div className="flex items-center gap-3 md:gap-4 mt-4 md:mt-0">
+        <div className="px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
+            <Target className="w-4 h-4 text-secondary" />
           </div>
-          <div className="px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-secondary" />
-            </div>
-            <div>
-              <div className="text-xs font-black text-white leading-none">{demands.filter(d => d.status !== 'concluido').length}</div>
-              <div className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider mt-1">Ativas</div>
-            </div>
+          <div>
+            <div className="text-xs font-black text-white leading-none">{users.length}</div>
+            <div className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider mt-1">Membros</div>
           </div>
         </div>
-      </PageHeader>
+        <div className="px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
+            <TrendingUp className="w-4 h-4 text-secondary" />
+          </div>
+          <div>
+            <div className="text-xs font-black text-white leading-none">{demands.filter(d => d.status !== 'concluido').length}</div>
+            <div className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider mt-1">Ativas</div>
+          </div>
+        </div>
+      </div>
 
       <div className="pb-10">
         {loading ? (

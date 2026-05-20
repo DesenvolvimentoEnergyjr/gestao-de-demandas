@@ -23,7 +23,6 @@ import { useDemandStore } from '@/store/useDemandStore';
 import { useSprintStore } from '@/store/useSprintStore';
 import { ChevronLeft, ChevronRight, Calendar, LayoutGrid } from 'lucide-react';
 import { cn, isDemandVisibleToUser } from '@/lib/utils';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -359,11 +358,6 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
 
   return (
     <div className="flex flex-col min-h-full text-white font-sans px-4 md:px-8">
-      <PageHeader
-        title="Linha do Tempo"
-        description="Gestão estratégica e acompanhamento temporal de todas as frentes de trabalho em tempo real."
-      />
-
       {/* Control Bar */}
       <motion.div
         // initial={{ opacity: 0, y: 20 }}

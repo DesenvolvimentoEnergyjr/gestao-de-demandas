@@ -166,11 +166,7 @@ export default function ConfiguracoesPage() {
 
   return (
     <div className="h-full flex flex-col gap-8 max-w-4xl mx-auto w-full overflow-y-auto px-4 md:px-0 pb-12 no-scrollbar">
-      {/* Header */}
-      <div className="mt-4 md:mt-0">
-        <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">Configurações</h2>
-        <p className="text-zinc-500 mt-1 text-sm font-medium">Gerencie suas informações de perfil.</p>
-      </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 items-stretch pb-6 md:pb-12">
         {/* Left Col: Preview */}

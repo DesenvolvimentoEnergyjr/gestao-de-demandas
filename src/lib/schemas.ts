@@ -104,8 +104,10 @@ export const sprintSchema = z
 
     totalPoints: z
       .number()
-      .min(1, 'A meta de pontos deve ser pelo menos 1.')
-      .max(10000, 'Valor de pontos muito alto.'),
+      .min(0)
+      .max(10000)
+      .optional()
+      .default(0),
 
     type: z.enum(['Interno', 'Externo'] as const).optional().default('Interno'),
 
@@ -146,7 +148,7 @@ export const sprintUpdateSchema = z.object({
   description: z.string().max(2000).optional(),
   startDate: z.union([z.string(), z.date()]).optional(),
   endDate: z.union([z.string(), z.date()]).optional(),
-  totalPoints: z.number().min(1).max(10000).optional(),
+  totalPoints: z.number().min(0).max(10000).optional(),
   type: z.enum(['Interno', 'Externo'] as const).optional(),
   attachments: z.array(attachmentSchema).optional(),
 }).refine(
