@@ -49,15 +49,15 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   // Gerar dias do calendário
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(monthStart);
-  const startDate = startOfWeek(monthStart);
-  const endDate = endOfWeek(monthEnd);
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
   const calendarDays = eachDayOfInterval({
     start: startDate,
     end: endDate,
   });
 
-  const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  const weekDays = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
 
   return (
     <div className="relative w-full" ref={containerRef}>

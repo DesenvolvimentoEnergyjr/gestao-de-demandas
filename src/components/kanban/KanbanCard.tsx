@@ -163,7 +163,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
       </div>
 
       <div className="flex flex-col gap-1.5 pl-1">
-        <h4 className="text-sm font-semibold text-white leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
+        <h4 className="text-sm font-normal text-white leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
           {demand.title}
         </h4>
         

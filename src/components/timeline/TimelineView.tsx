@@ -64,7 +64,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
   const [density, setDensity] = useState<'standard' | 'compact'>('standard');
   const [zoomLevel, setZoomLevel] = useState(1); // 1 = 100%
   const [referenceDate, setReferenceDate] = useState(new Date());
-  const [memberFilter, setMemberFilter] = useState<'todos' | 'diretoria' | 'assessores' | 'comercial' | 'prodev' | 'rh'>('todos');
+  const [memberFilter, setMemberFilter] = useState<'minha_timeline' | 'todos' | 'diretoria' | 'assessores' | 'comercial' | 'prodev' | 'rh'>('minha_timeline');
   const [isFirstMount, setIsFirstMount] = useState(true);
 
   useEffect(() => {
@@ -183,7 +183,9 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
     let filteredUsers = users.filter(u => u.status !== 'desligado' && u.status !== 'pos_junior');
 
     // Aplicação do Filtro de Membros com Palavras-Chave
-    if (memberFilter === 'diretoria') {
+    if (memberFilter === 'minha_timeline' && currentUser) {
+      filteredUsers = filteredUsers.filter(u => u.uid === currentUser.uid);
+    } else if (memberFilter === 'diretoria') {
       filteredUsers = filteredUsers.filter(u => u.role === 'diretor');
     } else if (memberFilter === 'assessores') {
       filteredUsers = filteredUsers.filter(u => u.role === 'assessor');
@@ -482,12 +484,13 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
               transition={{ duration: 0.3 }}
               className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest bg-zinc-900/50 px-2.5 py-1 rounded-full border border-white/5"
             >
-              {userRows.length} Membros Visíveis
+              {userRows.length} {userRows.length === 1 ? 'Membro Visível' : 'Membros Visíveis'}
             </motion.span>
           </AnimatePresence>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2 -mx-2 px-2">
           {[
+            { id: 'minha_timeline', label: 'Minha Timeline' },
             { id: 'todos', label: 'Todos' },
             { id: 'diretoria', label: 'Diretoria' },
             { id: 'assessores', label: 'Assessores' },

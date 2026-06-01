@@ -34,6 +34,8 @@ export const demandaSchema = z
 
     assignees: z.array(z.string()).optional().default([]),
 
+    visibleToAssessors: z.boolean().optional().default(true),
+
     sprintId: z.string().optional().default(''),
 
     startDate: z.string().optional().default(''),

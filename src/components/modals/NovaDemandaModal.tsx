@@ -68,6 +68,7 @@ const initialFormData = (status: DemandStatus): FormData => ({
   projectType: 'Interno',
   createdAt: '',
   attachments: [],
+  visibleToAssessors: true,
 });
 
 export const NovaDemandaModal = () => {
@@ -137,6 +138,9 @@ export const NovaDemandaModal = () => {
               deadline: d.deadline instanceof Date ? d.deadline.toISOString().split('T')[0] : d.deadline || '',
               projectType: d.projectType || 'Interno',
               attachments: d.attachments || [],
+              visibleToAssessors: d.visibleToAssessors !== undefined ? d.visibleToAssessors : (
+                d.assignees.length === 0 || d.assignees.some(uid => usersData.find(u => u.uid === uid)?.role === 'assessor')
+              ),
             });
           }
         } else if (demandModalMode === 'create') {
@@ -206,14 +210,15 @@ export const NovaDemandaModal = () => {
           assignees: formData.assignees,
           sprintId: formData.sprintId || null,
           tags: [],
-          startDate: formData.startDate ? new Date(formData.startDate) : new Date(),
-          deadline: formData.deadline ? new Date(formData.deadline) : null,
+          startDate: formData.startDate ? new Date(`${formData.startDate}T00:00:00`) : new Date(),
+          deadline: formData.deadline ? new Date(`${formData.deadline}T23:59:59`) : null,
           estimatedHours: Number(formData.estimatedHours),
           projectType: formData.projectType,
           attachments: (formData.attachments || []).map(att => ({
             ...att,
             addedAt: new Date(att.addedAt)
           })),
+          visibleToAssessors: formData.visibleToAssessors,
           createdAt: formData.createdAt ? new Date(formData.createdAt) : new Date(),
           completedHours: 0,
           subtasks: [],
@@ -269,14 +274,15 @@ export const NovaDemandaModal = () => {
           priority: formData.priority,
           assignees: formData.assignees,
           sprintId: formData.sprintId || null,
-          startDate: formData.startDate ? new Date(formData.startDate) : null,
-          deadline: formData.deadline ? new Date(formData.deadline) : null,
+          startDate: formData.startDate ? new Date(`${formData.startDate}T00:00:00`) : null,
+          deadline: formData.deadline ? new Date(`${formData.deadline}T23:59:59`) : null,
           estimatedHours: Number(formData.estimatedHours),
           projectType: formData.projectType,
           attachments: (formData.attachments || []).map(att => ({
             ...att,
             addedAt: new Date(att.addedAt)
           })),
+          visibleToAssessors: formData.visibleToAssessors,
           ...(formData.createdAt && { createdAt: new Date(formData.createdAt) }),
         };
 
@@ -420,7 +426,7 @@ export const NovaDemandaModal = () => {
                         Descrição
                       </label>
                       {isView ? (
-                        <div className="p-4 bg-zinc-950/50 rounded-2xl border border-white/[0.05] text-sm font-black text-white leading-relaxed min-h-[100px] whitespace-pre-wrap">
+                        <div className="p-4 bg-zinc-950/50 rounded-2xl border border-white/[0.05] text-sm font-normal text-zinc-300 leading-relaxed min-h-[100px] whitespace-pre-wrap">
                           {formData.description || 'Sem descrição.'}
                         </div>
                       ) : (
@@ -584,7 +590,44 @@ export const NovaDemandaModal = () => {
                         </div>
                       )}
                     </div>
-
+                    {/* Visibilidade */}
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
+                        Visibilidade
+                      </label>
+                      {isView ? (
+                        <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.08] text-[10px] font-black uppercase tracking-[0.2em] text-white">
+                          {formData.visibleToAssessors ? 'Público (Todos)' : 'Restrito'}
+                        </div>
+                      ) : (
+                        <div className="flex p-1 bg-zinc-950 border border-white/[0.08] rounded-xl h-12">
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, visibleToAssessors: true }))}
+                            className={cn(
+                              'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
+                              formData.visibleToAssessors
+                                ? 'bg-white text-black shadow-lg shadow-white/10'
+                                : 'text-zinc-600 hover:text-white/40'
+                            )}
+                          >
+                            Público
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, visibleToAssessors: false }))}
+                            className={cn(
+                              'flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
+                              !formData.visibleToAssessors
+                                ? 'bg-secondary text-white shadow-lg shadow-secondary/10'
+                                : 'text-zinc-600 hover:text-white/40'
+                            )}
+                          >
+                            Restrito
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     {/* Assignees - Full Width */}
                     <div className="space-y-4">
                       <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">

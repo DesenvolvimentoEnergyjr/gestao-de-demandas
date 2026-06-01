@@ -28,7 +28,7 @@ export default function KanbanPage() {
   const demandId = searchParams.get('demandId');
 
   const [users, setUsers] = React.useState<User[]>([]);
-  const [activeFilter, setActiveFilter] = useState('todas');
+  const [activeFilter, setActiveFilter] = useState('minhas');
   const [selectedSprintId, setSelectedSprintId] = useState('all');
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [showMembers, setShowMembers] = useState(false);
@@ -73,7 +73,7 @@ export default function KanbanPage() {
   }, [highlightedId]);
 
   return (
-    <div className="h-full flex flex-col relative px-4 sm:px-6 lg:px-8">
+    <div className="flex-1 flex flex-col relative px-4 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div className="flex flex-wrap items-center gap-2 md:gap-3">
           {FILTERS.map((filter) => (

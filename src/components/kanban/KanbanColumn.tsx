@@ -30,7 +30,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, de
 
   return (
     <div className={cn(
-      'flex flex-col w-[280px] min-w-[280px] rounded-xl md:rounded-[32px] transition-all duration-300 h-full snap-center',
+      'flex flex-col flex-1 min-w-[280px] max-w-[500px] rounded-xl md:rounded-[32px] transition-all duration-300 h-full snap-center',
       'bg-[#1a1919] border border-white/5',
       isOver && 'border-secondary/30 bg-secondary/5'
     )}>

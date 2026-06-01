@@ -37,8 +37,16 @@ export default function DashboardLayout({
   const { subscribe: subscribeNotifications } = useNotificationStore();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const [mounted, setMounted] = React.useState(false);
+  const [loadingPhrase, setLoadingPhrase] = React.useState('Energyzando plataforma de gestão...');
 
   useEffect(() => {
+    const phrases = [
+      "Energyzando plataforma de gestão...",
+      "Vai energizar você!",
+      "O que nós somos? ☠️",
+      "Sexta-feira é hora de comemorar!"
+    ];
+    setLoadingPhrase(phrases[Math.floor(Math.random() * phrases.length)]);
     setMounted(true);
     let unsubscribeNotifications: (() => void) | undefined;
     let unsubscribeDemands: (() => void) | undefined;
@@ -105,7 +113,7 @@ export default function DashboardLayout({
       {loading ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <div className="w-12 h-12 border-4 border-secondary/20 border-t-secondary rounded-full animate-spin"></div>
-          <p className="text-text-muted text-sm font-medium animate-pulse">Energizando plataforma de gestão...</p>
+          <p className="text-text-muted text-sm font-medium animate-pulse">{loadingPhrase}</p>
         </div>
       ) : user ? (
         <>
@@ -117,8 +125,8 @@ export default function DashboardLayout({
           )}
 
           <div className={cn(
-            "fixed inset-y-0 left-0 z-[60] transform transition-transform duration-300 ease-in-out xl:hidden",
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            "fixed inset-y-0 right-0 z-[60] transform transition-transform duration-300 ease-in-out xl:hidden",
+            sidebarOpen ? "translate-x-0" : "translate-x-full"
           )}>
             <Sidebar />
           </div>

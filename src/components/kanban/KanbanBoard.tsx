@@ -186,18 +186,36 @@ export const KanbanBoard = ({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {COLUMNS.map((column, index) => (
+        {COLUMNS.map((column, index) => {
+          const columnDemands = filteredDemands.filter((d) => d.status === column.id);
+
+          columnDemands.sort((a, b) => {
+            if (column.id === 'concluido') {
+              if (!a.deadline && !b.deadline) return 0;
+              if (!a.deadline) return 1;
+              if (!b.deadline) return -1;
+              return new Date(b.deadline).getTime() - new Date(a.deadline).getTime();
+            } else {
+              if (!a.deadline && !b.deadline) return 0;
+              if (!a.deadline) return 1;
+              if (!b.deadline) return -1;
+              return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+            }
+          });
+
+          return (
           <KanbanColumn
             key={column.id}
             id={column.id}
             title={column.title}
             color={column.color}
-            demands={filteredDemands.filter((d) => d.status === column.id)}
+            demands={columnDemands}
             users={users}
             highlightedId={highlightedId}
             columnIndex={index}
           />
-        ))}
+          );
+        })}
 
         <DragOverlay>
           {activeDemand ? <KanbanCard demand={activeDemand} users={users} isOverlay /> : null}

@@ -83,6 +83,10 @@ export const SprintDetalhesModal = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // Chart states
+  const [chartMode, setChartMode] = useState<'hours' | 'demands'>('hours');
+  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+
   // Link Attachment State
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkName, setLinkName] = useState('');
@@ -176,7 +180,9 @@ export const SprintDetalhesModal = () => {
   const chartData = useMemo(() => {
     if (!sprint || weekGroups.length === 0) return null;
 
-    const totalEffort = totalHours > 0 ? totalHours : 1;
+    const totalEffort = chartMode === 'hours' 
+      ? (totalHours > 0 ? totalHours : 1)
+      : (sprintDemands.length > 0 ? sprintDemands.length : 1);
 
     const start = new Date(sprint.startDate);
     start.setHours(0, 0, 0, 0);
@@ -187,17 +193,27 @@ export const SprintDetalhesModal = () => {
 
     for (let i = 0; i <= totalWeeks; i++) {
       const pointDate = addDays(start, i * 7);
-      const idealProgress = Math.round((i / totalWeeks) * 100);
+      const idealValue = Math.round((i / totalWeeks) * totalEffort);
+      const idealProgress = Math.round((idealValue / totalEffort) * 100);
 
       let actualProgress: number | null = null;
+      let actualValue: number | null = null;
+
       if (pointDate <= addDays(now, 7) || i === 0) {
         if (i === 0) {
+          actualValue = 0;
           actualProgress = 0;
         } else {
-          const completedEffort = sprintDemands
-            .filter(d => d.status === 'concluido' && d.updatedAt && new Date(d.updatedAt) <= pointDate)
-            .reduce((acc, d) => acc + (d.estimatedHours || 0), 0);
-          actualProgress = Math.round((completedEffort / totalEffort) * 100);
+          const completedDemands = sprintDemands
+            .filter(d => d.status === 'concluido' && d.updatedAt && new Date(d.updatedAt) <= pointDate);
+          
+          if (chartMode === 'hours') {
+            actualValue = completedDemands.reduce((acc, d) => acc + (d.estimatedHours || 0), 0);
+          } else {
+            actualValue = completedDemands.length;
+          }
+          
+          actualProgress = Math.round((actualValue / totalEffort) * 100);
         }
       }
 
@@ -206,11 +222,13 @@ export const SprintDetalhesModal = () => {
         label: i === 0 ? 'Início' : `S${i}`,
         ideal: idealProgress,
         actual: actualProgress,
+        idealValue,
+        actualValue,
         pointDate
       });
     }
     return data;
-  }, [sprint, sprintDemands, weekGroups.length]);
+  }, [sprint, sprintDemands, weekGroups.length, chartMode, totalHours]);
 
   const handleStartEdit = () => {
     if (!sprint) return;
@@ -442,7 +460,7 @@ export const SprintDetalhesModal = () => {
                               <div className="relative">
                                 <DatePicker
                                   value={editFormData.startDate ? format(new Date(editFormData.startDate), 'yyyy-MM-dd') : ''}
-                                  onChange={(date) => setEditFormData(prev => ({ ...prev, startDate: new Date(date) }))}
+                                  onChange={(date) => setEditFormData(prev => ({ ...prev, startDate: new Date(`${date}T00:00:00`) }))}
                                   error={!!formErrors.startDate}
                                 />
                               </div>
@@ -457,7 +475,7 @@ export const SprintDetalhesModal = () => {
                               <div className="relative">
                                 <DatePicker
                                   value={editFormData.endDate ? format(new Date(editFormData.endDate), 'yyyy-MM-dd') : ''}
-                                  onChange={(date) => setEditFormData(prev => ({ ...prev, endDate: new Date(date) }))}
+                                  onChange={(date) => setEditFormData(prev => ({ ...prev, endDate: new Date(`${date}T23:59:59`) }))}
                                   error={!!formErrors.endDate}
                                 />
                               </div>
@@ -538,11 +556,39 @@ export const SprintDetalhesModal = () => {
                         {/* Burn-up Chart */}
                         {chartData && chartData.length > 1 && !isEditMode && (
                           <motion.div variants={itemVariants} className="bg-white/[0.02] border border-white/5 rounded-[2rem] md:rounded-[32px] p-6 md:p-8 overflow-hidden">
-                            <div className="flex items-center gap-2 mb-6">
-                              <TrendingUp className="w-4 h-4 text-secondary" />
-                              <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
-                                Gráfico de Acompanhamento (Burn-up)
-                              </h4>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                              <div className="flex items-center gap-2">
+                                <TrendingUp className="w-4 h-4 text-secondary" />
+                                <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
+                                  Gráfico de Acompanhamento (Burn-up)
+                                </h4>
+                              </div>
+                              <div className="flex p-1 bg-zinc-950 border border-white/10 rounded-lg">
+                                <button
+                                  type="button"
+                                  onClick={() => setChartMode('hours')}
+                                  className={cn(
+                                    'px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all',
+                                    chartMode === 'hours'
+                                      ? 'bg-white text-black shadow-sm'
+                                      : 'text-zinc-500 hover:text-white/70'
+                                  )}
+                                >
+                                  Horas
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setChartMode('demands')}
+                                  className={cn(
+                                    'px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all',
+                                    chartMode === 'demands'
+                                      ? 'bg-white text-black shadow-sm'
+                                      : 'text-zinc-500 hover:text-white/70'
+                                  )}
+                                >
+                                  Demandas
+                                </button>
+                              </div>
                             </div>
 
                             <div className="relative w-full aspect-[1000/500] md:aspect-[1000/400] mt-4">
@@ -597,18 +643,38 @@ export const SprintDetalhesModal = () => {
                                       style={{ filter: 'drop-shadow(0px 0px 12px rgba(11, 175, 77, 0.6))' }}
                                     />
 
-                                    {/* Dots */}
-                                    {chartData.filter(d => d.actual !== null).map((d, i) => (
-                                      <circle
-                                        key={i}
-                                        cx={50 + (d.week / (chartData.length - 1)) * 900}
-                                        cy={450 - (d.actual! / 100) * 400}
-                                        r="6"
-                                        fill="#0f0f0f"
-                                        stroke="#0baf4d"
-                                        strokeWidth="3"
-                                      />
-                                    ))}
+                                    {/* Dots & Hit Areas */}
+                                    {chartData.filter(d => d.actual !== null).map((d, i) => {
+                                      const x = 50 + (d.week / (chartData.length - 1)) * 900;
+                                      const yActual = 450 - (d.actual! / 100) * 400;
+                                      const isHovered = hoveredPoint === d.week;
+
+                                      return (
+                                        <g 
+                                          key={`actual-point-${i}`}
+                                          onMouseEnter={() => setHoveredPoint(d.week)}
+                                          onMouseLeave={() => setHoveredPoint(null)}
+                                          onClick={() => setHoveredPoint(isHovered ? null : d.week)}
+                                          className="cursor-pointer"
+                                        >
+                                          <circle
+                                            cx={x}
+                                            cy={yActual}
+                                            r="30"
+                                            fill="transparent"
+                                          />
+                                          <circle
+                                            cx={x}
+                                            cy={yActual}
+                                            r={isHovered ? "8" : "6"}
+                                            fill="#0f0f0f"
+                                            stroke="#0baf4d"
+                                            strokeWidth={isHovered ? "4" : "3"}
+                                            className="transition-all duration-200 pointer-events-none"
+                                          />
+                                        </g>
+                                      );
+                                    })}
                                   </>
                                 )}
 
@@ -630,6 +696,46 @@ export const SprintDetalhesModal = () => {
                                   );
                                 })}
                               </svg>
+
+                              {/* Tooltip Overlay */}
+                              <AnimatePresence>
+                                {hoveredPoint !== null && (() => {
+                                  const d = chartData.find(data => data.week === hoveredPoint);
+                                  if (!d || d.actual === null) return null;
+                                  
+                                  const xPerc = ((50 + (d.week / (chartData.length - 1)) * 900) / 1000) * 100;
+                                  const yPerc = ((450 - (d.actual / 100) * 400) / 500) * 100;
+                                  
+                                  return (
+                                    <motion.div
+                                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                                      className="absolute z-20 pointer-events-none"
+                                      style={{
+                                        left: `${xPerc}%`,
+                                        top: `${yPerc}%`,
+                                        transform: 'translate(-50%, -120%)'
+                                      }}
+                                    >
+                                      <div className="bg-[#141414] border border-white/10 rounded-xl p-3 shadow-2xl flex flex-col gap-1.5 whitespace-nowrap">
+                                        <div className="text-[10px] font-black text-white uppercase tracking-widest mb-1 border-b border-white/10 pb-1.5">
+                                          {d.label}
+                                        </div>
+                                        <div className="flex items-center justify-between gap-6">
+                                          <span className="text-[10px] font-bold text-zinc-500 uppercase">Ritmo Ideal</span>
+                                          <span className="text-[10px] font-black text-white">{d.idealValue} {chartMode === 'hours' ? 'h' : 'dem'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-6">
+                                          <span className="text-[10px] font-bold text-secondary uppercase">Realizado</span>
+                                          <span className="text-[10px] font-black text-secondary">{d.actualValue} {chartMode === 'hours' ? 'h' : 'dem'}</span>
+                                        </div>
+                                      </div>
+                                    </motion.div>
+                                  );
+                                })()}
+                              </AnimatePresence>
                             </div>
 
                             <div className="flex items-center justify-center gap-6 mt-6">

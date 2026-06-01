@@ -57,6 +57,7 @@ export interface Demand {
   projectType: 'Interno' | 'Externo';
   assignees: string[];
   sprintId: string | null;
+  visibleToAssessors?: boolean;
   tags: string[];
   startDate: Date | null;
   deadline: Date | null;
