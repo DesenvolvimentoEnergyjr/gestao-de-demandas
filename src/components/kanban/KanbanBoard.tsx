@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  rectIntersection,
   KeyboardSensor,
   MouseSensor,
   TouchSensor,
@@ -182,7 +182,7 @@ export const KanbanBoard = ({
     >
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={rectIntersection}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
