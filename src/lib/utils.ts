@@ -7,7 +7,7 @@ import { Demand, User } from '@/types';
 export function isDemandVisibleToUser(demand: Demand, currentUser: User | null, allUsers: User[]): boolean {
   if (!currentUser) return false;
   if (currentUser.role === 'diretor') return true;
-  
+
   if (demand.assignees.includes(currentUser.uid)) return true;
 
   if (demand.visibleToAssessors !== undefined) {

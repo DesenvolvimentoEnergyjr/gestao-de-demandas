@@ -264,9 +264,44 @@ export function AssessorHistoryModal({ user, demands, onClose }: AssessorHistory
                 <TrendingUp className="w-4 h-4 text-secondary" />
                 <h3 className="text-[10px] font-black text-white uppercase tracking-[0.3em]">Trajetória Profissional</h3>
               </div>
-              <p className="text-xs text-zinc-400 font-medium leading-relaxed italic">
-                {user.history}
-              </p>
+              
+              {typeof user.history === 'string' ? (
+                <p className="text-xs text-zinc-400 font-medium leading-relaxed italic">
+                  {user.history}
+                </p>
+              ) : Array.isArray(user.history) && user.history.length > 0 ? (
+                <div className="relative space-y-6 pl-4 mt-6">
+                  <div className="absolute left-0 top-1.5 bottom-1.5 w-px bg-white/10" />
+                  {[...user.history].sort((a, b) => {
+                    if (!a.date && !b.date) return 0;
+                    if (!a.date) return 1;
+                    if (!b.date) return -1;
+                    return new Date(b.date).getTime() - new Date(a.date).getTime();
+                  }).map((item, idx) => (
+                    <div key={idx} className="relative pl-6">
+                      <div className="absolute left-[-21px] top-1.5 w-2.5 h-2.5 rounded-full bg-secondary ring-4 ring-[#0a0a0a]" />
+                      <h4 className="text-sm font-black text-white tracking-tight">{item.role}</h4>
+                      {item.date && (
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">
+                          {(() => {
+                            try {
+                              // item.date might be yyyy-MM-dd or yyyy-MM
+                              const [year, month, day] = item.date.split('-');
+                              if (year && month) {
+                                const dateObj = new Date(parseInt(year), parseInt(month) - 1, day ? parseInt(day) : 1);
+                                return format(dateObj, "dd 'de' MMMM, yyyy", { locale: ptBR });
+                              }
+                              return item.date;
+                            } catch {
+                              return item.date;
+                            }
+                          })()}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -336,7 +371,7 @@ export function AssessorHistoryModal({ user, demands, onClose }: AssessorHistory
                             {config.label}
                           </span>
 
-                          {/* Edit/Delete buttons for directors */}
+                          {/* Edit/Delete buttons for Diretores and Gerentes */}
                           {isDirector && (
                             <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity ml-auto">
                               <button

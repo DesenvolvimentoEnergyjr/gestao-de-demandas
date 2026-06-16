@@ -7,22 +7,25 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Camera, Check, Save, Loader2, UserX, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { User, Role } from '@/types';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 export default function ConfiguracoesPage() {
   const { user, setUser } = useAuthStore();
   const [name, setName] = useState('');
   const [title, setTitle] = useState('');
   const [area, setArea] = useState('');
-  const [history, setHistory] = useState('');
+  const [historyList, setHistoryList] = useState<{ role: string; date: string }[]>([]);
   const [workloadLimit, setWorkloadLimit] = useState(3);
+  const [joinDate, setJoinDate] = useState('');
   const [photoURL, setPhotoURL] = useState('');
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [mounted, setMounted] = useState(false);
-  
+
   // Member Management State
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [mgmtLoading, setMgmtLoading] = useState(false);
@@ -44,17 +47,16 @@ export default function ConfiguracoesPage() {
 
     const groupsMap: Record<string, User[]> = {};
     const currentYear = new Date().getFullYear();
-    
+
     allUsers.forEach(u => {
       const startYear = new Date(u.createdAt).getFullYear();
       const endYear = u.status === 'ativo' ? currentYear : (u.deactivatedAt ? new Date(u.deactivatedAt).getFullYear() : new Date(u.updatedAt).getFullYear());
-      
+
       for (let y = startYear; y <= endYear; y++) {
         // If it's the current year and the user is active, they go to "Gestão Atual"
         // Otherwise they go to "Time YYYY"
         const label = (y === currentYear && u.status === 'ativo') ? 'Gestão Atual' : `Time ${y}`;
         if (!groupsMap[label]) groupsMap[label] = [];
-        // Evitar duplicatas no mesmo grupo (não deve ocorrer pela lógica do loop)
         groupsMap[label].push(u);
       }
     });
@@ -74,8 +76,28 @@ export default function ConfiguracoesPage() {
       setName(user.name);
       setTitle(user.title || '');
       setArea(user.area || 'Geral');
-      setHistory(user.history || '');
+      setHistoryList(() => {
+        if (Array.isArray(user.history)) return user.history;
+        if (typeof user.history === 'string' && user.history.trim()) {
+          return [{ role: user.history, date: '' }];
+        }
+        return [];
+      });
       setWorkloadLimit(user.workloadLimit || 3);
+      
+      let initialJoinDate = '';
+      if (user.joinDate) {
+        if (typeof user.joinDate === 'string') {
+          // Backward compatibility for old yyyy-MM format
+          initialJoinDate = (user.joinDate as string).length === 7 ? `${user.joinDate}-01` : (user.joinDate as string);
+        } else if (user.joinDate instanceof Date && !isNaN(user.joinDate.getTime())) {
+          initialJoinDate = format(user.joinDate, 'yyyy-MM-dd');
+        } else if ((user.joinDate as any).toDate) {
+          initialJoinDate = format((user.joinDate as any).toDate(), 'yyyy-MM-dd');
+        }
+      }
+      setJoinDate(initialJoinDate);
+      
       setPhotoURL(user.photoURL);
 
       if (user.role === 'diretor') {
@@ -102,8 +124,9 @@ export default function ConfiguracoesPage() {
 
     setLoading(true);
     try {
-      await updateUser(user.uid, { name, title, area, history, workloadLimit });
-      setUser({ ...user, name, title, area, history, workloadLimit });
+      const joinDateObj = joinDate ? new Date(joinDate + 'T12:00:00') : undefined;
+      await updateUser(user.uid, { name, title, area, history: historyList, workloadLimit, joinDate: joinDateObj });
+      setUser({ ...user, name, title, area, history: historyList, workloadLimit, joinDate: joinDateObj });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
@@ -120,7 +143,7 @@ export default function ConfiguracoesPage() {
     try {
       await updateUser(uid, { role: newRole });
 
-      // Registrar mudança de cargo na timeline
+      // Register role change in the timeline
       const roleLabels: Record<string, string> = { assessor: 'Assessor', diretor: 'Diretor' };
       await createMemberTimelineEvent({
         userId: uid,
@@ -139,18 +162,18 @@ export default function ConfiguracoesPage() {
   const handleDeactivateMember = async () => {
     if (!showDeactivateConfirm) return;
     const targetUid = showDeactivateConfirm.uid;
-    
+
     setMgmtLoading(true);
     try {
       const now = new Date();
       await updateUser(targetUid, { status: 'desligado', deactivatedAt: now });
 
-      // Registrar evento automático de egresso na timeline
+      // Register member deactivation in the timeline
       await createMemberTimelineEvent({
         userId: targetUid,
         date: now,
         type: 'egresso',
-        title: 'Desligamento da Energy Júnior',
+        title: `Desligamento da ${process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}`,
         description: `Fim da jornada como ${showDeactivateConfirm.title || showDeactivateConfirm.role} na diretoria de ${showDeactivateConfirm.area || 'Operações'}.`,
       }).catch((e: unknown) => console.error('Erro ao criar evento de egresso na timeline:', e));
 
@@ -195,99 +218,163 @@ export default function ConfiguracoesPage() {
         {/* Right Col: Form */}
         <div className="md:col-span-2">
           <Card variant="gradient" className="p-6 md:p-8 h-full flex flex-col justify-center">
-            <form onSubmit={handleSave} className="space-y-6">
-              <div className="grid gap-6">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Nome Completo</label>
+            <form onSubmit={handleSave} className="space-y-6 md:space-y-8 flex-1">
+              <div className="space-y-3">
+                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Nome Completo</label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Como você quer ser chamado?"
-                    className="bg-white/5 border-white/5 h-14 focus:bg-white/[0.08] transition-all rounded-2xl text-sm"
+                    className="bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4"
                   />
                 </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Cargo</label>
-                      <Input
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        disabled={user?.role === 'assessor'}
-                        placeholder="Ex: Assessor de Projetos"
-                        className={cn(
-                          "bg-white/5 border-white/5 h-14 transition-all rounded-2xl text-sm",
-                          user?.role === 'assessor' ? "bg-white/[0.02] text-zinc-600 cursor-not-allowed" : "focus:bg-white/[0.08]"
-                        )}
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Diretoria / Área</label>
-                      <Input
-                        value={area}
-                        onChange={(e) => setArea(e.target.value)}
-                        placeholder="Ex: Projetos, Comercial..."
-                        className="bg-white/5 border-white/5 h-14 focus:bg-white/[0.08] transition-all rounded-2xl text-sm"
-                      />
-                    </div>
-                  </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Trajetória (Cargos Anteriores)</label>
-                  <Input
-                    value={history}
-                    onChange={(e) => setHistory(e.target.value)}
-                    placeholder="Ex: Assessor de Dev - Jan/2025 | Gerente - Jan/2026"
-                    className="bg-white/5 border-white/5 h-14 focus:bg-white/[0.08] transition-all rounded-2xl text-sm"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Meta de Demandas Ativas</label>
-                  <div className="flex items-center gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Cargo</label>
                     <Input
-                      type="number"
-                      min="1"
-                      max="20"
-                      value={workloadLimit}
-                      onChange={(e) => setWorkloadLimit(parseInt(e.target.value) || 1)}
-                      className="bg-white/5 border-white/5 h-14 focus:bg-white/[0.08] transition-all rounded-2xl text-sm w-24 text-center"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      disabled={user?.role === 'assessor'}
+                      placeholder="Ex: Assessor de Projetos"
+                      className={cn(
+                        "bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4",
+                        user?.role === 'assessor' ? "opacity-60 cursor-not-allowed" : ""
+                      )}
                     />
-                    <p className="text-xs text-zinc-600 font-medium">Demandas simultâneas por projeto</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Diretoria</label>
+                    <Input
+                      value={area}
+                      onChange={(e) => setArea(e.target.value)}
+                      placeholder="Ex: Projetos, Comercial..."
+                      className="bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4"
+                    />
                   </div>
                 </div>
 
-                <div className="space-y-3 opacity-60">
-                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">E-mail (Não editável)</label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Timeline de Cargos</label>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryList([...historyList, { role: '', date: '' }])}
+                      className="text-[10px] font-black text-white bg-secondary/20 hover:bg-secondary/40 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <span className="text-secondary">+</span> Adicionar Cargo
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {historyList.map((item, index) => (
+                      <div key={index} className="flex items-center gap-3 bg-zinc-950 border border-white/[0.03] p-3 rounded-2xl">
+                        <div className="flex-1 space-y-3 sm:space-y-0 sm:flex sm:gap-3">
+                          <div className="flex-1 space-y-1">
+                            <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest px-1">Cargo</label>
+                            <Input
+                              value={item.role}
+                              onChange={(e) => {
+                                const newHistory = [...historyList];
+                                newHistory[index].role = e.target.value;
+                                setHistoryList(newHistory);
+                              }}
+                              placeholder="Ex: Assessor de Dev"
+                              className="h-10 text-xs bg-zinc-900 border-none"
+                            />
+                          </div>
+                          <div className="w-full sm:w-[200px] space-y-1">
+                            <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest px-1">Data</label>
+                            <DatePicker
+                              value={item.date}
+                              align="right"
+                              onChange={(date) => {
+                                const newHistory = [...historyList];
+                                newHistory[index].date = date;
+                                setHistoryList(newHistory);
+                              }}
+                              className="h-10 text-xs bg-zinc-900 border-none"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newHistory = historyList.filter((_, i) => i !== index);
+                            setHistoryList(newHistory);
+                          }}
+                          className="w-10 h-10 shrink-0 flex items-center justify-center text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                      </div>
+                    ))}
+
+                    {historyList.length === 0 && (
+                      <div className="text-center py-6 border border-dashed border-white/10 rounded-2xl">
+                        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Nenhum cargo adicionado na timeline.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Data de Ingresso</label>
+                    <DatePicker
+                      value={joinDate}
+                      onChange={(date) => setJoinDate(date)}
+                      className="bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Meta de Demandas</label>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={workloadLimit}
+                        onChange={(e) => setWorkloadLimit(parseInt(e.target.value) || 1)}
+                        className="bg-zinc-950 border-white/[0.03] h-12 text-sm rounded-xl px-4 w-24 text-center"
+                      />
+                      <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest italic">Simultâneas por projeto</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">E-mail (Não editável)</label>
                   <Input
                     value={user?.email || ''}
                     disabled
-                    className="bg-white/[0.02] border-white/5 h-14 text-zinc-600 cursor-not-allowed rounded-2xl text-sm"
+                    className="bg-zinc-950 border-white/[0.03] h-12 text-zinc-600 cursor-not-allowed rounded-xl px-4 text-sm opacity-60"
                   />
                 </div>
-              </div>
 
-              <div className="pt-4 flex justify-end">
+              <div className="pt-4">
                 <Button
                   type="submit"
                   disabled={loading}
                   variant="primary"
                   className={cn(
-                    "h-12 px-8 min-w-[160px] transition-all gap-2 rounded-2xl font-black uppercase tracking-widest text-[10px]",
+                    "w-full h-14 rounded-2xl gap-3 transition-all active:scale-[0.98] shadow-lg shadow-secondary/20 font-black text-sm",
                     saved && "bg-none bg-green-600 shadow-[0_0_20px_rgba(22,163,74,0.3)]"
                   )}
                 >
                   {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : saved ? (
                     <>
-                      <Check className="w-4 h-4" />
-                      Salvo!
+                      <Check className="w-5 h-5" />
+                      Salvo com Sucesso!
                     </>
                   ) : (
                     <>
-                      <Save className="w-4 h-4" />
                       Salvar Alterações
+                      <ChevronRight className="w-5 h-5" />
                     </>
                   )}
                 </Button>
@@ -314,8 +401,8 @@ export default function ConfiguracoesPage() {
                     onClick={() => setActiveFilter(f)}
                     className={cn(
                       "px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
-                      activeFilter === f 
-                        ? "bg-white text-black shadow-lg" 
+                      activeFilter === f
+                        ? "bg-white text-black shadow-lg"
                         : "text-zinc-600 hover:text-zinc-400"
                     )}
                   >
@@ -331,11 +418,11 @@ export default function ConfiguracoesPage() {
             <div className="flex flex-col">
               {groupedUsers.map((group, groupIdx) => {
                 const isExpanded = activeFilter !== 'todos' || expandedGroups[group.label] || group.label === 'Gestão Atual';
-                
+
                 return (
                   <div key={group.label || 'single'} className={cn(groupIdx > 0 && "border-t border-white/[0.05]")}>
                     {group.label && (
-                      <button 
+                      <button
                         onClick={() => toggleGroup(group.label)}
                         className="w-full px-6 py-4 bg-white/[0.02] border-b border-white/[0.03] flex items-center justify-between hover:bg-white/[0.04] transition-colors group/header"
                       >
@@ -352,7 +439,7 @@ export default function ConfiguracoesPage() {
                         )}
                       </button>
                     )}
-                    
+
                     {isExpanded && (
                       <div className="divide-y divide-white/[0.03] animate-in slide-in-from-top-2 duration-300">
                         {group.members.map((member) => (
@@ -369,13 +456,13 @@ export default function ConfiguracoesPage() {
                                   )}
                                 </div>
                                 <p className="text-xs text-zinc-500 font-medium truncate">{member.email}</p>
-                                </div>
                               </div>
+                            </div>
 
                             <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6">
                               {/* Deactivate Button */}
                               {member.uid !== user.uid && member.status !== 'desligado' && (
-                                <button 
+                                <button
                                   onClick={() => setShowDeactivateConfirm(member)}
                                   className="p-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/10 text-red-500/30 hover:text-red-500 border border-red-500/0 hover:border-red-500/10 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
                                   title="Desligar Membro"
@@ -396,8 +483,8 @@ export default function ConfiguracoesPage() {
                                     onClick={() => handleUpdateRole(member.uid, roleOption)}
                                     className={cn(
                                       "flex-1 sm:flex-none px-3 md:px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] transition-all",
-                                      member.role === roleOption 
-                                        ? "bg-white text-black shadow-lg" 
+                                      member.role === roleOption
+                                        ? "bg-white text-black shadow-lg"
                                         : "text-zinc-600 hover:text-zinc-400"
                                     )}
                                   >
@@ -426,22 +513,22 @@ export default function ConfiguracoesPage() {
             <div className="w-16 h-16 bg-red-500/10 rounded-[20px] flex items-center justify-center mb-6 mx-auto">
               <AlertCircle className="w-8 h-8 text-red-500" />
             </div>
-            
+
             <h3 className="text-xl font-black text-white text-center tracking-tight mb-2">Desligar Membro?</h3>
             <p className="text-sm text-zinc-400 text-center leading-relaxed">
-              Você está prestes a desligar <span className="text-white font-bold">{showDeactivateConfirm.name}</span>. 
+              Você está prestes a desligar <span className="text-white font-bold">{showDeactivateConfirm.name}</span>.
               Este membro será marcado como <span className="text-red-400 font-bold">Pós-Júnior</span> e perderá acesso à plataforma.
             </p>
 
             <div className="grid grid-cols-2 gap-4 mt-8">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => setShowDeactivateConfirm(null)}
                 className="rounded-2xl border-white/5 hover:bg-white/5 font-bold h-12"
               >
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 onClick={handleDeactivateMember}
                 className="rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold h-12 shadow-lg shadow-red-600/20"
               >

@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { tenantConfig } from '@/config/tenant';
 import { Avatar } from '@/components/ui/Avatar';
 import { createDemand, getDemandById, getUsers, updateDemand, deleteDemand, updateSprint } from '@/lib/firestore';
 
@@ -21,6 +22,8 @@ import { parseDriveLink } from '@/lib/drive';
 import { toast } from '@/store/useToastStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { CommentSection } from '@/components/comments/CommentSection';
+import { TagsInput } from '@/components/ui/TagsInput';
 
 const DemandFormSkeleton = () => (
   <div className="space-y-8 animate-pulse">
@@ -61,8 +64,9 @@ const initialFormData = (status: DemandStatus): FormData => ({
   status,
   priority: 'media',
   assignees: [],
+  tags: [],
   sprintId: '',
-  startDate: '', // Iniciado vazio para evitar mismatch de hidratação
+  startDate: '', // Started empty to avoid hydration mismatch
   deadline: '',
   estimatedHours: 0,
   projectType: 'Interno',
@@ -108,7 +112,7 @@ export const NovaDemandaModal = () => {
     setShowLinkInput(false);
   };
 
-  // Carregar dados ao abrir o modal
+  // Load data when opening modal
   useEffect(() => {
     if (!novaDemandaOpen) {
       setLoading(false);
@@ -121,6 +125,7 @@ export const NovaDemandaModal = () => {
       setLoading(true);
       try {
         const usersData = await getUsers(true);
+        usersData.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
         setAllUsers(usersData);
 
         if (selectedDemandId && (demandModalMode === 'view' || demandModalMode === 'edit')) {
@@ -138,6 +143,7 @@ export const NovaDemandaModal = () => {
               deadline: d.deadline instanceof Date ? d.deadline.toISOString().split('T')[0] : d.deadline || '',
               projectType: d.projectType || 'Interno',
               attachments: d.attachments || [],
+              tags: d.tags || [],
               visibleToAssessors: d.visibleToAssessors !== undefined ? d.visibleToAssessors : (
                 d.assignees.length === 0 || d.assignees.some(uid => usersData.find(u => u.uid === uid)?.role === 'assessor')
               ),
@@ -229,7 +235,7 @@ export const NovaDemandaModal = () => {
 
         toast.success('Demanda criada com sucesso!');
 
-        // Integrações (Email e Calendar)
+        // Integrations (Email and Calendar)
         const assignees = formData.assignees || [];
         let newSprintAssignees: string[] = [];
         let sprintData = null;
@@ -240,7 +246,7 @@ export const NovaDemandaModal = () => {
             sprintData = s;
             const notified = s.notifiedUsers || [];
             newSprintAssignees = assignees.filter(id => !notified.includes(id));
-            
+
             if (newSprintAssignees.length > 0) {
               await updateSprint(s.id, { notifiedUsers: [...notified, ...newSprintAssignees] });
             }
@@ -254,8 +260,8 @@ export const NovaDemandaModal = () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            demand: { 
-              title: formData.title, 
+            demand: {
+              title: formData.title,
               deadline: formData.deadline,
               description: formData.description,
               attachments: formData.attachments || []
@@ -344,12 +350,12 @@ export const NovaDemandaModal = () => {
             <div className="p-6 md:p-8 pb-4 flex items-center justify-between">
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-10 h-10 md:w-12 md:h-12 bg-secondary/5 rounded-2xl flex items-center justify-center border border-white/5 shadow-[0_0_20px_rgba(11,175,77,0.1)] shrink-0">
-                  <Image src="/logo-energy.svg" alt="Energy" width={24} height={24} className="object-contain" />
+                  <Image src="/logo.svg" alt={process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'} width={24} height={24} className="object-contain" />
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-lg md:text-xl font-black text-white tracking-tight truncate">{modalTitle}</h2>
                   <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-tighter truncate">
-                    Energy Júnior • {isCreate ? 'Nova Solicitação' : 'Gestão de Fluxo'}
+                    {process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'} • {isCreate ? 'Nova Solicitação' : 'Gestão de Fluxo'}
                   </p>
                 </div>
               </div>
@@ -597,7 +603,7 @@ export const NovaDemandaModal = () => {
                       </label>
                       {isView ? (
                         <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.08] text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                          {formData.visibleToAssessors ? 'Público (Todos)' : 'Restrito'}
+                          {formData.visibleToAssessors ? 'Público' : 'Restrito'}
                         </div>
                       ) : (
                         <div className="flex p-1 bg-zinc-950 border border-white/[0.08] rounded-xl h-12">
@@ -706,7 +712,7 @@ export const NovaDemandaModal = () => {
                         <div className="space-y-3">
                           <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Status</label>
                           <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.08] text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                            {formData.status.replace('_', ' ')}
+                            {tenantConfig.demandStatuses.find(s => s.id === formData.status)?.label || formData.status.replace('_', ' ')}
                           </div>
                         </div>
                       ) : (
@@ -715,11 +721,9 @@ export const NovaDemandaModal = () => {
                           value={formData.status}
                           onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as DemandStatus }))}
                         >
-                          <option value="backlog">Backlog</option>
-                          <option value="criando_escopo">Criando Escopo</option>
-                          <option value="em_progresso">Em Progresso</option>
-                          <option value="em_revisao">Em Revisão</option>
-                          <option value="concluido">Concluído</option>
+                          {tenantConfig.demandStatuses.map(status => (
+                            <option key={status.id} value={status.id}>{status.label}</option>
+                          ))}
                         </Select>
                       )}
 
@@ -729,12 +733,9 @@ export const NovaDemandaModal = () => {
                           <div className="h-12 bg-zinc-950/50 flex items-center px-4 rounded-xl border border-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em]">
                             <span className={cn(
                               "px-2 py-0.5 rounded",
-                              formData.priority === 'urgente' ? 'text-red-400 bg-red-400/10' :
-                                formData.priority === 'alta' ? 'text-orange-400 bg-orange-400/10' :
-                                  formData.priority === 'media' ? 'text-yellow-400 bg-yellow-400/10' :
-                                    'text-zinc-400 bg-zinc-400/10'
+                              tenantConfig.priorities.find(p => p.id === formData.priority)?.badgeClass?.replace('border', '') || 'text-zinc-400 bg-zinc-400/10'
                             )}>
-                              {formData.priority}
+                              {tenantConfig.priorities.find(p => p.id === formData.priority)?.label || formData.priority}
                             </span>
                           </div>
                         </div>
@@ -744,12 +745,21 @@ export const NovaDemandaModal = () => {
                           value={formData.priority}
                           onChange={(e) => setFormData((prev) => ({ ...prev, priority: e.target.value as Priority }))}
                         >
-                          <option value="baixa">Baixa</option>
-                          <option value="media">Média</option>
-                          <option value="alta">Alta</option>
-                          <option value="urgente">Urgente</option>
+                          {tenantConfig.priorities.map(priority => (
+                            <option key={priority.id} value={priority.id}>{priority.label}</option>
+                          ))}
                         </Select>
                       )}
+                    </div>
+
+                    {/* Tags */}
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Tags</label>
+                      <TagsInput
+                        tags={formData.tags}
+                        onChange={(newTags) => setFormData((prev) => ({ ...prev, tags: newTags }))}
+                        disabled={isView}
+                      />
                     </div>
 
                     {/* Sprint & Hours */}
@@ -861,7 +871,17 @@ export const NovaDemandaModal = () => {
                       </div>
                     </div>
 
-                    {/* Ação */}
+                    {/* Comment Section */}
+                    {isView && selectedDemandId && (
+                      <CommentSection
+                        demandId={selectedDemandId}
+                        demandTitle={formData.title}
+                        allUsers={allUsers}
+                        currentUser={currentUser}
+                      />
+                    )}
+
+                    {/* Action */}
                     <div className="pt-6 flex flex-col gap-4">
                       {isView ? (
                         <div className="flex items-center justify-center p-4 bg-zinc-950/50 rounded-2xl border border-dashed border-white/5">
@@ -930,7 +950,7 @@ export const NovaDemandaModal = () => {
                       )}
 
                       <p className="text-[9px] text-center text-zinc-600 uppercase tracking-[0.3em] font-black leading-relaxed mt-2">
-                        Sistema de Gestão Energy Júnior — 2026
+                        Sistema de Gestão {process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'} — {new Date().getFullYear()}
                       </p>
                     </div>
                   </motion.div>

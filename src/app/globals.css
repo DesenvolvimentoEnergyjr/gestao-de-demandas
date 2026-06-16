@@ -4,25 +4,25 @@
 
 :root {
   --color-primary: #ffc20e;
+  --color-primary-dark: #ff8c00;
   --color-secondary: #0baf4d;
   --color-secondary-dark: #165b3b;
-  
-  /* Nuanced Dark Palette - Slate/Zinc hybrid */
-  --color-bg-base: #0a0a0c;       /* Fundo mais profundo */
+
+  --color-bg-base: #0a0a0c;
   --color-bg-section: #111114;
-  --color-bg-surface: #111114;    /* Padronizado com o cabeçalho */
+  --color-bg-surface: #111114;
   --color-bg-surface-hover: #16161a;
-  
+
   --color-text-main: #f4f4f5;
   --color-text-muted: #71717a;
   --color-border-subtle: rgba(255, 255, 255, 0.04);
 
   --background: var(--color-bg-base);
   --foreground: var(--color-text-main);
-  
+
   /* Gradient Border Utility - More vivid */
-  --grad-green: linear-gradient(135deg, rgba(11, 175, 77, 0.7) 0%, rgba(11, 175, 77, 0.2) 100%);
-  --grad-green-hover: linear-gradient(135deg, rgba(11, 175, 77, 1) 0%, rgba(11, 175, 77, 0.3) 100%);
+  --grad-green: linear-gradient(135deg, color-mix(in srgb, var(--color-secondary) 70%, transparent) 0%, color-mix(in srgb, var(--color-secondary) 20%, transparent) 100%);
+  --grad-green-hover: linear-gradient(135deg, var(--color-secondary) 0%, color-mix(in srgb, var(--color-secondary) 30%, transparent) 100%);
 }
 
 body {
@@ -37,13 +37,13 @@ body {
   position: relative;
   border: 1px solid transparent;
   background: linear-gradient(var(--color-bg-surface), var(--color-bg-surface)) padding-box,
-              var(--grad-green) border-box;
+    var(--grad-green) border-box;
   transition: all 0.3s ease;
 }
 
 .border-gradient-hover:hover {
   background: linear-gradient(var(--color-bg-surface-hover), var(--color-bg-surface-hover)) padding-box,
-              var(--grad-green-hover) border-box;
+    var(--grad-green-hover) border-box;
 }
 
 .app-glow {
@@ -59,7 +59,7 @@ body {
   right: -5%;
   width: 900px;
   height: 900px;
-  background: radial-gradient(circle, rgba(11,175,77,0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-secondary) 12%, transparent) 0%, transparent 70%);
   filter: blur(100px);
   pointer-events: none;
   z-index: 0;
@@ -72,7 +72,7 @@ body {
   left: -10%;
   width: 1000px;
   height: 1000px;
-  background: radial-gradient(circle, rgba(11,175,77,0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-secondary) 8%, transparent) 0%, transparent 70%);
   filter: blur(120px);
   pointer-events: none;
   z-index: 0;
@@ -94,24 +94,27 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(11, 175, 77, 0.3);
+  background: color-mix(in srgb, var(--color-secondary) 30%, transparent);
 }
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
 /* Input focus styles */
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   outline: none;
   border: 1px solid transparent !important;
   background: linear-gradient(#000000, #000000) padding-box,
-              var(--grad-green-hover) border-box !important;
-  box-shadow: 0 0 20px rgba(11,175,77,0.15);
+    var(--grad-green-hover) border-box !important;
+  box-shadow: 0 0 20px color-mix(in srgb, var(--color-secondary) 15%, transparent);
 }
 
 /* Remove standard arrows from input number */
@@ -120,12 +123,15 @@ input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 input[type=number] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
   transition: all 0.2s ease;
 }
 
@@ -137,14 +143,29 @@ select {
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
 }
 
 .animate-fade-in {

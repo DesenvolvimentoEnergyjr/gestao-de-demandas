@@ -43,7 +43,7 @@ export const Header = () => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowResults(false);
       }
-      // Se clicar fora do avatar, fecha o menu do usuário
+      // If the user clicks outside the avatar, close the user menu
       if (showUserMenu && !(event.target as HTMLElement).closest('.user-menu-trigger')) {
         setShowUserMenu(false);
       }
@@ -154,15 +154,15 @@ export const Header = () => {
       <div className="flex items-center gap-3 shrink-0">
         <div className="w-8 h-8 md:w-10 md:h-10 relative shrink-0">
           <Image
-            src="/logo-energy.svg"
-            alt="Energy Júnior"
+            src="/logo.svg"
+            alt={process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}
             fill
             sizes="(max-width: 768px) 32px, 40px"
             className="object-contain"
           />
         </div>
         <div className="flex flex-col">
-          <h1 className="text-white font-black text-sm md:text-base leading-none tracking-tight">Energy Júnior</h1>
+          <h1 className="text-white font-black text-sm md:text-base leading-none tracking-tight">{process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}</h1>
           <p className="text-[9px] md:text-[10px] font-bold text-secondary uppercase tracking-[0.1em] mt-0.5 md:mt-1">Gestão de Demandas</p>
         </div>
       </div>
@@ -217,7 +217,7 @@ export const Header = () => {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-3 md:gap-4 lg:gap-6 shrink-0">
-        {/* Nova Demanda Button - Only for Diretores */}
+        {/* Nova Demanda Button - Only for Diretores and Gerentes */}
         {user?.role === 'diretor' && (
           <Button
             onClick={() => openNovaDemanda()}

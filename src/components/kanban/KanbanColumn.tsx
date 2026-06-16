@@ -16,21 +16,21 @@ import { useAuthStore } from '@/store/useAuthStore';
 interface KanbanColumnProps {
   id: string;
   title: string;
-  color: string;
+  accentClass: string;
   demands: Demand[];
   users?: User[];
   highlightedId?: string | null;
   columnIndex?: number;
 }
 
-export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, demands, users = [], highlightedId = null, columnIndex = 0 }) => {
+export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, accentClass, demands, users = [], highlightedId = null, columnIndex = 0 }) => {
   const { setNodeRef, isOver } = useDroppable({ id });
   const { openNovaDemanda } = useUIStore();
   const { user } = useAuthStore();
 
   return (
     <div className={cn(
-      'flex flex-col flex-1 min-w-[280px] max-w-[500px] rounded-xl md:rounded-[32px] transition-all duration-300 h-full snap-center',
+      'flex flex-col flex-1 min-w-[280px] max-w-[500px] rounded-xl md:rounded-[32px] transition-all duration-300 h-[650px] max-h-full snap-center',
       'bg-[#1a1919] border border-white/5',
       isOver && 'border-secondary/30 bg-secondary/5'
     )}>
@@ -60,13 +60,12 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, de
 
       {/* Top accent line */}
       <div
-        className="h-0.5 mx-4 rounded-full opacity-60"
-        style={{ backgroundColor: color }}
+        className={cn("h-0.5 mx-4 rounded-full opacity-60", accentClass)}
       />
 
       <div
         ref={setNodeRef}
-        className="flex-1 p-3 space-y-2.5 min-h-[80px] overflow-y-auto no-scrollbar"
+        className="flex-1 p-3 space-y-2.5 min-h-[80px] overflow-y-auto pr-2"
       >
         <SortableContext
           id={id}

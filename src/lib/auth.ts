@@ -17,7 +17,8 @@ export const signInWithGoogle = async () => {
   const email = result.user.email || '';
 
   // Restricted domains check
-  const isAllowedDomain = email.endsWith('@energyjr.com');
+  const allowedDomain = process.env.NEXT_PUBLIC_COMPANY_DOMAIN;
+  const isAllowedDomain = allowedDomain ? email.endsWith(allowedDomain) : false;
 
   if (!isAllowedDomain) {
     await firebaseSignOut(auth);
@@ -94,13 +95,13 @@ export const createUserDoc = async (
 
   await setDoc(userRef, newUser);
 
-  // Criar evento automático de ingresso na linha do tempo
+  // Create user timeline event on user creation
   try {
     await createMemberTimelineEvent({
       userId: firebaseUser.uid,
       date: new Date(),
       type: 'ingresso',
-      title: 'Ingresso na Energy Júnior',
+      title: `Ingresso na ${process.env.NEXT_PUBLIC_COMPANY_NAME}`,
       description: `Início da jornada na diretoria de ${newUser.area}.`,
     });
   } catch (e) {

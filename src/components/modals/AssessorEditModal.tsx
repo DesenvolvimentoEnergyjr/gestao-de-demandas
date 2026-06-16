@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { updateUser, createMemberTimelineEvent } from '@/lib/firestore';
 import { toast } from '@/store/useToastStore';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AssessorEditModalProps {
@@ -22,8 +23,22 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
   const [name, setName] = useState(user.name);
   const [title, setTitle] = useState(user.title || '');
   const [area, setArea] = useState(user.area || '');
-  const [history, setHistory] = useState(user.history || '');
-  const [joinDate, setJoinDate] = useState(user.joinDate ? format(user.joinDate, 'yyyy-MM-dd') : '');
+  const [historyList, setHistoryList] = useState<{ role: string; date: string }[]>(() => {
+    if (Array.isArray(user.history)) return user.history;
+    if (typeof user.history === 'string' && user.history.trim()) {
+      return [{ role: user.history, date: '' }];
+    }
+    return [];
+  });
+  const getInitialJoinDate = (dateVal: any) => {
+    if (!dateVal) return '';
+    if (typeof dateVal === 'string') return (dateVal as string).length === 7 ? `${dateVal}-01` : (dateVal as string);
+    if (dateVal instanceof Date && !isNaN(dateVal.getTime())) return format(dateVal, 'yyyy-MM-dd');
+    if (dateVal.toDate) return format(dateVal.toDate(), 'yyyy-MM-dd');
+    return '';
+  };
+
+  const [joinDate, setJoinDate] = useState(getInitialJoinDate(user.joinDate));
   const [workloadLimit, setWorkloadLimit] = useState(user.workloadLimit || 3);
   const [loading, setLoading] = useState(false);
 
@@ -31,8 +46,14 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
     setName(user.name);
     setTitle(user.title || '');
     setArea(user.area || '');
-    setHistory(user.history || '');
-    setJoinDate(user.joinDate ? format(user.joinDate, 'yyyy-MM-dd') : '');
+    setHistoryList(() => {
+      if (Array.isArray(user.history)) return user.history;
+      if (typeof user.history === 'string' && user.history.trim()) {
+        return [{ role: user.history, date: '' }];
+      }
+      return [];
+    });
+    setJoinDate(getInitialJoinDate(user.joinDate));
     setWorkloadLimit(user.workloadLimit || 3);
   }, [user]);
 
@@ -45,13 +66,13 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
         name,
         title,
         area,
-        history,
+        history: historyList,
         workloadLimit,
         joinDate: joinDate ? new Date(joinDate + 'T12:00:00') : undefined
       };
       await updateUser(user.uid, updatedData);
 
-      // Registrar mudança de cargo na timeline se o título mudou
+      // Log change of position in the timeline if the title changed
       if (title && title !== user.title) {
         await createMemberTimelineEvent({
           userId: user.uid,
@@ -98,12 +119,12 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
             <div className="p-6 md:p-8 pb-4 flex items-center justify-between">
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-10 h-10 md:w-12 md:h-12 bg-secondary/5 rounded-2xl flex items-center justify-center border border-white/5 shadow-[0_0_20px_rgba(11,175,77,0.1)] shrink-0">
-                  <Image src="/logo-energy.svg" alt="Energy" width={24} height={24} className="object-contain" />
+                  <Image src="/logo.svg" alt={process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'} width={24} height={24} className="object-contain" />
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-lg md:text-xl font-black text-white tracking-tight truncate">Editar Perfil</h2>
                   <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-tighter truncate">
-                    Energy Júnior • Configurações de {user.name}
+                    {process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'} • Configurações de {user.name}
                   </p>
                 </div>
               </div>
@@ -148,40 +169,92 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Trajetória</label>
-                  <textarea
-                    rows={4}
-                    value={history}
-                    onChange={(e) => setHistory(e.target.value)}
-                    placeholder="Ex: Assessor de Dev - Jan/2025 | Gerente - Jan/2026"
-                    className="w-full bg-zinc-950 border border-white/[0.03] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-all resize-none"
-                  />
+                <div className="col-span-1 md:col-span-2 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Timeline de Cargos</label>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryList([...historyList, { role: '', date: '' }])}
+                      className="text-[10px] font-black text-white bg-secondary/20 hover:bg-secondary/40 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <span className="text-secondary">+</span> Adicionar Cargo
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {historyList.map((item, index) => (
+                      <div key={index} className="flex items-center gap-3 bg-zinc-950 border border-white/[0.03] p-3 rounded-2xl">
+                        <div className="flex-1 space-y-3 sm:space-y-0 sm:flex sm:gap-3">
+                          <div className="flex-1 space-y-1">
+                            <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest px-1">Cargo</label>
+                            <Input
+                              value={item.role}
+                              onChange={(e) => {
+                                const newHistory = [...historyList];
+                                newHistory[index].role = e.target.value;
+                                setHistoryList(newHistory);
+                              }}
+                              placeholder="Ex: Assessor de Dev"
+                              className="h-10 text-xs bg-zinc-900 border-none"
+                            />
+                          </div>
+                          <div className="w-full sm:w-[200px] space-y-1">
+                            <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest px-1">Data</label>
+                            <DatePicker
+                              value={item.date}
+                              align="right"
+                              onChange={(date) => {
+                                const newHistory = [...historyList];
+                                newHistory[index].date = date;
+                                setHistoryList(newHistory);
+                              }}
+                              className="h-10 text-xs bg-zinc-900 border-none"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newHistory = historyList.filter((_, i) => i !== index);
+                            setHistoryList(newHistory);
+                          }}
+                          className="w-10 h-10 shrink-0 flex items-center justify-center text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    
+                    {historyList.length === 0 && (
+                      <div className="text-center py-6 border border-dashed border-white/10 rounded-2xl">
+                        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Nenhum cargo adicionado na timeline.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Data de Ingresso</label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={joinDate}
-                    onChange={(e) => setJoinDate(e.target.value)}
+                    onChange={(date) => setJoinDate(date)}
                     className="bg-zinc-950 border-white/[0.03] focus:border-secondary h-12 text-sm rounded-xl px-4"
                   />
                 </div>
-              </div>
 
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Meta de Demandas</label>
-                <div className="flex items-center gap-4">
-                  <Input
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={workloadLimit}
-                    onChange={(e) => setWorkloadLimit(parseInt(e.target.value) || 1)}
-                    className="bg-zinc-950 border-white/[0.03] h-12 text-sm rounded-xl px-4 w-24 text-center"
-                  />
-                  <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest italic">Simultâneas por projeto</p>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">Meta de Demandas</label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={workloadLimit}
+                      onChange={(e) => setWorkloadLimit(parseInt(e.target.value) || 1)}
+                      className="bg-zinc-950 border-white/[0.03] h-12 text-sm rounded-xl px-4 w-24 text-center"
+                    />
+                    <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest italic">Simultâneas por projeto</p>
+                  </div>
                 </div>
               </div>
 
@@ -203,7 +276,7 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
                 </Button>
 
                 <p className="text-[9px] text-center text-zinc-600 uppercase tracking-[0.3em] font-black leading-relaxed mt-6">
-                  Sistema de Gestão Energy Júnior — 2026
+                  Sistema de Gestão {process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'} — {new Date().getFullYear()}
                 </p>
               </div>
             </form>

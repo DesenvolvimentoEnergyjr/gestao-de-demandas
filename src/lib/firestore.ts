@@ -12,7 +12,10 @@ import {
   orderBy,
   runTransaction,
   onSnapshot,
+  arrayUnion,
 } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { tenantConfig } from '@/config/tenant';
 import { db } from './firebase';
 import { Demand, DemandStatus, Sprint, User, AppNotification, MemberTimelineEvent } from '@/types';
 
@@ -26,8 +29,7 @@ const toDateOrNull = (val: unknown): Date | null =>
     ? (val as { toDate: () => Date }).toDate()
     : null;
 
-// REAL-TIME LISTENERS
-
+// Real-time listeners
 export const subscribeToDemands = (
   callback: (demands: Demand[]) => void,
   filters?: {
@@ -81,8 +83,7 @@ export const subscribeToSprints = (callback: (sprints: Sprint[]) => void) => {
   });
 };
 
-// NOTIFICATIONS
-
+// Notifications
 export const createNotification = async (
   data: Omit<AppNotification, 'id' | 'createdAt' | 'read'>
 ) => {
@@ -112,8 +113,7 @@ export const markAllNotificationsAsRead = async (userId: string) => {
   await Promise.all(batch);
 };
 
-// DEMANDS
-
+// Demands
 export const getDemands = async (filters?: {
   status?: DemandStatus;
   assigneeId?: string;
@@ -169,7 +169,8 @@ export const createDemand = async (
       ? (counterSnap.data().demandCount as number)
       : 0;
     const next = current + 1;
-    const code = `EJ-${String(next).padStart(3, '0')}`;
+    const prefix = process.env.NEXT_PUBLIC_DEMAND_PREFIX;
+    const code = `${prefix}${String(next).padStart(3, '0')}`;
 
     transaction.set(counterRef, { demandCount: next }, { merge: true });
 
@@ -233,7 +234,7 @@ export const updateDemand = async (
       }
     }
 
-    // Se a demanda for concluída, notificar o criador e registrar na timeline dos assignees
+    // If demand is completed, notify the creator and register it in the assignee's timeline
     if (data.status === 'concluido' && oldData.status !== 'concluido') {
       if (oldData.createdBy) {
         await createNotification({
@@ -245,7 +246,7 @@ export const updateDemand = async (
         });
       }
 
-      // Registrar evento automático na timeline de cada assignee
+      // Register automatic event in each assignee's timeline
       const assignees = data.assignees || oldData.assignees || [];
       await Promise.all(
         assignees.map((userId: string) =>
@@ -258,19 +259,13 @@ export const updateDemand = async (
           }).catch((e: unknown) => console.error('Erro ao criar evento de demanda na timeline:', e))
         )
       );
-    } 
-    // Notificar mudança de status/coluna
+    }
+    // Notify change of status
     else if (data.status && data.status !== oldData.status) {
       if (oldData.createdBy) {
-        const statusMap: Record<string, string> = {
-          backlog: 'Backlog',
-          criando_escopo: 'Criando Escopo',
-          em_progresso: 'Em Progresso',
-          em_revisao: 'Em Revisão',
-        };
-        
-        const newStatusStr = statusMap[data.status] || data.status;
-        
+        const configStatus = tenantConfig.demandStatuses.find(s => s.id === data.status);
+        const newStatusStr = configStatus?.label || data.status;
+
         await createNotification({
           userId: oldData.createdBy,
           title: 'Atualização de Status',
@@ -292,8 +287,52 @@ export const deleteDemand = async (id: string) => {
   await deleteDoc(doc(db, 'demands', id));
 };
 
-// SPRINTS
+export const addCommentToDemand = async (
+  demandId: string,
+  text: string,
+  authorId: string,
+  mentionedUsers: string[],
+  demandTitle: string
+) => {
+  const commentId = doc(collection(db, 'demands')).id; // Generate random ID
 
+  await updateDoc(doc(db, 'demands', demandId), {
+    comments: arrayUnion({
+      id: commentId,
+      authorId,
+      text,
+      createdAt: new Date(), // using local date instead of serverTimestamp to avoid complex client-side typings, firestore will convert it.
+    }),
+    updatedAt: serverTimestamp(),
+  });
+
+  // Notify mentioned users
+  if (mentionedUsers.length > 0) {
+    await Promise.all(
+      mentionedUsers.map((userId) =>
+        createNotification({
+          userId,
+          title: 'Você foi mencionado',
+          message: `Você foi mencionado em um comentário na demanda "${demandTitle}"`,
+          type: 'mention',
+          link: `/kanban`,
+        })
+      )
+    );
+  }
+};
+
+export const deleteCommentFromDemand = async (demandId: string, commentId: string) => {
+  const demandRef = doc(db, 'demands', demandId);
+  const snap = await getDoc(demandRef);
+  if (!snap.exists()) return;
+  const data = snap.data();
+  const comments = data.comments || [];
+  const newComments = comments.filter((c: any) => c.id !== commentId);
+  await updateDoc(demandRef, { comments: newComments });
+};
+
+// Sprints
 export const getSprints = async (): Promise<Sprint[]> => {
   const q = query(collection(db, 'sprints'), orderBy('startDate', 'desc'));
   const snapshot = await getDocs(q);
@@ -369,13 +408,12 @@ export const deleteSprint = async (id: string) => {
   await deleteDoc(doc(db, 'sprints', id));
 };
 
-// USERS
-
+// Users
 export const subscribeToUsers = (callback: (users: User[]) => void, onlyActive = true) => {
   const q = onlyActive
     ? query(collection(db, 'users'), where('status', '==', 'ativo'))
     : query(collection(db, 'users'));
-    
+
   return onSnapshot(q, (snapshot) => {
     const users = snapshot.docs.map((d) => ({
       uid: d.id,
@@ -427,8 +465,7 @@ export const updateUser = async (uid: string, data: Partial<User>) => {
   });
 };
 
-// MEMBER TIMELINE
-
+// Member Timeline
 export const subscribeToMemberTimeline = (
   userId: string,
   callback: (events: MemberTimelineEvent[]) => void

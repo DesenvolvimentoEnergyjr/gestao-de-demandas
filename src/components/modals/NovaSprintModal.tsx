@@ -22,7 +22,7 @@ const initialFormData = (): FormData => ({
   title: '',
   description: '',
   objective: '',
-  startDate: '', // Vazio para evitar mismatch
+  startDate: '', // Empty to avoid hydration mismatch
   endDate: '',
   totalPoints: 0,
   type: 'Interno',
@@ -118,12 +118,12 @@ export const NovaSprintModal = () => {
             <div className="p-6 md:p-8 pb-4 flex items-center justify-between">
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-10 h-10 md:w-12 md:h-12 bg-secondary/5 rounded-2xl flex items-center justify-center border border-white/5 shadow-[0_0_20px_rgba(11,175,77,0.1)] shrink-0">
-                  <Image src="/logo-energy.svg" alt="Energy" width={24} height={24} className="object-contain" />
+                  <Image src="/logo.svg" alt={process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'} width={24} height={24} className="object-contain" />
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-lg md:text-xl font-black text-white tracking-tight truncate">Novo Ciclo de Sprint</h2>
                   <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-tighter truncate">
-                    Planejamento e Metas • Energy Júnior
+                    Planejamento e Metas • {process.env.NEXT_PUBLIC_COMPANY_NAME}
                   </p>
                 </div>
               </div>
@@ -136,7 +136,7 @@ export const NovaSprintModal = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 md:p-8 pt-4 md:pt-6 space-y-6 md:space-y-8 flex-1 overflow-y-auto no-scrollbar">
-              {/* Título */}
+              {/* Title */}
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                   Título do Ciclo
@@ -155,7 +155,7 @@ export const NovaSprintModal = () => {
                 )}
               </div>
 
-              {/* Objetivo */}
+              {/* Objective */}
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                   Objetivo da Sprint
@@ -179,10 +179,10 @@ export const NovaSprintModal = () => {
                 )}
               </div>
 
-              {/* Descrição */}
+              {/* Description */}
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
-                  Descrição <span className="text-zinc-600 normal-case font-medium">(opcional)</span>
+                  Descrição <span className="text-zinc-600 normal-case font-medium">(optional)</span>
                 </label>
                 <textarea
                   rows={2}
@@ -193,7 +193,7 @@ export const NovaSprintModal = () => {
                 />
               </div>
 
-              {/* Datas */}
+              {/* Dates */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
@@ -223,7 +223,7 @@ export const NovaSprintModal = () => {
                 </div>
               </div>
 
-              {/* Tipo de Sprint */}
+              {/* Sprint Type */}
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                   Tipo de Sprint
@@ -269,7 +269,7 @@ export const NovaSprintModal = () => {
                 </Button>
 
                 <p className="text-[9px] text-center text-zinc-600 uppercase tracking-[0.3em] font-black leading-relaxed mt-6">
-                  Sistema de Gestão Energy Júnior — 2026
+                  Sistema de Gestão {process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'} — {new Date().getFullYear()}
                 </p>
               </div>
             </form>

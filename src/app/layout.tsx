@@ -6,10 +6,10 @@ import { ToastContainer } from '@/components/ui/Toast';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Gestão de Demandas - Energy Júnior',
-  description: 'Sistema interno de gestão de demandas e projetos da Energy Júnior.',
+  title: `Gestão de Demandas - ${process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}`,
+  description: `Sistema interno de gestão de demandas e projetos da ${process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}.`,
   icons: {
-    icon: '/logo-energy.svg',
+    icon: '/logo.svg',
   },
 };
 

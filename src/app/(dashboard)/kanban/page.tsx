@@ -6,6 +6,7 @@ import { KanbanBoard } from '@/components/kanban/KanbanBoard';
 import { getUsers } from '@/lib/firestore';
 import { useDemandStore } from '@/store/useDemandStore';
 import { useSprintStore } from '@/store/useSprintStore';
+import { useAuthStore } from '@/store/useAuthStore';
 
 import { User } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,6 +22,7 @@ const FILTERS = [
 ];
 
 export default function KanbanPage() {
+  const { user } = useAuthStore();
   const { loading, demands } = useDemandStore();
   const { sprints } = useSprintStore();
   const router = useRouter();
@@ -31,6 +33,9 @@ export default function KanbanPage() {
   const [activeFilter, setActiveFilter] = useState('minhas');
   const [selectedSprintId, setSelectedSprintId] = useState('all');
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+
+  const deferredFilter = React.useDeferredValue(activeFilter);
+  const deferredSprintId = React.useDeferredValue(selectedSprintId);
   const [showMembers, setShowMembers] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -48,14 +53,23 @@ export default function KanbanPage() {
   }, []);
 
   useEffect(() => {
-    if (demandId && demands.length > 0) {
+    if (demandId && demands.length > 0 && user) {
+      const demand = demands.find(d => d.id === demandId);
+      if (demand) {
+        if (!demand.assignees.includes(user.uid)) {
+          setActiveFilter('todas');
+        }
+        if (demand.sprintId && selectedSprintId !== 'all' && selectedSprintId !== demand.sprintId) {
+          setSelectedSprintId(demand.sprintId);
+        }
+      }
       setHighlightedId(demandId);
-      // Limpar a URL sem perder o estado local
+      // Clean URL without losing local state
       router.replace('/kanban', { scroll: false });
     }
-  }, [demandId, demands, router]);
+  }, [demandId, demands, router, user, selectedSprintId]);
 
-  // Limpar o destaque ao interagir com a página
+  // Clear highlight when interacting with the page
   useEffect(() => {
     if (!highlightedId) return;
 
@@ -76,38 +90,57 @@ export default function KanbanPage() {
     <div className="flex-1 flex flex-col relative px-4 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          {FILTERS.map((filter) => (
-            <button
-              key={filter.id}
-              onClick={() => setActiveFilter(filter.id)}
-              className={cn(
-                'px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border',
-                activeFilter === filter.id
-                  ? 'bg-white text-black border-white shadow-lg'
-                  : 'bg-[#111111] text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300'
-              )}
-            >
-              {filter.label}
-            </button>
-          ))}
+          {FILTERS.map((filter) => {
+            const isActive = activeFilter === filter.id;
+            return (
+              <button
+                key={filter.id}
+                onClick={() => setActiveFilter(filter.id)}
+                className={cn(
+                  'relative px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors duration-300 border',
+                  isActive
+                    ? 'text-black border-transparent z-10'
+                    : 'bg-[#111111] text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300 z-0'
+                )}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeKanbanFilter"
+                    className="absolute inset-0 bg-white rounded-full shadow-lg"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <span className="relative z-10">{filter.label}</span>
+              </button>
+            );
+          })}
 
-          {/* Botão de Membros */}
+          {/* Members Button */}
           <button
             onClick={handleToggleMembers}
             className={cn(
-              'px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5',
+              'relative px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors duration-300 border flex items-center gap-1.5',
               activeFilter.startsWith('membro_')
-                ? 'bg-white text-black border-white shadow-lg'
+                ? 'text-black border-transparent z-10'
                 : (showMembers
-                  ? 'bg-white/10 text-white border-white/20'
-                  : 'bg-[#111111] text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300')
+                  ? 'bg-white/10 text-white border-white/20 z-0'
+                  : 'bg-[#111111] text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300 z-0')
             )}
           >
-            <span>Membros</span>
-            <ChevronRight className={cn('w-3.5 h-3.5 transition-transform duration-200', showMembers && 'rotate-90')} />
+            {activeFilter.startsWith('membro_') && (
+              <motion.div
+                layoutId="activeKanbanFilter"
+                className="absolute inset-0 bg-white rounded-full shadow-lg"
+                transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1.5">
+              <span>Membros</span>
+              <ChevronRight className={cn('w-3.5 h-3.5 transition-transform duration-200', showMembers && 'rotate-90')} />
+            </span>
           </button>
 
-          {/* Avatares dos membros com transição suave */}
+          {/* Avatars of the members with smooth transition */}
           <AnimatePresence>
             {showMembers && (
               <motion.div
@@ -158,7 +191,7 @@ export default function KanbanPage() {
           </AnimatePresence>
         </div>
 
-        <div className="w-full md:w-64">
+        <div className="w-full md:min-w-[16rem] md:w-auto md:max-w-xs shrink-0">
           <Select
             value={selectedSprintId}
             onChange={(e) => setSelectedSprintId(e.target.value)}
@@ -198,8 +231,8 @@ export default function KanbanPage() {
             >
               <KanbanBoard
                 users={users}
-                activeFilter={activeFilter}
-                selectedSprintId={selectedSprintId}
+                activeFilter={deferredFilter}
+                selectedSprintId={deferredSprintId}
                 highlightedId={highlightedId}
               />
             </motion.div>

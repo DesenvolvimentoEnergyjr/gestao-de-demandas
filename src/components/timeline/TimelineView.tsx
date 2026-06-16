@@ -26,6 +26,7 @@ import { cn, isDemandVisibleToUser } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { tenantConfig } from '@/config/tenant';
 
 interface TimelineViewProps {
   demands: Demand[];
@@ -51,8 +52,8 @@ interface TimelineItem {
 type ViewMode = 'dia' | 'semana' | 'ano';
 
 const PROJECT_COLORS = {
-  Interno: 'bg-gradient-to-r from-[#ffc20e] to-[#ff8c00] text-black shadow-[0_0_25px_-5px_rgba(255,194,14,0.4)] border-2 border-[#b38600]',
-  Externo: 'bg-gradient-to-r from-[#0baf4d] to-[#055a2a] text-white shadow-[0_0_25px_-5px_rgba(11,175,77,0.4)] border-2 border-[#077a35]',
+  Interno: 'bg-gradient-to-r from-primary to-primary-dark text-black shadow-lg shadow-primary/40 border-2 border-primary/50',
+  Externo: 'bg-gradient-to-r from-secondary to-secondary-dark text-white shadow-lg shadow-secondary/40 border-2 border-secondary/50',
 };
 
 export function TimelineView({ demands, users }: TimelineViewProps) {
@@ -64,7 +65,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
   const [density, setDensity] = useState<'standard' | 'compact'>('standard');
   const [zoomLevel, setZoomLevel] = useState(1); // 1 = 100%
   const [referenceDate, setReferenceDate] = useState(new Date());
-  const [memberFilter, setMemberFilter] = useState<'minha_timeline' | 'todos' | 'diretoria' | 'assessores' | 'comercial' | 'prodev' | 'rh'>('minha_timeline');
+  const [memberFilter, setMemberFilter] = useState<string>('minha_timeline');
   const [isFirstMount, setIsFirstMount] = useState(true);
 
   useEffect(() => {
@@ -83,22 +84,22 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
       else if (viewMode === 'semana') nextDate = addWeeks(prev, delta * 4);
       else nextDate = addDays(prev, delta * 7);
 
-      // Impedir ultrapassar o ano atual
+      // Prevent ultrapassing the current year
       const currentYear = new Date().getFullYear();
       if (nextDate.getFullYear() > currentYear) {
-        return new Date(currentYear, 11, 31); // Último dia do ano
+        return new Date(currentYear, 11, 31); // Last day of the year
       }
       if (nextDate.getFullYear() < currentYear) {
-        return new Date(currentYear, 0, 1); // Primeiro dia do ano
+        return new Date(currentYear, 0, 1); // First day of the year
       }
       return nextDate;
     });
   }, [viewMode]);
 
-  // Atalhos de teclado
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Evitar atalhos se o usuário estiver digitando em um input
+      // Prevent shortcuts if the user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       switch (e.key.toLowerCase()) {
@@ -182,28 +183,24 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
   const userRows = useMemo(() => {
     let filteredUsers = users.filter(u => u.status !== 'desligado' && u.status !== 'pos_junior');
 
-    // Aplicação do Filtro de Membros com Palavras-Chave
+    // Application of the Member Filter with Keywords
     if (memberFilter === 'minha_timeline' && currentUser) {
       filteredUsers = filteredUsers.filter(u => u.uid === currentUser.uid);
     } else if (memberFilter === 'diretoria') {
       filteredUsers = filteredUsers.filter(u => u.role === 'diretor');
     } else if (memberFilter === 'assessores') {
       filteredUsers = filteredUsers.filter(u => u.role === 'assessor');
-    } else if (memberFilter === 'comercial') {
-      const keywords = ['COMERCIAL', 'VENDAS', 'MARKETING'];
-      filteredUsers = filteredUsers.filter(u =>
-        keywords.some(k => u.area?.toUpperCase().includes(k))
-      );
-    } else if (memberFilter === 'prodev') {
-      const keywords = ['DESENVOLVIMENTO', 'PROJETOS', 'DEV', 'PRODEV'];
-      filteredUsers = filteredUsers.filter(u =>
-        keywords.some(k => u.area?.toUpperCase().includes(k))
-      );
-    } else if (memberFilter === 'rh') {
-      filteredUsers = filteredUsers.filter(u => u.area?.toUpperCase().includes('RECURSOS HUMANOS'));
+    } else if (memberFilter !== 'todos') {
+      // Dynamic department filters from tenantConfig
+      const department = tenantConfig.departments.find(d => d.id === memberFilter);
+      if (department) {
+        filteredUsers = filteredUsers.filter(u =>
+          department.keywords.some(k => u.area?.toUpperCase().includes(k.toUpperCase()))
+        );
+      }
     }
 
-    // Ordenação Alfabética
+    // Alphabetical Sorting
     filteredUsers.sort((a, b) => a.name.localeCompare(b.name));
 
     const filteredDemands = demands.filter((d) =>
@@ -219,7 +216,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
           (d.deadline !== null || d.sprintId !== null)
       );
 
-      // Agrupar demandas por Sprint e demandas avulsas
+      // Group demands by Sprint and standalone demands
       const items: Omit<TimelineItem, 'slotIndex' | 'totalSlots'>[] = [];
       const userSprintIds = new Set<string>();
 
@@ -246,16 +243,16 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
         const sprint = sprints.find(s => s.id === sid);
         if (sprint) {
           const userDemandsInSprint = userDemands.filter(d => d.sprintId === sid);
-          
-          // Encontrar o intervalo real das demandas do usuário nesta sprint
+
+          // Find the real interval of the user's demands in this sprint
           const dDates = userDemandsInSprint.map(d => {
             let start = d.startDate;
             let end = d.deadline;
 
             if (!start) {
-              // Se não tem data de início, tentamos inferir do prazo ou da criação
+              // If it doesn't have a start date, we try to infer it from the deadline or creation date
               if (end) {
-                // Se tem prazo, assume que começou até 7 dias antes, mas não antes da sprint
+                // If it has a deadline, assume it started up to 7 days before, but not before the sprint
                 const inferredStart = addDays(end, -7);
                 start = inferredStart < sprint.startDate ? sprint.startDate : inferredStart;
               } else {
@@ -273,9 +270,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
           const minStart = new Date(Math.min(...dDates.map(d => d.start.getTime())));
           const maxEnd = new Date(Math.max(...dDates.map(d => d.end.getTime())));
 
-          const isExterno = sprint.tags.some((t) =>
-            ['externo', 'solar', 'vendas', 'projeto'].includes(t.toLowerCase())
-          );
+          const isExterno = userDemandsInSprint.some(d => d.projectType === 'Externo');
 
           items.push({
             id: sprint.id,
@@ -294,7 +289,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
         return item.startDate <= range.end && item.endDate >= range.start;
       });
 
-      // Lógica de cálculo de slots para sobreposição
+      // Calculation logic for slotting for overlap
       const sorted = [...visibleItems].sort((a, b) => {
         return a.startDate.getTime() - b.startDate.getTime();
       });
@@ -315,7 +310,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
         }
       });
 
-      // Mapear cada item para seu slot e o total de slots na linha
+      // Map each item to its slot and the total number of slots in the row
       const itemsWithLayout = visibleItems.map(item => {
         const slotIndex = slots.findIndex(slot => slot.some(si => si.id === item.id && si.type === item.type));
         return {
@@ -341,18 +336,19 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
     const widthPercent =
       ((differenceInDays(effectiveEnd, effectiveStart) + 1) / range.totalDays) * 100;
 
-    // Altura e posicionamento vertical baseado nos slots
+    // Height and vertical positioning based on slots
     const height = 100 / (item.totalSlots || 1);
     const top = (item.slotIndex || 0) * height;
+
+    // Gap size
+    const verticalGap = (item.totalSlots || 0) > 1 ? 4 : 0;
 
     return {
       style: {
         left: `${leftPercent}%`,
         width: `${widthPercent}%`,
-        top: `${top}%`,
-        height: `${height}%`,
-        paddingTop: (item.totalSlots || 0) > 1 ? '2px' : '0',
-        paddingBottom: (item.totalSlots || 0) > 1 ? '2px' : '0',
+        top: `calc(${top}% + ${verticalGap / 2}px)`,
+        height: `calc(${height}% - ${verticalGap}px)`,
       },
       colorClass: PROJECT_COLORS[item.projectType as keyof typeof PROJECT_COLORS] || PROJECT_COLORS.Interno,
     };
@@ -370,17 +366,17 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <div className="flex items-center gap-2.5">
             <motion.div
-              animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#0baf4d] shadow-[0_0_10px_rgba(11,175,77,0.5)]"
+              animate={{ scale: [1, 1.15, 1], opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-secondary shadow-[0_0_10px] shadow-secondary/50"
             />
             <span className="text-[9px] md:text-[10px] font-black text-zinc-400 uppercase tracking-widest">Serviços Empresa</span>
           </div>
           <div className="flex items-center gap-2.5">
             <motion.div
-              animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-              className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#ffc20e] shadow-[0_0_10px_rgba(255,194,14,0.5)]"
+              animate={{ scale: [1, 1.15, 1], opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+              className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-primary shadow-[0_0_10px] shadow-primary/50"
             />
             <span className="text-[9px] md:text-[10px] font-black text-zinc-400 uppercase tracking-widest">Projetos Internos</span>
           </div>
@@ -451,8 +447,8 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
               <span className="relative z-10 flex items-center justify-center gap-2">
                 <motion.span
                   className="w-1.5 h-1.5 rounded-full bg-secondary"
-                  animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                  animate={{ scale: [1, 1.15, 1], opacity: [0.7, 1, 0.7] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                 />
                 Hoje
               </span>
@@ -494,15 +490,13 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
             { id: 'todos', label: 'Todos' },
             { id: 'diretoria', label: 'Diretoria' },
             { id: 'assessores', label: 'Assessores' },
-            { id: 'comercial', label: 'Comercial' },
-            { id: 'prodev', label: 'PRODEV' },
-            { id: 'rh', label: 'Recursos Humanos' },
+            ...tenantConfig.departments.map(d => ({ id: d.id, label: d.label }))
           ].map((filter) => (
             <motion.button
               key={filter.id}
               whileHover={{ scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setMemberFilter(filter.id as typeof memberFilter)}
+              onClick={() => setMemberFilter(filter.id)}
               className={cn(
                 "relative flex-none px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all duration-300",
                 memberFilter === filter.id
@@ -706,7 +700,7 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
               {(viewMode === 'dia' || viewMode === 'semana') &&
                 isWithinInterval(new Date(), { start: range.start, end: range.end }) && (
                   <div
-                    className="absolute top-0 bottom-0 w-px bg-secondary shadow-[0_0_15px_rgba(11,175,77,0.5)] z-35 pointer-events-none"
+                    className="absolute top-0 bottom-0 w-px bg-secondary shadow-[0_0_15px_rgba(11,175,77,0.5)] z-20 pointer-events-none"
                     style={{
                       left: `calc(${typeof window !== 'undefined' && window.innerWidth < 768 ? '160px' : '320px'} + ${((differenceInDays(new Date(), range.start) + 0.5) / range.totalDays) * 100}%)`,
                     }}

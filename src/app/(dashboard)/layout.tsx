@@ -11,6 +11,8 @@ import { useDemandStore } from '@/store/useDemandStore';
 import { useSprintStore } from '@/store/useSprintStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { Sidebar } from '@/components/layout/Sidebar';
+
+import { tenantConfig } from "@/config/tenant";
 import { Header } from '@/components/layout/Header';
 import dynamic from 'next/dynamic';
 import { FloatingNotificationButton } from '@/components/layout/FloatingNotificationButton';
@@ -37,15 +39,10 @@ export default function DashboardLayout({
   const { subscribe: subscribeNotifications } = useNotificationStore();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const [mounted, setMounted] = React.useState(false);
-  const [loadingPhrase, setLoadingPhrase] = React.useState('Energyzando plataforma de gestão...');
+  const [loadingPhrase, setLoadingPhrase] = React.useState('Carregando...');
 
   useEffect(() => {
-    const phrases = [
-      "Energyzando plataforma de gestão...",
-      "Vai energizar você!",
-      "O que nós somos? ☠️",
-      "Sexta-feira é hora de comemorar!"
-    ];
+    const phrases = tenantConfig.phrases.loading;
     setLoadingPhrase(phrases[Math.floor(Math.random() * phrases.length)]);
     setMounted(true);
     let unsubscribeNotifications: (() => void) | undefined;
@@ -134,11 +131,11 @@ export default function DashboardLayout({
           <main className="flex-1 flex flex-col overflow-hidden w-full relative">
             <div className="flex md:hidden items-center justify-between px-4 h-16 border-b border-white/[0.05] bg-bg-base/80 backdrop-blur-xl sticky top-0 z-40 gap-2">
               <div className="w-8 h-8 relative shrink-0">
-                <Image src="/logo-energy.svg" alt="Logo" fill sizes="32px" className="object-contain" />
+                <Image src="/logo.svg" alt="Logo" fill sizes="32px" className="object-contain" />
               </div>
 
               <div className="flex-1 flex flex-col items-center justify-center min-w-0">
-                <span className="text-[10px] font-black text-white uppercase tracking-tight truncate">Energy Júnior</span>
+                <span className="text-[10px] font-black text-white uppercase tracking-tight truncate">{process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}</span>
                 <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest truncate mt-0.5">Gestão de Demandas</span>
               </div>
 
@@ -161,7 +158,13 @@ export default function DashboardLayout({
               transition={{ duration: 0.4, ease: "easeOut" }}
               className="flex-1 p-4 md:p-8 overflow-y-auto flex flex-col no-scrollbar"
             >
-              {children}
+              <div className="flex-1">
+                {children}
+              </div>
+
+              <footer className="mt-auto pt-12 pb-2 w-full flex items-center justify-center text-zinc-500 text-xs font-medium opacity-50 hover:opacity-100 transition-opacity">
+                Sistema de Gestão criado pela Energy Júnior 💀
+              </footer>
             </motion.div>
           </main>
 

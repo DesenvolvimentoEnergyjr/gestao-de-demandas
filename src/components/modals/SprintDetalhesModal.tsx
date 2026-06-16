@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Calendar, Target, TrendingUp, Layers, CheckCircle2, Clock, Pencil, Trash2, Save, RotateCcw, FileText, Paperclip, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/store/useUIStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { tenantConfig } from "@/config/tenant";
 import { useSprintStore } from '@/store/useSprintStore';
 import { useDemandStore } from '@/store/useDemandStore';
 import { formatDate, cn } from '@/lib/utils';
@@ -15,6 +18,8 @@ import { User, Sprint } from '@/types';
 import { differenceInWeeks, addDays, format } from 'date-fns';
 import { Input } from '@/components/ui/Input';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { getThemeColor, hexToRgba } from '@/lib/colors';
+import html2canvas from 'html2canvas';
 import { sprintUpdateSchema } from '@/lib/schemas';
 import { DriveAttachment } from '@/components/ui/DriveAttachment';
 import { parseDriveLink } from '@/lib/drive';
@@ -76,11 +81,12 @@ export const SprintDetalhesModal = () => {
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Estado de Edição
+  // Edit Mode
   const [isEditMode, setIsEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Sprint>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Chart states
@@ -149,7 +155,7 @@ export const SprintDetalhesModal = () => {
     [sprintDemands]
   );
 
-  // Agrupamento por Semana
+  // Grouping by Week
   const weekGroups = useMemo(() => {
     if (!sprint) return [];
 
@@ -180,7 +186,7 @@ export const SprintDetalhesModal = () => {
   const chartData = useMemo(() => {
     if (!sprint || weekGroups.length === 0) return null;
 
-    const totalEffort = chartMode === 'hours' 
+    const totalEffort = chartMode === 'hours'
       ? (totalHours > 0 ? totalHours : 1)
       : (sprintDemands.length > 0 ? sprintDemands.length : 1);
 
@@ -206,13 +212,13 @@ export const SprintDetalhesModal = () => {
         } else {
           const completedDemands = sprintDemands
             .filter(d => d.status === 'concluido' && d.updatedAt && new Date(d.updatedAt) <= pointDate);
-          
+
           if (chartMode === 'hours') {
             actualValue = completedDemands.reduce((acc, d) => acc + (d.estimatedHours || 0), 0);
           } else {
             actualValue = completedDemands.length;
           }
-          
+
           actualProgress = Math.round((actualValue / totalEffort) * 100);
         }
       }
@@ -321,6 +327,9 @@ export const SprintDetalhesModal = () => {
                   const progress = totalHours > 0
                     ? (completedHours / totalHours) * 100
                     : 0;
+                  
+                  const secondaryColor = getThemeColor('secondary');
+
                   return (
                     <>
                       {/* Header */}
@@ -514,7 +523,8 @@ export const SprintDetalhesModal = () => {
                                   initial={{ width: 0 }}
                                   animate={{ width: `${progress}%` }}
                                   transition={{ duration: 1, ease: 'easeOut', delay: 0.5 }}
-                                  className="h-full bg-secondary shadow-[0_0_20px_rgba(11,175,77,0.4)]"
+                                  className="h-full bg-secondary"
+                                  style={{ boxShadow: `0 0 20px ${hexToRgba(secondaryColor, 0.4)}` }}
                                 />
                               </div>
                             </motion.div>
@@ -591,7 +601,10 @@ export const SprintDetalhesModal = () => {
                               </div>
                             </div>
 
-                            <div className="relative w-full aspect-[1000/500] md:aspect-[1000/400] mt-4">
+                            <div 
+                              className="relative w-full aspect-[1000/500] md:aspect-[1000/400] mt-4"
+                              onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+                            >
                               <svg viewBox="0 0 1000 500" className="w-full h-full overflow-visible">
                                 <defs>
                                   <linearGradient id="idealGrad" x1="0" y1="0" x2="0" y2="1">
@@ -599,8 +612,8 @@ export const SprintDetalhesModal = () => {
                                     <stop offset="100%" stopColor="rgba(255,255,255,0)" />
                                   </linearGradient>
                                   <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="rgba(11, 175, 77, 0.4)" />
-                                    <stop offset="100%" stopColor="rgba(11, 175, 77, 0)" />
+                                    <stop offset="0%" stopColor={hexToRgba(secondaryColor, 0.4)} />
+                                    <stop offset="100%" stopColor={hexToRgba(secondaryColor, 0)} />
                                   </linearGradient>
                                 </defs>
 
@@ -638,9 +651,9 @@ export const SprintDetalhesModal = () => {
                                     <path
                                       d={`M ${chartData.filter(d => d.actual !== null).map((d) => `${50 + (d.week / (chartData.length - 1)) * 900},${450 - (d.actual! / 100) * 400}`).join(' L ')}`}
                                       fill="none"
-                                      stroke="#0baf4d"
+                                      stroke={secondaryColor}
                                       strokeWidth="4"
-                                      style={{ filter: 'drop-shadow(0px 0px 12px rgba(11, 175, 77, 0.6))' }}
+                                      style={{ filter: `drop-shadow(0px 0px 12px ${hexToRgba(secondaryColor, 0.6)})` }}
                                     />
 
                                     {/* Dots & Hit Areas */}
@@ -650,7 +663,7 @@ export const SprintDetalhesModal = () => {
                                       const isHovered = hoveredPoint === d.week;
 
                                       return (
-                                        <g 
+                                        <g
                                           key={`actual-point-${i}`}
                                           onMouseEnter={() => setHoveredPoint(d.week)}
                                           onMouseLeave={() => setHoveredPoint(null)}
@@ -668,7 +681,7 @@ export const SprintDetalhesModal = () => {
                                             cy={yActual}
                                             r={isHovered ? "8" : "6"}
                                             fill="#0f0f0f"
-                                            stroke="#0baf4d"
+                                            stroke={secondaryColor}
                                             strokeWidth={isHovered ? "4" : "3"}
                                             className="transition-all duration-200 pointer-events-none"
                                           />
@@ -698,44 +711,53 @@ export const SprintDetalhesModal = () => {
                               </svg>
 
                               {/* Tooltip Overlay */}
-                              <AnimatePresence>
-                                {hoveredPoint !== null && (() => {
-                                  const d = chartData.find(data => data.week === hoveredPoint);
-                                  if (!d || d.actual === null) return null;
-                                  
-                                  const xPerc = ((50 + (d.week / (chartData.length - 1)) * 900) / 1000) * 100;
-                                  const yPerc = ((450 - (d.actual / 100) * 400) / 500) * 100;
-                                  
-                                  return (
-                                    <motion.div
-                                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                                      className="absolute z-20 pointer-events-none"
-                                      style={{
-                                        left: `${xPerc}%`,
-                                        top: `${yPerc}%`,
-                                        transform: 'translate(-50%, -120%)'
-                                      }}
-                                    >
-                                      <div className="bg-[#141414] border border-white/10 rounded-xl p-3 shadow-2xl flex flex-col gap-1.5 whitespace-nowrap">
-                                        <div className="text-[10px] font-black text-white uppercase tracking-widest mb-1 border-b border-white/10 pb-1.5">
-                                          {d.label}
+                              {typeof document !== 'undefined' && createPortal(
+                                <AnimatePresence>
+                                  {hoveredPoint !== null && (() => {
+                                    const d = chartData.find(data => data.week === hoveredPoint);
+                                    if (!d || d.actual === null) return null;
+
+                                    const isNearTop = mousePos.y < 150;
+                                    const isNearRight = mousePos.x > window.innerWidth - 200;
+                                    const isNearLeft = mousePos.x < 150;
+
+                                    const xTranslate = isNearRight ? '-100%' : isNearLeft ? '0%' : '-50%';
+                                    const yTranslate = isNearTop ? '15px' : 'calc(-100% - 15px)';
+
+                                    return (
+                                      <motion.div
+                                        key={`tooltip-${d.week}`}
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                                        className="fixed z-[99999] pointer-events-none"
+                                        style={{
+                                          left: mousePos.x,
+                                          top: mousePos.y,
+                                          x: xTranslate,
+                                          y: yTranslate
+                                        }}
+                                      >
+                                        <div className="bg-[#141414] border border-white/10 rounded-xl p-3 shadow-2xl flex flex-col gap-1.5 whitespace-nowrap">
+                                          <div className="text-[10px] font-black text-white uppercase tracking-widest mb-1 border-b border-white/10 pb-1.5">
+                                            {d.label}
+                                          </div>
+                                          <div className="flex items-center justify-between gap-6">
+                                            <span className="text-[10px] font-bold text-zinc-500 uppercase">Ritmo Ideal</span>
+                                            <span className="text-[10px] font-black text-white">{d.idealValue} {chartMode === 'hours' ? 'h' : 'dem'}</span>
+                                          </div>
+                                          <div className="flex items-center justify-between gap-6">
+                                            <span className="text-[10px] font-bold text-secondary uppercase">Realizado</span>
+                                            <span className="text-[10px] font-black text-secondary">{d.actualValue} {chartMode === 'hours' ? 'h' : 'dem'}</span>
+                                          </div>
                                         </div>
-                                        <div className="flex items-center justify-between gap-6">
-                                          <span className="text-[10px] font-bold text-zinc-500 uppercase">Ritmo Ideal</span>
-                                          <span className="text-[10px] font-black text-white">{d.idealValue} {chartMode === 'hours' ? 'h' : 'dem'}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between gap-6">
-                                          <span className="text-[10px] font-bold text-secondary uppercase">Realizado</span>
-                                          <span className="text-[10px] font-black text-secondary">{d.actualValue} {chartMode === 'hours' ? 'h' : 'dem'}</span>
-                                        </div>
-                                      </div>
-                                    </motion.div>
-                                  );
-                                })()}
-                              </AnimatePresence>
+                                      </motion.div>
+                                    );
+                                  })()}
+                                </AnimatePresence>,
+                                document.body
+                              )}
                             </div>
 
                             <div className="flex items-center justify-center gap-6 mt-6">
@@ -744,7 +766,7 @@ export const SprintDetalhesModal = () => {
                                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Ritmo Ideal</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <div className="w-4 h-1 bg-secondary rounded-full shadow-[0_0_8px_rgba(11,175,77,0.5)]" />
+                                <div className="w-4 h-1 bg-secondary rounded-full" style={{ boxShadow: `0 0 8px ${hexToRgba(secondaryColor, 0.5)}` }} />
                                 <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Progresso Real</span>
                               </div>
                             </div>
@@ -1065,7 +1087,7 @@ export const SprintDetalhesModal = () => {
                       {/* Footer */}
                       <div className="p-6 md:p-8 border-t border-white/5 bg-zinc-950/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
                         <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-[0.3em] text-center sm:text-left">
-                          Energy Júnior • Bate Meta pra Valer
+                          {process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'} • {tenantConfig.phrases.sprintTagline}
                         </p>
                         <button
                           onClick={closeSprintDetalhes}

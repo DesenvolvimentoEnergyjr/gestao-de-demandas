@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { motion, Variants } from 'framer-motion';
+import { motion, Variants, AnimatePresence } from 'framer-motion';
 import { getUsers, getDemands, getSprints } from '@/lib/firestore';
 import { User, Demand, Sprint } from '@/types';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
-import { Mail, Activity, Clock, Layers, Target, TrendingUp, AlertCircle, Pencil } from 'lucide-react';
+import { Mail, Activity, Clock, Layers, Target, TrendingUp, AlertCircle, Pencil, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AssessorHistoryModal } from '@/components/modals/AssessorHistoryModal';
 import { AssessorEditModal } from '@/components/modals/AssessorEditModal';
@@ -34,6 +34,43 @@ const MemberCardSkeleton = () => (
     </div>
   </Card>
 );
+
+const CollapsibleTeamGroup = ({ group, renderUserCard }: { group: any, renderUserCard: (u: User) => JSX.Element }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="bg-white/[0.01] border border-white/5 rounded-[32px] p-6 md:p-8">
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between text-left group/btn"
+      >
+        <div className="flex items-center gap-4">
+          <h3 className="text-lg font-black text-secondary uppercase tracking-[0.2em]">{group.label}</h3>
+          <span className="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{group.members.length} {group.members.length === 1 ? 'membro' : 'membros'}</span>
+        </div>
+        <div className={cn("w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-zinc-500 transition-all group-hover/btn:bg-white/10 group-hover/btn:text-white", isOpen && "rotate-180")}>
+          <ChevronDown className="w-4 h-4" />
+        </div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 mt-6">
+              {group.members.map(renderUserCard)}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const cardVariants: Variants = {
   hidden: { opacity: 0, y: 30 },
@@ -80,8 +117,8 @@ export default function AssessoresPage() {
         : currentYear;
 
       for (let y = startYear; y <= endYear; y++) {
-        // Se o membro está ativo e o ano do loop é o ano atual, ele já está na "Gestão Atual".
-        // Não precisamos criar um "Time Atual" duplicado no histórico para ele.
+        // If the member is active and the loop year is the current year, they are already in the "Current Management".
+        // We don't need to create a "Current Time" duplicated in the history for them.
         if (y === currentYear && u.status !== 'desligado') continue;
 
         const label = `Time ${y}`;
@@ -109,11 +146,11 @@ export default function AssessoresPage() {
     const userDemands = demands.filter(d => d.assignees.includes(user.uid));
     const activeDemandsList = userDemands.filter(d => d.status !== 'concluido');
     const completedDemandsList = userDemands.filter(d => d.status === 'concluido');
-    
-    // Agrupar demandas ativas: Sprints contam como 1, demandas avulsas individualmente
+
+    // Group active demands: Sprints count as 1, individual demands as 1
     const activeSprintIds = new Set<string>();
     let individualActiveDemands = 0;
-    
+
     activeDemandsList.forEach(d => {
       if (d.sprintId) {
         activeSprintIds.add(d.sprintId);
@@ -124,7 +161,7 @@ export default function AssessoresPage() {
 
     const activeDemands = activeSprintIds.size + individualActiveDemands;
 
-    // Agrupar entregas (concluídas): Sprints contam como 1, demandas avulsas individualmente
+    // Group completed demands: Sprints count as 1, individual demands as 1
     const completedSprintIds = new Set<string>();
     let individualCompletedDemands = 0;
 
@@ -138,7 +175,7 @@ export default function AssessoresPage() {
 
     const completedItemsCount = completedSprintIds.size + individualCompletedDemands;
 
-    // Horas das demandas ENTREGUES (concluídas)
+    // Estimated hours of COMPLETED demands
     const totalEstimated = completedDemandsList.reduce((acc, d) => acc + d.estimatedHours, 0);
 
     const currentLimit = user.workloadLimit || 3;
@@ -308,12 +345,7 @@ export default function AssessoresPage() {
               <div className="space-y-8">
                 <h2 className="text-xl md:text-2xl font-black text-white tracking-tight mb-4">Pós-Juniores</h2>
                 {groupedUsers.inactiveGroups.map(group => (
-                  <div key={group.label} className="bg-white/[0.01] border border-white/5 rounded-[32px] p-6 md:p-8">
-                    <h3 className="text-lg font-black text-secondary uppercase tracking-[0.2em] mb-6">{group.label}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                      {group.members.map(renderUserCard)}
-                    </div>
-                  </div>
+                  <CollapsibleTeamGroup key={group.label} group={group} renderUserCard={renderUserCard} />
                 ))}
               </div>
             )}

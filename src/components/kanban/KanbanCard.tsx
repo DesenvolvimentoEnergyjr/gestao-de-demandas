@@ -20,35 +20,9 @@ interface KanbanCardProps {
   cardIndex?: number;
 }
 
-const tagColorMap: Record<string, string> = {
-  eficiencia: 'text-blue-400 bg-blue-400/10',
-  solar: 'text-yellow-400 bg-yellow-400/10',
-  normas: 'text-purple-400 bg-purple-400/10',
-  revisao: 'text-orange-400 bg-orange-400/10',
-  ambiental: 'text-emerald-400 bg-emerald-400/10',
-  urgente: 'text-red-400 bg-red-400/10',
-  alta: 'text-orange-400 bg-orange-400/10',
-  media: 'text-yellow-400 bg-yellow-400/10',
-  baixa: 'text-zinc-400 bg-zinc-400/10',
-};
-
-const priorityColorMap: Record<string, string> = {
-  urgente: 'bg-red-500',
-  alta: 'bg-orange-500',
-  media: 'bg-yellow-500',
-  baixa: 'bg-zinc-500',
-};
-
-const priorityLabelMap: Record<string, string> = {
-  urgente: 'URGENTE',
-  alta: 'ALTA PRIORIDADE',
-  media: 'MÉDIA',
-  baixa: 'BAIXA',
-};
-
-function getTagColor(tag: string): string {
-  return tagColorMap[tag.toLowerCase()] ?? 'text-zinc-400 bg-zinc-400/10';
-}
+import { getTagColor } from '@/components/ui/TagsInput';
+import { tenantConfig } from '@/config/tenant';
+import { getThemeColor, hexToRgba } from '@/lib/colors';
 
 export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOverlay, isHighlighted, columnIndex, cardIndex }) => {
   const { openDemanda } = useUIStore();
@@ -68,7 +42,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
   }, [isHighlighted]);
 
   const handleCardClick = () => {
-    // Evitar abrir se estiver arrastando
+    // Don't open if dragging
     if (isDragging) return;
     openDemanda(demand.id, 'view');
   };
@@ -86,50 +60,30 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
 
   const statusLower = String(demand.status).toLowerCase();
   const isFinalStatus = statusLower.includes('revisao') || statusLower.includes('concluido');
-  
-  // Para demandas em revisão ou concluídas, não mostramos como atrasado (o relógio para)
-  const isOverdue = demand.deadline && 
-    !isFinalStatus && 
+
+  // For demands in review or completed, we don't show them as overdue (the clock stops)
+  const isOverdue = demand.deadline &&
+    !isFinalStatus &&
     new Date(demand.deadline) < new Date();
-  
+
   const daysSinceUpdate = differenceInDays(new Date(), new Date(demand.updatedAt));
   const isStagnant = demand.status === 'em_progresso' && daysSinceUpdate >= 5;
 
-  // Color bar logic
-  const priorityColor = priorityColorMap[demand.priority.toLowerCase()] ?? 'bg-zinc-700';
+  const configPriority = tenantConfig.priorities.find(p => p.id === demand.priority.toLowerCase());
+  const priorityColor = configPriority?.cardClass ?? 'bg-zinc-700';
 
   const tagLabel = demand.tags[0]
     ? demand.tags[0].toUpperCase()
-    : (priorityLabelMap[demand.priority] ?? demand.priority.toUpperCase());
+    : (configPriority?.label.toUpperCase() ?? demand.priority.toUpperCase());
 
   const tagColor = demand.tags[0]
     ? getTagColor(demand.tags[0])
-    : (tagColorMap[demand.priority] ?? 'text-zinc-400 bg-zinc-400/10');
+    : 'text-zinc-400 bg-zinc-400/10';
+
+  const highlightColor = getThemeColor('secondary');
 
   return (
-    <motion.div
-      initial={false}
-      whileHover={{ y: -4, scale: 1.01 }}
-      animate={isHighlighted ? {
-        boxShadow: [
-          '0 0 12px 0px rgba(11, 175, 77, 0.2)',
-          '0 0 20px 2px rgba(11, 175, 77, 0.5)',
-          '0 0 12px 0px rgba(11, 175, 77, 0.2)'
-        ],
-        borderColor: [
-          'rgba(11, 175, 77, 0.4)',
-          'rgba(11, 175, 77, 1)',
-          'rgba(11, 175, 77, 0.4)'
-        ]
-      } : {
-        boxShadow: '0 0 0px 0px rgba(11, 175, 77, 0)',
-        borderColor: 'rgba(255, 255, 255, 0.05)'
-      }}
-      transition={isHighlighted ? {
-        duration: 2,
-        repeat: Infinity,
-        ease: "easeInOut"
-      } : { duration: 0.3, ease: 'easeOut' }}
+    <div
       ref={(node) => {
         setNodeRef(node);
         cardRef.current = node;
@@ -137,20 +91,51 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
       style={style}
       {...attributes}
       {...listeners}
-      onClick={handleCardClick}
       className={cn(
-        'group cursor-grab active:cursor-grabbing relative touch-none border-2',
-        isHighlighted 
-          ? 'border-secondary/50' 
-          : (isStagnant ? 'border-red-500/30 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]' : 'border-white/5 hover:border-secondary/30'),
-        'rounded-[24px] md:rounded-3xl p-4 md:p-5 flex flex-col gap-3 md:gap-4',
-        isHighlighted ? 'bg-secondary/5' : 'bg-gradient-to-br from-bg-surface to-bg-surface group-hover:from-bg-surface group-hover:to-secondary/5',
-        isOverlay && 'shadow-2xl scale-[1.02] z-50'
+        'group cursor-grab active:cursor-grabbing touch-none',
+        isOverlay && 'z-50'
       )}
       data-kanban-card="true"
       data-col-index={columnIndex}
       data-card-index={cardIndex}
     >
+      <motion.div
+        initial={false}
+        whileHover={{ y: -4, scale: 1.01 }}
+        animate={isHighlighted ? {
+          boxShadow: [
+            `0 0 12px 0px ${hexToRgba(highlightColor, 0.2)}`,
+            `0 0 20px 2px ${hexToRgba(highlightColor, 0.5)}`,
+            `0 0 12px 0px ${hexToRgba(highlightColor, 0.2)}`
+          ],
+          borderColor: [
+            hexToRgba(highlightColor, 0.4),
+            highlightColor,
+            hexToRgba(highlightColor, 0.4)
+          ]
+        } : {
+          boxShadow: `0 0 0px 0px ${hexToRgba(highlightColor, 0)}`,
+          borderColor: 'rgba(255, 255, 255, 0.05)'
+        }}
+        transition={isHighlighted ? {
+          duration: 2,
+          repeat: Infinity,
+          ease: "easeInOut"
+        } : { 
+          duration: 0.3, 
+          ease: 'easeOut'
+        }}
+        onClick={handleCardClick}
+        className={cn(
+          'relative border-2 w-full h-full',
+          isHighlighted
+            ? 'border-secondary/50'
+            : (isStagnant ? 'border-red-500/30 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]' : 'border-white/5 hover:border-secondary/30'),
+          'rounded-[24px] md:rounded-3xl p-4 md:p-5 flex flex-col gap-3 md:gap-4',
+          isHighlighted ? 'bg-secondary/5' : 'bg-gradient-to-br from-bg-surface to-bg-surface group-hover:from-bg-surface group-hover:to-secondary/5',
+          isOverlay && 'shadow-2xl scale-[1.02]'
+        )}
+      >
       {/* Clipping container for the priority bar to follow rounded corners */}
       <div className="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none">
         <div className={cn("absolute left-0 top-0 bottom-0 w-1", priorityColor)} />
@@ -166,7 +151,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
         <h4 className="text-sm font-normal text-white leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
           {demand.title}
         </h4>
-        
+
         {isStagnant && (
           <div className="inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded w-fit">
             <AlertTriangle className="w-3 h-3 text-red-400" />
@@ -238,6 +223,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
           )}
         </div>
       </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 };

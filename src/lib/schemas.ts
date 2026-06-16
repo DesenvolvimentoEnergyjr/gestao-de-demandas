@@ -1,7 +1,11 @@
 import { z } from 'zod';
+import { tenantConfig } from '@/config/tenant';
+import { DemandStatus, Priority } from '@/types';
 
-// ─── Anexos ──────────────────────────────────────────────────────────────────
+const demandStatusIds = tenantConfig.demandStatuses.map(s => s.id) as [DemandStatus, ...DemandStatus[]];
+const priorityIds = tenantConfig.priorities.map(p => p.id) as [Priority, ...Priority[]];
 
+// Attachments
 export const attachmentSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -11,8 +15,7 @@ export const attachmentSchema = z.object({
   addedAt: z.union([z.string(), z.date()]),
 });
 
-// ─── Demanda ────────────────────────────────────────────────────────────────
-
+// Demand
 export const demandaSchema = z
   .object({
     title: z
@@ -26,13 +29,15 @@ export const demandaSchema = z
       .optional()
       .default(''),
 
-    status: z.enum(['backlog', 'criando_escopo', 'em_progresso', 'em_revisao', 'concluido'] as const),
+    status: z.enum(demandStatusIds),
 
-    priority: z.enum(['baixa', 'media', 'alta', 'urgente'] as const),
+    priority: z.enum(priorityIds),
 
     projectType: z.enum(['Interno', 'Externo'] as const),
 
     assignees: z.array(z.string()).optional().default([]),
+
+    tags: z.array(z.string()).optional().default([]),
 
     visibleToAssessors: z.boolean().optional().default(true),
 
@@ -80,8 +85,7 @@ export const demandaSchema = z
 
 export type DemandaFormData = z.infer<typeof demandaSchema>;
 
-// ─── Sprint ─────────────────────────────────────────────────────────────────
-
+// Sprint
 export const sprintSchema = z
   .object({
     title: z

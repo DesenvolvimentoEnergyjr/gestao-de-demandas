@@ -2,8 +2,11 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Sprint, Demand, User } from '@/types';
 import { format } from 'date-fns';
+import tailwindConfig from '../../tailwind.config';
+import { tenantConfig } from '@/config/tenant';
 
 export const exportSprintToPDF = async (sprint: Sprint, demands: Demand[], users: User[]) => {
+  const secondaryColor = (tailwindConfig.theme?.extend?.colors as any)?.secondary || '#0baf4d';
   const pdf = new jsPDF();
   const pageWidth = pdf.internal.pageSize.getWidth();
 
@@ -17,34 +20,27 @@ export const exportSprintToPDF = async (sprint: Sprint, demands: Demand[], users
   };
 
   const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      backlog: 'Backlog',
-      criando_escopo: 'Escopo',
-      em_progresso: 'Progresso',
-      em_revisao: 'Revisão',
-      concluido: 'Concluído'
-    };
-    return labels[status] || status;
+    const configStatus = tenantConfig.demandStatuses.find(s => s.id === status);
+    return configStatus?.label || status;
   };
 
-  // Ordenar demandas cronologicamente para seguir a ordem das semanas (Semana 1, 2, 3...)
+  // Sort demands cronologically to follow the order of the weeks (Week 1, 2, 3...)
   const orderedDemands = [...demands].sort((a, b) => {
     const dateA = new Date(a.deadline || a.startDate || a.createdAt || 0).getTime();
     const dateB = new Date(b.deadline || b.startDate || b.createdAt || 0).getTime();
     return dateA - dateB;
   });
 
-  // 1. Cabeçalho
+  // 1. Header
   pdf.setFontSize(10);
   pdf.setTextColor(100);
-  pdf.text('RELATÓRIO DE CICLO • ENERGY JÚNIOR', 15, 15);
+  pdf.text(`RELATÓRIO DE CICLO • ${(process.env.NEXT_PUBLIC_COMPANY_NAME || 'EMPRESA JÚNIOR').toUpperCase()}`, 15, 15);
   pdf.text(`Data de exportação: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth - 15, 15, { align: 'right' });
 
-  pdf.setDrawColor(11, 175, 77); // Verde Energy
+  pdf.setDrawColor(secondaryColor);
   pdf.setLineWidth(1);
   pdf.line(15, 18, pageWidth - 15, 18);
 
-  // Título com suporte a múltiplas linhas (overflow)
   pdf.setFontSize(22);
   pdf.setTextColor(0);
   pdf.setFont('helvetica', 'bold');
@@ -60,7 +56,7 @@ export const exportSprintToPDF = async (sprint: Sprint, demands: Demand[], users
   pdf.setTextColor(80);
   pdf.text(`${formatDate(sprint.startDate)} até ${formatDate(sprint.endDate)}`, 15, afterTitleY);
 
-  // 2. Objetivo e Resumo
+  // 2. Strategic objective
   const objectiveY = afterTitleY + 15;
   pdf.setFontSize(14);
   pdf.setTextColor(0);
@@ -75,7 +71,7 @@ export const exportSprintToPDF = async (sprint: Sprint, demands: Demand[], users
 
   const currentY = objectiveY + 7 + (splitObjective.length * 6) + 12;
 
-  // 3. Tabela de Demandas
+  // 3. Table of demands
   pdf.setFontSize(14);
   pdf.setTextColor(0);
   pdf.setFont('helvetica', 'bold');
@@ -92,17 +88,17 @@ export const exportSprintToPDF = async (sprint: Sprint, demands: Demand[], users
     startY: currentY + 5,
     head: [['Demanda', 'Responsáveis', 'Status', 'Esforço']],
     body: tableData,
-    headStyles: { fillColor: [11, 175, 77], textColor: [255, 255, 255], fontStyle: 'bold' },
+    headStyles: { fillColor: secondaryColor, textColor: [255, 255, 255], fontStyle: 'bold' },
     styles: { fontSize: 9, cellPadding: 5, overflow: 'linebreak' },
     columnStyles: {
-      0: { cellWidth: 75 }, // Aumentado um pouco para títulos de demanda
+      0: { cellWidth: 75 },
       1: { cellWidth: 55 },
       2: { cellWidth: 25, halign: 'center' },
-      3: { cellWidth: 25, halign: 'center' } // Aumentado para evitar quebra em 'Esforço'
+      3: { cellWidth: 25, halign: 'center' }
     }
   });
 
-  // 4. Rodapé em todas as páginas
+  // 4. Footer
   const totalPages = pdf.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     pdf.setPage(i);

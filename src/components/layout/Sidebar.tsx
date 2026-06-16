@@ -53,15 +53,15 @@ export const Sidebar = () => {
 
         <div className="w-12 h-12 relative">
           <Image
-            src="/logo-energy.svg"
-            alt="Energy Júnior"
+            src="/logo.svg"
+            alt={process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}
             fill
             sizes="48px"
             className="object-contain"
           />
         </div>
         <div className="flex flex-col">
-          <h1 className="text-white font-black text-xl leading-none tracking-tight">Energy Júnior</h1>
+          <h1 className="text-white font-black text-xl leading-none tracking-tight">{process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}</h1>
           <p className="text-xs font-bold text-secondary uppercase tracking-[0.2em] mt-2">Gestão de Demandas</p>
         </div>
       </div>

@@ -23,13 +23,13 @@ import { updateDemand } from '@/lib/firestore';
 import { useDemandStore } from '@/store/useDemandStore';
 import { toast } from '@/store/useToastStore';
 
-const COLUMNS: { id: DemandStatus; title: string; color: string }[] = [
-  { id: 'backlog', title: 'Backlog', color: '#71717a' },
-  { id: 'criando_escopo', title: 'Criando Escopo', color: '#3b82f6' },
-  { id: 'em_progresso', title: 'Em Progresso', color: '#ffc20e' },
-  { id: 'em_revisao', title: 'Em Revisão', color: '#f97316' },
-  { id: 'concluido', title: 'Concluído', color: '#0baf4d' },
-];
+import { tenantConfig } from '@/config/tenant';
+
+const COLUMNS: { id: DemandStatus; title: string; accentClass: string }[] = tenantConfig.demandStatuses.map(s => ({
+  id: s.id as DemandStatus,
+  title: s.label,
+  accentClass: s.accentClass
+}));
 
 export const KanbanBoard = ({
   users = [],
@@ -204,16 +204,16 @@ export const KanbanBoard = ({
           });
 
           return (
-          <KanbanColumn
-            key={column.id}
-            id={column.id}
-            title={column.title}
-            color={column.color}
-            demands={columnDemands}
-            users={users}
-            highlightedId={highlightedId}
-            columnIndex={index}
-          />
+            <KanbanColumn
+              key={column.id}
+              id={column.id}
+              title={column.title}
+              accentClass={column.accentClass}
+              demands={columnDemands}
+              users={users}
+              highlightedId={highlightedId}
+              columnIndex={index}
+            />
           );
         })}
 

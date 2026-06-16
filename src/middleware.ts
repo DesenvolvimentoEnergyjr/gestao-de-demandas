@@ -9,7 +9,7 @@ const IGNORED_PREFIXES = [
   '/_next',
   '/api',
   '/favicon.ico',
-  '/logo-energy.svg',
+  '/logo.svg',
 ];
 
 export function middleware(request: NextRequest) {
@@ -23,7 +23,7 @@ export function middleware(request: NextRequest) {
   const sessionCookie = request.cookies.get('__session')?.value;
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
 
-  // ─── Not authenticated: redirect to /auth ───
+  // Not authenticated: redirect to /auth
   if (!sessionCookie && !isPublicRoute) {
     const authUrl = new URL('/auth', request.url);
     // Preserve the original destination so we can redirect back after login
@@ -31,7 +31,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(authUrl);
   }
 
-  // ─── Authenticated: prevent accessing /auth (redirect to kanban) ───
+  // Authenticated: prevent accessing /auth (redirect to kanban)
   if (sessionCookie && isPublicRoute) {
     return NextResponse.redirect(new URL('/kanban', request.url));
   }

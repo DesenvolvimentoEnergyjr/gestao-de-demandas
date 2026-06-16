@@ -72,7 +72,7 @@ export const Select = ({
             className
           )}
         >
-          <span className={cn(!selectedOption && 'text-zinc-700 font-medium')}>
+          <span className={cn("truncate mr-3", !selectedOption && 'text-zinc-700 font-medium')}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <ChevronDown className={cn(
@@ -98,9 +98,9 @@ export const Select = ({
                         : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
                     )}
                   >
-                    {opt?.label}
+                    <span className="truncate block pr-2">{opt?.label}</span>
                     {opt?.value === value && (
-                       <div className="w-1.5 h-1.5 rounded-full bg-secondary shadow-[0_0_8px_rgba(11,175,77,0.8)]" />
+                       <div className="shrink-0 w-1.5 h-1.5 rounded-full bg-secondary shadow-[0_0_8px_rgba(11,175,77,0.8)]" />
                     )}
                   </button>
                 ))

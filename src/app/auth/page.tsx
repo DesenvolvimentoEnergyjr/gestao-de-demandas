@@ -23,11 +23,11 @@ function AuthContent() {
           userData = await createUserDoc(firebaseUser);
         }
 
-        // Bloqueio para Pós-Juniores
+        // Pós-Juniores block
         if (userData.status === 'pos_junior') {
           const { signOut: clearAuth } = await import('@/lib/auth');
           await clearAuth();
-          toast.error('Acesso restrito apenas aos membros da gestão atual da Energy Júnior');
+          toast.error(`Acesso restrito apenas aos membros da gestão atual da ${process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}`);
           return;
         }
 
@@ -42,7 +42,7 @@ function AuthContent() {
     } catch (error: unknown) {
       console.error(error);
       if (error instanceof Error && error.message === 'access-denied') {
-        toast.error('Acesso restrito a membros da Energy Júnior.');
+        toast.error(`Acesso restrito a membros da ${process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}.`);
       } else {
         toast.error('Erro ao realizar login com Google.');
       }
@@ -56,17 +56,16 @@ function AuthContent() {
       {/* Brand Header */}
       <div className="flex flex-col items-center mb-6 md:mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 text-center">
         <div className="w-20 h-20 md:w-24 md:h-24 bg-[#050505] border-2 border-secondary/40 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center mb-5 md:mb-6 shadow-2xl shadow-secondary/20 ring-1 ring-secondary/10 overflow-hidden">
-          {/* ✅ Single Image — size controlled via className instead of two separate elements */}
           <Image
-            src="/logo-energy.svg"
-            alt="Energy Júnior"
+            src="/logo.svg"
+            alt={process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}
             width={56}
             height={56}
             priority
             className="object-contain w-12 h-12 md:w-14 md:h-14"
           />
         </div>
-        <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-none">Energy Júnior</h1>
+        <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-none">{process.env.NEXT_PUBLIC_COMPANY_NAME}</h1>
         <p className="text-text-muted text-[10px] md:text-sm font-black uppercase tracking-[0.2em] md:tracking-[0.25em] mt-3">Gestão de Demandas</p>
       </div>
 
@@ -84,7 +83,6 @@ function AuthContent() {
             onClick={handleGoogleLogin}
             loading={loading}
           >
-            {/* ✅ Replaced fill with explicit width/height — no extra wrapper div needed */}
             <Image
               src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
               width={20}

@@ -1,12 +1,9 @@
-export type Role = 'diretor' | 'assessor';
-export type UserStatus = 'ativo' | 'desligado' | 'pos_junior';
-export type Priority = 'baixa' | 'media' | 'alta' | 'urgente';
-export type DemandStatus =
-  | 'backlog'
-  | 'criando_escopo'
-  | 'em_progresso'
-  | 'em_revisao'
-  | 'concluido';
+import { tenantConfig } from '@/config/tenant';
+
+export type Role = typeof tenantConfig.roles[number]['id'];
+export type UserStatus = typeof tenantConfig.userStatuses[number]['id'];
+export type Priority = typeof tenantConfig.priorities[number]['id'];
+export type DemandStatus = typeof tenantConfig.demandStatuses[number]['id'];
 
 export type NotificationType = 'assignment' | 'system' | 'mention';
 
@@ -39,7 +36,7 @@ export interface User {
   status: UserStatus;
   area: string;
   title: string;
-  history?: string;
+  history?: { role: string; date: string }[] | string;
   joinDate?: Date;
   workloadLimit?: number;
   createdAt: Date;

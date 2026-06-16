@@ -13,6 +13,7 @@ import { useDemandStore } from '@/store/useDemandStore';
 import { getUsers } from '@/lib/firestore';
 import { User } from '@/types';
 import { isDemandVisibleToUser } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 const FILTERS = [
   { id: 'todas', label: 'Todas' },
@@ -22,27 +23,20 @@ const FILTERS = [
   { id: 'minhas', label: 'Minhas Sprints' },
 ];
 
-const getSprintStyles = (sprint: Sprint) => {
-  if (sprint.status === 'planned')
-    return { border: '#52525b', text: 'text-zinc-400', label: 'BACKLOG', bg: 'bg-zinc-800' };
+import { tenantConfig } from '@/config/tenant';
 
-  const isExterno = sprint.tags.some((t) =>
-    ['externo', 'solar', 'vendas', 'projeto'].includes(t.toLowerCase())
-  );
-
-  if (sprint.status === 'active') {
-    return isExterno
-      ? { border: '#0baf4d', text: 'text-[#0baf4d]', label: 'EM ANDAMENTO', bg: 'bg-[#0baf4d]/10' }
-      : { border: '#ffc20e', text: 'text-[#ffc20e]', label: 'EM ANDAMENTO', bg: 'bg-[#ffc20e]/10' };
-  }
-
-  if (sprint.status === 'completed') {
-    return isExterno
-      ? { border: '#166534', text: 'text-[#166534]', label: 'CONCLUÍDA', bg: 'bg-[#166534]/10' }
-      : { border: '#92400e', text: 'text-[#92400e]', label: 'CONCLUÍDA', bg: 'bg-[#92400e]/10' };
-  }
-
-  return { border: '#71717a', text: 'text-zinc-500', label: 'DESCONHECIDO', bg: 'bg-zinc-800' };
+const getDynamicSprintStatus = (sprint: Sprint, sprintDemands: any[]) => {
+  if (sprint.status === 'completed') return 'completed';
+  if (sprintDemands.length > 0 && sprintDemands.every(d => d.status === 'concluido')) return 'completed';
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const startDate = (sprint.startDate as any)?.toDate ? (sprint.startDate as any).toDate() : new Date(sprint.startDate);
+  startDate.setHours(0, 0, 0, 0);
+  
+  if (startDate <= today) return 'active';
+  return 'planned';
 };
 
 export default function SprintsPage() {
@@ -64,15 +58,15 @@ export default function SprintsPage() {
     );
 
     return sprints.filter((s) => {
-      // Filtro de busca por texto
+      // Search filter by text
       if (searchQuery.trim()) {
         const term = searchQuery.toLowerCase();
-        const matchesSearch = 
-          (s.title || '').toLowerCase().includes(term) || 
+        const matchesSearch =
+          (s.title || '').toLowerCase().includes(term) ||
           (s.objective || '').toLowerCase().includes(term) ||
           `sprint ${s.number}`.includes(term) ||
           `#${s.number}`.includes(term);
-        
+
         if (!matchesSearch) return false;
       }
 
@@ -81,13 +75,14 @@ export default function SprintsPage() {
         if (!hasVisibleDemand) return false;
       }
 
-      if (activeFilter === 'concluidas') return s.status === 'completed';
-      if (activeFilter === 'andamento') return s.status === 'active';
-      if (activeFilter === 'backlog') return s.status === 'planned';
+      const sprintDemands = demands.filter(d => d.sprintId === s.id);
+      const dynamicStatus = getDynamicSprintStatus(s, sprintDemands);
+
+      if (activeFilter === 'concluidas') return dynamicStatus === 'completed';
+      if (activeFilter === 'andamento') return dynamicStatus === 'active';
+      if (activeFilter === 'backlog') return dynamicStatus === 'planned';
       if (activeFilter === 'minhas' && user) {
-        return demands
-          .filter((d) => d.sprintId === s.id)
-          .some((d) => d.assignees.includes(user.uid));
+        return sprintDemands.some((d) => d.assignees.includes(user.uid));
       }
       return true;
     });
@@ -101,7 +96,7 @@ export default function SprintsPage() {
       const dateStr = s.createdAt || s.startDate;
       const year = new Date(dateStr).getFullYear();
       const label = year === currentYear ? 'Gestão Atual' : `Sprints ${year}`;
-      
+
       if (!groups[label]) groups[label] = [];
       groups[label].push(s);
     });
@@ -125,8 +120,11 @@ export default function SprintsPage() {
   }, [filteredSprints]);
 
   const renderSprintCard = (sprint: Sprint) => {
-    const styles = getSprintStyles(sprint);
     const sprintDemands = demands.filter((d) => d.sprintId === sprint.id);
+    const projectTypeId = sprint.tags?.find(t => t === 'Interno' || t === 'Externo') || tenantConfig.projectTypes[0].id;
+    const projectConfig = tenantConfig.projectTypes.find(p => p.id === projectTypeId) || tenantConfig.projectTypes[0];
+    const theme = projectConfig.theme;
+
     const totalHours = sprintDemands.reduce((acc, d) => acc + (d.estimatedHours || 0), 0);
     const completedHours = sprintDemands
       .filter((d) => d.status === 'concluido')
@@ -135,19 +133,42 @@ export default function SprintsPage() {
       ? (completedHours / totalHours) * 100
       : 0;
 
+    let styles = {
+      borderClass: 'border-zinc-500',
+      textClass: 'text-zinc-400',
+      bgClass: 'bg-zinc-800',
+      label: 'BACKLOG',
+    };
+
+    const dynamicStatus = getDynamicSprintStatus(sprint, sprintDemands);
+
+    if (dynamicStatus === 'active') {
+      styles = {
+        borderClass: theme === 'secondary' ? 'border-secondary' : 'border-primary',
+        textClass: theme === 'secondary' ? 'text-secondary' : 'text-primary',
+        bgClass: theme === 'secondary' ? 'bg-secondary/10' : 'bg-primary/10',
+        label: 'EM ANDAMENTO'
+      };
+    } else if (dynamicStatus === 'completed') {
+      styles = {
+        borderClass: theme === 'secondary' ? 'border-secondary-dark' : 'border-primary-dark',
+        textClass: theme === 'secondary' ? 'text-secondary-dark' : 'text-primary-dark',
+        bgClass: theme === 'secondary' ? 'bg-secondary-dark/10' : 'bg-primary-dark/10',
+        label: 'CONCLUÍDA'
+      };
+    }
+
     return (
       <Card
         key={sprint.id}
-        variant="gradient"
-        className="p-6 md:p-7 flex flex-col gap-5 border-l-[6px] transition-all"
-        style={{ borderLeftColor: styles.border }}
+        className={cn("p-6 md:p-7 flex flex-col gap-5 border border-l-[6px] transition-all bg-[#111111]", styles.borderClass)}
       >
         <div className="flex justify-between items-start">
           <div>
             <h3 className="text-xl font-bold text-white">Sprint #{sprint.number}</h3>
             <p className="text-xs text-zinc-500 mt-1 line-clamp-1">{sprint.title}</p>
           </div>
-          <div className={cn('px-2.5 py-1 rounded-md text-[10px] font-black tracking-tighter', styles.bg, styles.text)}>
+          <div className={cn('px-2.5 py-1 rounded-md text-[10px] font-black tracking-tighter', styles.bgClass, styles.textClass)}>
             {styles.label}
           </div>
         </div>
@@ -174,7 +195,7 @@ export default function SprintsPage() {
           </div>
           <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
             <div
-               className="h-full bg-secondary shadow-[0_0_12px_rgba(11,175,77,0.4)] transition-all duration-1000 ease-out"
+              className="h-full bg-secondary shadow-[0_0_12px_rgba(11,175,77,0.4)] transition-all duration-1000 ease-out"
               style={{ width: `${progressPct}%` }}
             />
           </div>
@@ -196,27 +217,37 @@ export default function SprintsPage() {
     <div className="h-full flex flex-col gap-6 md:gap-8 px-4 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-4 pb-2 mt-4 md:mt-0">
         <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          {FILTERS.map((filter) => (
-            <button
-              key={filter.id}
-              onClick={() => setActiveFilter(filter.id)}
-              className={cn(
-                'px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border',
-                activeFilter === filter.id
-                  ? 'bg-white text-black border-white shadow-lg'
-                  : 'bg-[#111111] text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300'
-              )}
-            >
-              {filter.label}
-            </button>
-          ))}
+          {FILTERS.map((filter) => {
+            const isActive = activeFilter === filter.id;
+            return (
+              <button
+                key={filter.id}
+                onClick={() => setActiveFilter(filter.id)}
+                className={cn(
+                  'relative px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors duration-300 border flex items-center gap-2',
+                  isActive
+                    ? 'text-black border-transparent z-10'
+                    : 'bg-[#111111] text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300 z-0'
+                )}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeSprintFilter"
+                    className="absolute inset-0 bg-white rounded-full shadow-lg"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <span className="relative z-10">{filter.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
           {user?.role === 'diretor' && (
             <Button
               onClick={openNovaSprint}
-              className="gap-2 shadow-lg shadow-secondary/10 px-6 h-10 text-xs shrink-0 rounded-full"
+              className="gap-2 shadow-lg shadow-secondary/20 px-4 md:px-5 h-9 md:h-10 text-xs shrink-0"
             >
               <Plus className="w-4 h-4" />
               Nova Sprint

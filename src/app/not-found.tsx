@@ -8,7 +8,7 @@ import { Home, ArrowLeft } from 'lucide-react';
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center p-6 text-center app-glow">
-      <title>404 - Página não encontrada | Energy Júnior</title>
+      <title>404 - Página não encontrada | {process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}</title>
 
       {/* Glow effects are handled by app-glow class in globals.css */}
 
@@ -17,8 +17,8 @@ export default function NotFound() {
         <div className="mb-12 animate-fade-in">
           <div className="relative w-20 h-20 md:w-24 md:h-24 animate-float">
             <Image
-              src="/logo-energy.svg"
-              alt="Energy Júnior Logo"
+              src="/logo.svg"
+              alt={`${process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'} Logo`}
               fill
               className="object-contain filter drop-shadow-[0_0_15px_rgba(11,175,77,0.3)]"
               priority

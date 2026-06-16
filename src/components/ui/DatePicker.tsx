@@ -12,6 +12,7 @@ interface DatePickerProps {
   placeholder?: string;
   className?: string;
   error?: boolean;
+  align?: 'left' | 'right';
 }
 
 export const DatePicker: React.FC<DatePickerProps> = ({
@@ -20,6 +21,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   placeholder = 'Selecione uma data',
   className,
   error,
+  align = 'left',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(value ? parseISO(value) : new Date());
@@ -27,7 +29,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
   const selectedDate = value ? parseISO(value) : undefined;
 
-  // Fechar ao clicar fora
+  // Closing when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -46,7 +48,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
 
-  // Gerar dias do calendário
+  // Generating calendar days
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -62,7 +64,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   return (
     <div className="relative w-full" ref={containerRef}>
       {/* Input Trigger */}
-      <div 
+      <div
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           'flex h-12 w-full items-center justify-between rounded-xl border border-white/5 bg-zinc-950 px-5 py-2 text-sm text-white cursor-pointer transition-all hover:border-white/10 group',
@@ -82,22 +84,25 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
       {/* Popover */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 z-[150] w-[300px] bg-[#0f0f0f]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-4 animate-in fade-in zoom-in-95 duration-200">
-          
+        <div className={cn(
+          "absolute top-full mt-2 z-[150] w-[300px] bg-[#0f0f0f]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-4 animate-in fade-in zoom-in-95 duration-200",
+          align === 'right' ? 'right-0' : 'left-0'
+        )}>
+
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-xs font-black text-white uppercase tracking-widest">
               {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
             </h4>
             <div className="flex gap-1">
-              <button 
+              <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); prevMonth(); }}
                 className="p-1.5 rounded-lg hover:bg-white/5 text-zinc-500 hover:text-white transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <button 
+              <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); nextMonth(); }}
                 className="p-1.5 rounded-lg hover:bg-white/5 text-zinc-500 hover:text-white transition-colors"
@@ -144,14 +149,14 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
           {/* Footer */}
           <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center">
-            <button 
+            <button
               type="button"
               onClick={(e) => { e.stopPropagation(); handleDateSelect(new Date()); }}
               className="text-[10px] font-black text-secondary uppercase tracking-widest hover:opacity-80 transition-opacity"
             >
               Hoje
             </button>
-            <button 
+            <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
               className="text-[10px] font-black text-zinc-600 uppercase tracking-widest hover:text-white transition-colors"
