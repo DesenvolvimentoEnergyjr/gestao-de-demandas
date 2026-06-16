@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { DatePicker } from '@/components/ui/DatePicker';
-import { Camera, Check, Save, Loader2, UserX, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Camera, Check, Loader2, UserX, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { User, Role } from '@/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -92,8 +92,8 @@ export default function ConfiguracoesPage() {
           initialJoinDate = (user.joinDate as string).length === 7 ? `${user.joinDate}-01` : (user.joinDate as string);
         } else if (user.joinDate instanceof Date && !isNaN(user.joinDate.getTime())) {
           initialJoinDate = format(user.joinDate, 'yyyy-MM-dd');
-        } else if ((user.joinDate as any).toDate) {
-          initialJoinDate = format((user.joinDate as any).toDate(), 'yyyy-MM-dd');
+        } else if ((user.joinDate as unknown as { toDate?: () => Date }).toDate) {
+          initialJoinDate = format((user.joinDate as unknown as { toDate: () => Date }).toDate(), 'yyyy-MM-dd');
         }
       }
       setJoinDate(initialJoinDate);
@@ -464,10 +464,13 @@ export default function ConfiguracoesPage() {
                               {member.uid !== user.uid && member.status !== 'desligado' && (
                                 <button
                                   onClick={() => setShowDeactivateConfirm(member)}
-                                  className="p-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/10 text-red-500/30 hover:text-red-500 border border-red-500/0 hover:border-red-500/10 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
-                                  title="Desligar Membro"
+                                  className="group/btn relative p-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/10 text-red-500/30 hover:text-red-500 border border-red-500/0 hover:border-red-500/10 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
                                 >
                                   <UserX className="w-4 h-4" />
+                                  {/* Tooltip */}
+                                  <div className="absolute top-full right-0 mt-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-all pointer-events-none z-[100] shadow-2xl whitespace-nowrap hidden group-hover/btn:block">
+                                    <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight">Desligar Membro</p>
+                                  </div>
                                 </button>
                               )}
 

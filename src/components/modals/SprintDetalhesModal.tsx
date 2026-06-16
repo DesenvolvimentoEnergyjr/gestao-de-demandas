@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Target, TrendingUp, Layers, CheckCircle2, Clock, Pencil, Trash2, Save, RotateCcw, FileText, Paperclip, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/store/useUIStore';
-import { useNotificationStore } from '@/store/useNotificationStore';
+
 import { tenantConfig } from "@/config/tenant";
 import { useSprintStore } from '@/store/useSprintStore';
 import { useDemandStore } from '@/store/useDemandStore';
@@ -19,7 +19,7 @@ import { differenceInWeeks, addDays, format } from 'date-fns';
 import { Input } from '@/components/ui/Input';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { getThemeColor, hexToRgba } from '@/lib/colors';
-import html2canvas from 'html2canvas';
+
 import { sprintUpdateSchema } from '@/lib/schemas';
 import { DriveAttachment } from '@/components/ui/DriveAttachment';
 import { parseDriveLink } from '@/lib/drive';
@@ -383,18 +383,24 @@ export const SprintDetalhesModal = () => {
                             <>
                               <button
                                 onClick={handleStartEdit}
-                                className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-90"
-                                title="Editar Ciclo"
+                                className="group/btn1 relative w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-90"
                               >
                                 <Pencil className="w-5 h-5" />
+                                {/* Tooltip */}
+                                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/btn1:opacity-100 transition-all pointer-events-none z-[100] shadow-2xl whitespace-nowrap hidden group-hover/btn1:block">
+                                  <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight">Editar Ciclo</p>
+                                </div>
                               </button>
                               <button
                                 onClick={handleExport}
                                 disabled={isExporting}
-                                className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-secondary hover:bg-secondary/10 transition-all active:scale-90 disabled:opacity-50"
-                                title="Exportar como PDF (Captura de Tela)"
+                                className="group/btn2 relative w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-secondary hover:bg-secondary/10 transition-all active:scale-90 disabled:opacity-50"
                               >
                                 {isExporting ? <div className="w-5 h-5 border-2 border-secondary/20 border-t-secondary rounded-full animate-spin" /> : <FileText className="w-5 h-5" />}
+                                {/* Tooltip */}
+                                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/btn2:opacity-100 transition-all pointer-events-none z-[100] shadow-2xl whitespace-nowrap hidden group-hover/btn2:block">
+                                  <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight">Exportar Sprint</p>
+                                </div>
                               </button>
                               {showDeleteConfirm ? (
                                 <div className="flex items-center gap-2 animate-in slide-in-from-right-2">
@@ -416,10 +422,13 @@ export const SprintDetalhesModal = () => {
                               ) : (
                                 <button
                                   onClick={() => setShowDeleteConfirm(true)}
-                                  className="w-12 h-12 rounded-2xl bg-red-500/5 border border-red-500/10 flex items-center justify-center text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-all active:scale-90"
-                                  title="Excluir Ciclo"
+                                  className="group/btn3 relative w-12 h-12 rounded-2xl bg-red-500/5 border border-red-500/10 flex items-center justify-center text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-all active:scale-90"
                                 >
                                   <Trash2 className="w-5 h-5" />
+                                  {/* Tooltip */}
+                                  <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/btn3:opacity-100 transition-all pointer-events-none z-[100] shadow-2xl whitespace-nowrap hidden group-hover/btn3:block">
+                                    <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight">Excluir Ciclo</p>
+                                  </div>
                                 </button>
                               )}
                             </>
@@ -1049,7 +1058,7 @@ export const SprintDetalhesModal = () => {
                                             </div>
                                           </div>
 
-                                          <div className="flex -space-x-2 shrink-0 ml-4 overflow-x-auto no-scrollbar max-w-[80px]">
+                                          <div className="flex -space-x-2 shrink-0 ml-4">
                                             {demand.assignees.map((uid) => {
                                               const u = users.find((user) => user.uid === uid);
                                               return (
@@ -1062,8 +1071,8 @@ export const SprintDetalhesModal = () => {
                                                     fallback={uid.substring(0, 1).toUpperCase()}
                                                   />
                                                   {/* Tooltip */}
-                                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-2xl">
-                                                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{u?.name ?? uid}</span>
+                                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 shadow-2xl min-w-[100px] max-w-[200px]">
+                                                    <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight break-words">{u?.name ?? uid}</p>
                                                   </div>
                                                 </div>
                                               );

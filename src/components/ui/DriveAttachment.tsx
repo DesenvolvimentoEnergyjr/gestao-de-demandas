@@ -43,20 +43,23 @@ export const DriveAttachment: React.FC<DriveAttachmentProps> = ({ attachment, on
         href={attachment.url} 
         target="_blank" 
         rel="noopener noreferrer"
-        className="flex items-center gap-3 flex-1 min-w-0 pl-1 py-1 h-full hover:bg-white/5 transition-colors"
-        title="Abrir documento no Drive"
+        className="group/link relative flex items-center gap-3 flex-1 min-w-0 pl-1 py-1 h-full hover:bg-white/5 transition-colors"
       >
         <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ml-0.5", bg)}>
           <Icon className={cn("w-4 h-4", color)} />
         </div>
         <div className="flex flex-col min-w-0 flex-1 justify-center">
-          <span className="text-[11px] font-bold text-zinc-300 truncate group-hover:text-white transition-colors">
+          <span className="text-[11px] font-bold text-zinc-300 truncate group-hover/link:text-white transition-colors">
             {attachment.name}
           </span>
           <span className="text-[8px] font-medium text-zinc-600 uppercase tracking-widest flex items-center gap-1 mt-0.5">
             Abrir
             <ExternalLink className="w-2 h-2" />
           </span>
+        </div>
+        {/* Tooltip */}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/link:opacity-100 transition-all pointer-events-none z-[100] shadow-2xl whitespace-nowrap hidden group-hover/link:block">
+          <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight">Abrir documento no Drive</p>
         </div>
       </a>
 
@@ -68,10 +71,13 @@ export const DriveAttachment: React.FC<DriveAttachmentProps> = ({ attachment, on
             e.stopPropagation();
             onRemove(attachment.id);
           }}
-          className="w-7 h-7 ml-1 rounded-lg flex items-center justify-center text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0 opacity-0 group-hover:opacity-100"
-          title="Remover anexo"
+          className="group/btn relative w-7 h-7 ml-1 rounded-lg flex items-center justify-center text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0 opacity-0 group-hover:opacity-100"
         >
           <X className="w-3.5 h-3.5" />
+          {/* Tooltip */}
+          <div className="absolute top-full right-0 mt-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-all pointer-events-none z-[100] shadow-2xl whitespace-nowrap hidden group-hover/btn:block">
+            <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight">Remover anexo</p>
+          </div>
         </button>
       )}
     </motion.div>

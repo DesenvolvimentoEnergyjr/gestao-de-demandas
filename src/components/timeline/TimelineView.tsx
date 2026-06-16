@@ -416,7 +416,6 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
                 "p-2.5 rounded-xl border transition-all flex items-center gap-2",
                 density === 'compact' ? "bg-white text-black border-white" : "bg-zinc-900 border-white/5 text-zinc-500 hover:text-white"
               )}
-              title="Alternar Densidade (Atalho: C)"
             >
               <motion.div animate={{ rotate: density === 'compact' ? 45 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
                 <LayoutGrid className="w-4 h-4" />

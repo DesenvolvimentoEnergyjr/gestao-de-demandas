@@ -364,10 +364,13 @@ export const NovaDemandaModal = () => {
                 {!isCreate && isView && currentUser?.role === 'diretor' && (
                   <button
                     onClick={() => setDemandModalMode('edit')}
-                    className="w-10 h-10 flex items-center justify-center bg-white/5 rounded-xl border border-white/5 text-zinc-400 hover:text-white hover:border-white/20 transition-all"
-                    title="Editar Demanda"
+                    className="group/btn relative w-10 h-10 flex items-center justify-center bg-white/5 rounded-xl border border-white/5 text-zinc-400 hover:text-white hover:border-white/20 transition-all"
                   >
                     <Pencil className="w-4 h-4" />
+                    {/* Tooltip */}
+                    <div className="absolute top-full right-0 mt-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-all pointer-events-none z-[100] shadow-2xl whitespace-nowrap hidden group-hover/btn:block">
+                      <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight">Editar Demanda</p>
+                    </div>
                   </button>
                 )}
                 <button

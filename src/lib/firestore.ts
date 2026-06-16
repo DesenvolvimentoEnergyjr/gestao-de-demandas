@@ -14,7 +14,7 @@ import {
   onSnapshot,
   arrayUnion,
 } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
 import { tenantConfig } from '@/config/tenant';
 import { db } from './firebase';
 import { Demand, DemandStatus, Sprint, User, AppNotification, MemberTimelineEvent } from '@/types';
@@ -328,7 +328,7 @@ export const deleteCommentFromDemand = async (demandId: string, commentId: strin
   if (!snap.exists()) return;
   const data = snap.data();
   const comments = data.comments || [];
-  const newComments = comments.filter((c: any) => c.id !== commentId);
+  const newComments = comments.filter((c: { id: string }) => c.id !== commentId);
   await updateDoc(demandRef, { comments: newComments });
 };
 

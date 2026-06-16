@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Sprint } from '@/types';
+import { Sprint, Demand } from '@/types';
 import { Card } from '@/components/ui/Card';
 import { Calendar, Target, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -25,14 +25,14 @@ const FILTERS = [
 
 import { tenantConfig } from '@/config/tenant';
 
-const getDynamicSprintStatus = (sprint: Sprint, sprintDemands: any[]) => {
+const getDynamicSprintStatus = (sprint: Sprint, sprintDemands: Demand[]) => {
   if (sprint.status === 'completed') return 'completed';
   if (sprintDemands.length > 0 && sprintDemands.every(d => d.status === 'concluido')) return 'completed';
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  const startDate = (sprint.startDate as any)?.toDate ? (sprint.startDate as any).toDate() : new Date(sprint.startDate);
+  const startDate = (sprint.startDate as unknown as { toDate?: () => Date })?.toDate ? (sprint.startDate as unknown as { toDate: () => Date }).toDate() : new Date(sprint.startDate as string | Date);
   startDate.setHours(0, 0, 0, 0);
   
   if (startDate <= today) return 'active';

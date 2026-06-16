@@ -35,7 +35,7 @@ const MemberCardSkeleton = () => (
   </Card>
 );
 
-const CollapsibleTeamGroup = ({ group, renderUserCard }: { group: any, renderUserCard: (u: User) => JSX.Element }) => {
+const CollapsibleTeamGroup = ({ group, renderUserCard }: { group: { label: string; members: User[]; year?: number }, renderUserCard: (u: User) => JSX.Element }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -203,10 +203,13 @@ export default function AssessoresPage() {
                   e.stopPropagation();
                   setShowEditModal(user);
                 }}
-                className="absolute top-0 right-0 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-500 hover:text-white border border-white/0 hover:border-white/5 transition-all opacity-0 group-hover:opacity-100 z-10"
-                title="Editar Perfil"
+                className="group/btn absolute top-0 right-0 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-500 hover:text-white border border-white/0 hover:border-white/5 transition-all opacity-0 group-hover:opacity-100 z-10"
               >
                 <Pencil className="w-3.5 h-3.5" />
+                {/* Tooltip */}
+                <div className="absolute top-full right-0 mt-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-all pointer-events-none z-[100] shadow-2xl whitespace-nowrap hidden group-hover/btn:block">
+                  <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight">Editar Perfil</p>
+                </div>
               </button>
             )}
 

@@ -30,11 +30,11 @@ export function AssessorEditModal({ user, isOpen, onClose, onUpdate }: AssessorE
     }
     return [];
   });
-  const getInitialJoinDate = (dateVal: any) => {
+  const getInitialJoinDate = (dateVal: string | Date | { toDate: () => Date } | undefined | null | unknown) => {
     if (!dateVal) return '';
     if (typeof dateVal === 'string') return (dateVal as string).length === 7 ? `${dateVal}-01` : (dateVal as string);
     if (dateVal instanceof Date && !isNaN(dateVal.getTime())) return format(dateVal, 'yyyy-MM-dd');
-    if (dateVal.toDate) return format(dateVal.toDate(), 'yyyy-MM-dd');
+    if ((dateVal as { toDate?: () => Date })?.toDate) return format((dateVal as { toDate: () => Date }).toDate(), 'yyyy-MM-dd');
     return '';
   };
 

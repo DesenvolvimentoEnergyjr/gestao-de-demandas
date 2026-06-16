@@ -376,17 +376,23 @@ export function AssessorHistoryModal({ user, demands, onClose }: AssessorHistory
                             <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity ml-auto">
                               <button
                                 onClick={() => handleStartEdit(event)}
-                                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-500 hover:text-white transition-all"
-                                title="Editar"
+                                className="group/btn1 relative p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-500 hover:text-white transition-all"
                               >
                                 <Pencil className="w-3 h-3" />
+                                {/* Tooltip */}
+                                <div className="absolute top-full right-0 mt-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/btn1:opacity-100 transition-all pointer-events-none z-[100] shadow-2xl whitespace-nowrap hidden group-hover/btn1:block">
+                                  <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight">Editar</p>
+                                </div>
                               </button>
                               <button
                                 onClick={() => handleDelete(event.id)}
-                                className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-all"
-                                title="Remover"
+                                className="group/btn2 relative p-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-all"
                               >
                                 <Trash2 className="w-3 h-3" />
+                                {/* Tooltip */}
+                                <div className="absolute top-full right-0 mt-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/btn2:opacity-100 transition-all pointer-events-none z-[100] shadow-2xl whitespace-nowrap hidden group-hover/btn2:block">
+                                  <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight">Remover</p>
+                                </div>
                               </button>
                             </div>
                           )}

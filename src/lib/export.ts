@@ -6,7 +6,7 @@ import tailwindConfig from '../../tailwind.config';
 import { tenantConfig } from '@/config/tenant';
 
 export const exportSprintToPDF = async (sprint: Sprint, demands: Demand[], users: User[]) => {
-  const secondaryColor = (tailwindConfig.theme?.extend?.colors as any)?.secondary || '#0baf4d';
+  const secondaryColor = (tailwindConfig.theme?.extend?.colors as Record<string, string>)?.secondary || '#0baf4d';
   const pdf = new jsPDF();
   const pageWidth = pdf.internal.pageSize.getWidth();
 

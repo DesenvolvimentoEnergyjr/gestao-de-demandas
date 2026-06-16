@@ -88,12 +88,12 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
           <div className="space-y-4">
             {comments.slice().sort((a, b) => {
               // Ensure sorting by date ascending
-              const dateA = (a.createdAt as any)?.toDate ? (a.createdAt as any).toDate() : (a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt || Date.now()));
-              const dateB = (b.createdAt as any)?.toDate ? (b.createdAt as any).toDate() : (b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt || Date.now()));
+              const dateA = (a.createdAt as unknown as { toDate?: () => Date })?.toDate ? (a.createdAt as unknown as { toDate: () => Date }).toDate() : (a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt || Date.now()));
+              const dateB = (b.createdAt as unknown as { toDate?: () => Date })?.toDate ? (b.createdAt as unknown as { toDate: () => Date }).toDate() : (b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt || Date.now()));
               return dateA.getTime() - dateB.getTime();
             }).map((comment) => {
               const author = allUsers.find((u) => u.uid === comment.authorId);
-              const date = (comment.createdAt as any)?.toDate ? (comment.createdAt as any).toDate() : (comment.createdAt instanceof Date ? comment.createdAt : new Date(comment.createdAt || Date.now()));
+              const date = (comment.createdAt as unknown as { toDate?: () => Date })?.toDate ? (comment.createdAt as unknown as { toDate: () => Date }).toDate() : (comment.createdAt instanceof Date ? comment.createdAt : new Date(comment.createdAt || Date.now()));
 
               // Helper to style mentions
               const renderTextWithMentions = (text: string) => {
