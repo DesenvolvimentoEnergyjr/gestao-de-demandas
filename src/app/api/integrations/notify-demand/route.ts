@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { tenantConfig } from '@/config/tenant';
 import nodemailer from "nodemailer";
-import { google } from "googleapis";
+
 import { getThemeColor } from "@/lib/colors";
 
 // Template de email premium
@@ -43,7 +43,7 @@ const getPremiumEmail = (
         <span style="font-size: 12px; text-transform: uppercase; color: #71717a; font-weight: 700; margin-bottom: 8px; display: block;">
           DEADLINE
         </span>
-        <p style="font-size: 15px; color: ${getThemeColor('secondary')}; font-weight: 600; margin: 0;">${deadlineStr}</p>
+        <p style="font-size: 15px; color: ${getThemeColor('secondary')}; font-weight: 600; margin: 0;">${deadlineStr + 1}</p>
       </div>
     </div>
     <div style="background-color: #09090b; padding: 30px; text-align: center; border-top: 1px solid #27272a;">
@@ -91,9 +91,9 @@ export async function POST(req: Request) {
         );
 
         await transporter.sendMail({
-          from: SMTP_EMAIL,
+          from: `NOVA SPRINT <${SMTP_EMAIL}>`,
           to: newSprintAssignees.join(","),
-          subject: `Nova Demanda: ${sprint.title}`,
+          subject: sprint.title,
           html: htmlBody,
         });
       } else if (!sprint && emails && emails.length > 0) {
@@ -119,57 +119,14 @@ export async function POST(req: Request) {
         );
 
         await transporter.sendMail({
-          from: SMTP_EMAIL,
+          from: `NOVA DEMANDA <${SMTP_EMAIL}>`,
           to: emails.join(","),
-          subject: `Nova Demanda: ${demand.title}`,
+          subject: demand.title,
           html: htmlBody,
         });
+
+        console.log(transporter);
       }
-    }
-
-    // Google Calendar
-    const GCP_CLIENT_EMAIL = process.env.GCP_CLIENT_EMAIL;
-    const GCP_PRIVATE_KEY = process.env.GCP_PRIVATE_KEY?.replace(/\\n/g, "\n");
-    const CALENDAR_ID = process.env.CALENDAR_ID;
-    const assigneeEmails = Array.isArray(emails) ? emails.filter(Boolean) : [];
-
-    if (GCP_CLIENT_EMAIL && GCP_PRIVATE_KEY && CALENDAR_ID && demand.deadline) {
-      const jwtClient = new google.auth.JWT({
-        email: GCP_CLIENT_EMAIL,
-        key: GCP_PRIVATE_KEY,
-        scopes: ["https://www.googleapis.com/auth/calendar.events"],
-      });
-
-      const calendar = google.calendar({ version: "v3", auth: jwtClient });
-
-      let eventTitle = demand.title;
-      if (sprint) {
-        const sprintStart = new Date(sprint.startDate);
-        const demandDead = new Date(demand.deadline);
-        const diffDays = Math.ceil(
-          (demandDead.getTime() - sprintStart.getTime()) /
-          (1000 * 60 * 60 * 24),
-        );
-        const week = Math.max(1, Math.ceil(diffDays / 7));
-        eventTitle = `Semana ${week} - ${sprint.title}`;
-      }
-
-      const eventDateStr = new Date(demand.deadline)
-        .toISOString()
-        .split("T")[0];
-      const attendees = assigneeEmails.map((email: string) => ({ email }));
-
-      await calendar.events.insert({
-        calendarId: CALENDAR_ID,
-        ...(attendees.length > 0 ? { sendUpdates: "all" } : {}),
-        requestBody: {
-          summary: eventTitle,
-          description: `Demanda vinculada: ${demand.title}`,
-          start: { date: eventDateStr, timeZone: "America/Sao_Paulo" },
-          end: { date: eventDateStr, timeZone: "America/Sao_Paulo" },
-          attendees,
-        },
-      });
     }
 
     return NextResponse.json({ success: true });

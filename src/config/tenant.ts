@@ -8,6 +8,8 @@ export const tenantConfig = {
       "Cravando a faca na caveira...",
       "Batendo metas pra valer...",
       "Já fez um kudo hoje?",
+      "Onde chega põe moral!",
+      "Trabalhando dia e noite...",
     ],
     sprintTagline: "Bate Meta pra Valer",
     emailFooter: "O QUE NÓS SOMOS? CAVEIRA!",
