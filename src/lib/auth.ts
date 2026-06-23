@@ -18,9 +18,7 @@ export const signInWithGoogle = async () => {
 
   // Restricted domains check
   const allowedDomain = process.env.NEXT_PUBLIC_COMPANY_DOMAIN;
-  const isAllowedDomain = allowedDomain
-    ? email.endsWith("@energyjr.com")
-    : false;
+  const isAllowedDomain = allowedDomain ? email.endsWith(allowedDomain) : false;
 
   if (!isAllowedDomain) {
     await firebaseSignOut(auth);
