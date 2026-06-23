@@ -1,12 +1,154 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Bell, CheckCheck, Inbox } from 'lucide-react';
-import { cn, formatRelativeTime } from '@/lib/utils';
-import { useNotificationStore } from '@/store/useNotificationStore';
-import { markNotificationAsRead, markAllNotificationsAsRead } from '@/lib/firestore';
-import { useAuthStore } from '@/store/useAuthStore';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Bell,
+  CheckCheck,
+  Inbox,
+  ChevronDown,
+  User as UserIcon,
+  ArrowRight,
+} from "lucide-react";
+import { cn, formatRelativeTime } from "@/lib/utils";
+import { useNotificationStore } from "@/store/useNotificationStore";
+import {
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+} from "@/lib/firestore";
+import { useAuthStore } from "@/store/useAuthStore";
+import { motion, AnimatePresence } from "framer-motion";
+import { AppNotification } from "@/types";
+
+const NotificationIcon = ({ type }: { type: AppNotification["type"] }) => {
+  const iconClass = cn("w-4 h-4");
+  switch (type) {
+    case "assignment":
+      return <UserIcon className={iconClass} />;
+    case "mention":
+      return <Bell className={iconClass} />;
+    default:
+      return <ArrowRight className={iconClass} />;
+  }
+};
+
+const NotificationItem = ({
+  notif,
+  index,
+  mounted,
+  onMarkRead,
+}: {
+  notif: AppNotification;
+  index: number;
+  mounted: boolean;
+  onMarkRead: (id: string) => void;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  // Determine if the message is long enough to need expansion
+  const isLongMessage = notif.message.length > 80;
+
+  const handleClick = () => {
+    if (isLongMessage) {
+      setExpanded((prev) => !prev);
+    }
+    if (!notif.read) {
+      onMarkRead(notif.id);
+    }
+  };
+
+  return (
+    <motion.button
+      key={notif.id}
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.04 }}
+      onClick={handleClick}
+      className={cn(
+        "w-full text-left p-4 hover:bg-white/[0.03] transition-all flex items-start gap-3 group relative",
+        !notif.read && "bg-secondary/[0.03]",
+      )}
+    >
+      {!notif.read && (
+        <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-8 bg-secondary rounded-full" />
+      )}
+      <div
+        className={cn(
+          "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition-all mt-0.5",
+          notif.read
+            ? "bg-zinc-900 border-white/5 text-zinc-600"
+            : "bg-secondary/10 border-secondary/20 text-secondary",
+        )}
+      >
+        <NotificationIcon type={notif.type} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex justify-between items-start gap-2">
+          <p
+            className={cn(
+              "text-xs font-bold",
+              notif.read ? "text-zinc-400" : "text-white",
+            )}
+          >
+            {notif.title}
+          </p>
+          <span className="text-[9px] font-bold text-zinc-600 whitespace-nowrap mt-0.5">
+            {mounted && formatRelativeTime(notif.createdAt)}
+          </span>
+        </div>
+        {/* Actor name (who performed the action) */}
+        {notif.actorName && (
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <div
+              className={cn(
+                "w-4 h-4 rounded-full flex items-center justify-center shrink-0",
+                notif.read ? "bg-zinc-800" : "bg-secondary/15",
+              )}
+            >
+              <UserIcon
+                className={cn(
+                  "w-2.5 h-2.5",
+                  notif.read ? "text-zinc-500" : "text-secondary",
+                )}
+              />
+            </div>
+            <span
+              className={cn(
+                "text-[10px] font-bold",
+                notif.read ? "text-zinc-500" : "text-secondary/80",
+              )}
+            >
+              {notif.actorName}
+            </span>
+          </div>
+        )}
+        {/* Message - animated expand/collapse for long messages */}
+        <motion.div
+          animate={{ height: isLongMessage && !expanded ? 36 : "auto" }}
+          initial={false}
+          transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+          className="overflow-hidden mt-1.5"
+        >
+          <p className="text-[11px] text-zinc-400 font-medium leading-relaxed">
+            {notif.message}
+          </p>
+        </motion.div>
+        {/* Expand/collapse indicator for long messages */}
+        {isLongMessage && (
+          <div className="flex items-center gap-1 mt-1.5">
+            <motion.div
+              animate={{ rotate: expanded ? 180 : 0 }}
+              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <ChevronDown className="w-3 h-3 text-zinc-600" />
+            </motion.div>
+            <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-wider">
+              {expanded ? "Recolher" : "Ler mais"}
+            </span>
+          </div>
+        )}
+      </div>
+    </motion.button>
+  );
+};
 
 export const FloatingNotificationButton = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,15 +160,18 @@ export const FloatingNotificationButton = () => {
   useEffect(() => {
     setMounted(true);
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleNotificationClick = async (id: string) => {
+  const handleNotificationRead = async (id: string) => {
     await markNotificationAsRead(id);
     setIsOpen(false);
   };
@@ -40,26 +185,33 @@ export const FloatingNotificationButton = () => {
   if (!mounted) return null;
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5, duration: 0.5 }}
-      className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-[100]" 
+      className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-[100]"
       ref={containerRef}
     >
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9, y: 20, filter: 'blur(10px)' }}
-            animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, scale: 0.95, y: 10, filter: 'blur(10px)' }}
-            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="absolute bottom-16 right-0 w-[calc(100vw-48px)] sm:w-80 bg-bg-section/90 border border-white/[0.08] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden backdrop-blur-xl mb-4"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20, filter: "blur(10px)" }}
+            animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, scale: 0.95, y: 10, filter: "blur(10px)" }}
+            transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            className="absolute bottom-16 right-0 w-[calc(100vw-48px)] sm:w-96 bg-bg-section/95 border border-white/[0.08] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden backdrop-blur-xl mb-4"
           >
             <div className="p-4 border-b border-white/5 flex items-center justify-between bg-zinc-950/50">
               <div className="flex items-center gap-2">
                 <Inbox className="w-4 h-4 text-secondary" />
-                <h3 className="text-xs font-black text-white uppercase tracking-widest">Notificações</h3>
+                <h3 className="text-xs font-black text-white uppercase tracking-widest">
+                  Notificações
+                </h3>
+                {unreadCount > 0 && (
+                  <span className="px-2 py-0.5 bg-secondary/20 text-secondary text-[9px] font-black rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
               </div>
               {unreadCount > 0 && (
                 <motion.button
@@ -74,7 +226,7 @@ export const FloatingNotificationButton = () => {
               )}
             </div>
 
-            <div className="max-h-[350px] overflow-y-auto no-scrollbar">
+            <div className="max-h-[60vh] overflow-y-auto no-scrollbar">
               {loading ? (
                 <div className="p-4 space-y-4">
                   {[1, 2, 3].map((i) => (
@@ -83,6 +235,7 @@ export const FloatingNotificationButton = () => {
                       <div className="flex-1 space-y-2">
                         <div className="h-2 bg-white/10 rounded w-1/2" />
                         <div className="h-2 bg-white/5 rounded w-full" />
+                        <div className="h-2 bg-white/5 rounded w-3/4" />
                       </div>
                     </div>
                   ))}
@@ -90,61 +243,33 @@ export const FloatingNotificationButton = () => {
               ) : notifications.length > 0 ? (
                 <div className="divide-y divide-white/[0.03]">
                   {notifications.map((notif, i) => (
-                    <motion.button
+                    <NotificationItem
                       key={notif.id}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      onClick={() => handleNotificationClick(notif.id)}
-                      className={cn(
-                        "w-full text-left p-4 hover:bg-white/[0.02] transition-all flex items-start gap-3 group relative",
-                        !notif.read && "bg-secondary/[0.02]"
-                      )}
-                    >
-                      {!notif.read && (
-                        <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-8 bg-secondary rounded-full" />
-                      )}
-                      <div className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition-all",
-                        notif.read
-                          ? "bg-zinc-900 border-white/5 text-zinc-600"
-                          : "bg-secondary/10 border-secondary/20 text-secondary"
-                      )}>
-                        <Inbox className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex justify-between items-start gap-2">
-                          <p className={cn(
-                            "text-xs font-bold truncate",
-                            notif.read ? "text-zinc-400" : "text-white"
-                          )}>
-                            {notif.title}
-                          </p>
-                          <span className="text-[9px] font-bold text-zinc-600 whitespace-nowrap mt-0.5">
-                            {mounted && formatRelativeTime(notif.createdAt)}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-zinc-500 font-medium leading-relaxed mt-1 line-clamp-2">
-                          {notif.message}
-                        </p>
-                      </div>
-                    </motion.button>
+                      notif={notif}
+                      index={i}
+                      mounted={mounted}
+                      onMarkRead={handleNotificationRead}
+                    />
                   ))}
                 </div>
               ) : (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="py-12 flex flex-col items-center justify-center text-center px-6"
                 >
                   <Inbox className="w-8 h-8 text-zinc-700 mb-3" />
-                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest italic">Tudo limpo por aqui</p>
+                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest italic">
+                    Tudo limpo por aqui
+                  </p>
                 </motion.div>
               )}
             </div>
 
             <div className="p-3 border-t border-white/5 bg-zinc-950/50 flex justify-center">
-              <p className="text-[8px] font-black text-zinc-600 uppercase tracking-[0.2em]">Notificações serão apagadas em 28 dias</p>
+              <p className="text-[8px] font-black text-zinc-600 uppercase tracking-[0.2em]">
+                Notificações serão apagadas em 28 dias
+              </p>
             </div>
           </motion.div>
         )}
@@ -156,7 +281,7 @@ export const FloatingNotificationButton = () => {
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-all group relative",
-          "bg-gradient-to-br from-secondary via-secondary to-secondary-dark"
+          "bg-gradient-to-br from-secondary via-secondary to-secondary-dark",
         )}
       >
         <Bell className="w-6 h-6 text-white group-hover:rotate-12 transition-transform" />

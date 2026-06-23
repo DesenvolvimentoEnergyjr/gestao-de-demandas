@@ -1,37 +1,49 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/useAuthStore';
-import { useDemandStore } from '@/store/useDemandStore';
-import { useUIStore } from '@/store/useUIStore';
-import { Avatar } from '@/components/ui/Avatar';
-import { Search, AlertCircle, Plus, Settings, LogOut, ChevronDown, Menu, RefreshCw, LayoutGrid, User as UserIcon } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { signOut } from '@/lib/auth';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/Button';
-import { toast } from '@/store/useToastStore';
-import { User } from '@/types';
-import { getUsers, getDemands, getSprints } from '@/lib/firestore';
-import { useSprintStore } from '@/store/useSprintStore';
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useDemandStore } from "@/store/useDemandStore";
+import { useUIStore } from "@/store/useUIStore";
+import { Avatar } from "@/components/ui/Avatar";
+import {
+  Search,
+  AlertCircle,
+  Plus,
+  Settings,
+  LogOut,
+  ChevronDown,
+  Menu,
+  RefreshCw,
+  LayoutGrid,
+  User as UserIcon,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { signOut } from "@/lib/auth";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/Button";
+import { toast } from "@/store/useToastStore";
+import { User } from "@/types";
+import { getUsers, getDemands, getSprints } from "@/lib/firestore";
+import { useSprintStore } from "@/store/useSprintStore";
 
 const tabs = [
-  { name: 'Kanban', href: '/kanban' },
-  { name: 'Timeline', href: '/timeline' },
-  { name: 'Sprints', href: '/sprints' },
-  { name: 'Membros', href: '/membros' },
+  { name: "Kanban", href: "/kanban" },
+  { name: "Timeline", href: "/timeline" },
+  { name: "Sprints", href: "/sprints" },
+  { name: "Membros", href: "/membros" },
 ];
 
 export const Header = () => {
   const { user } = useAuthStore();
   const { demands, setDemands } = useDemandStore();
   const { sprints, setSprints } = useSprintStore();
-  const { openNovaDemanda, openDemanda, setSidebarOpen, openSprintDetalhes } = useUIStore();
+  const { openNovaDemanda, openDemanda, setSidebarOpen, openSprintDetalhes } =
+    useUIStore();
   const [users, setUsers] = useState<User[]>([]);
-  const [localSearch, setLocalSearch] = useState('');
+  const [localSearch, setLocalSearch] = useState("");
   const [showResults, setShowResults] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const pathname = usePathname();
@@ -40,111 +52,177 @@ export const Header = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
         setShowResults(false);
       }
       // If the user clicks outside the avatar, close the user menu
-      if (showUserMenu && !(event.target as HTMLElement).closest('.user-menu-trigger')) {
+      if (
+        showUserMenu &&
+        !(event.target as HTMLElement).closest(".user-menu-trigger")
+      ) {
         setShowUserMenu(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showUserMenu]);
 
   useEffect(() => {
     getUsers().then(setUsers).catch(console.error);
-    if (sprints.length === 0) getSprints().then(setSprints).catch(console.error);
-    if (demands.length === 0) getDemands().then(setDemands).catch(console.error);
+    if (sprints.length === 0)
+      getSprints().then(setSprints).catch(console.error);
+    if (demands.length === 0)
+      getDemands().then(setDemands).catch(console.error);
   }, [sprints.length, setSprints, demands.length, setDemands]);
 
   useEffect(() => {
     if (!user || demands.length === 0) return;
 
-    if (sessionStorage.getItem('notified_overdue_demands')) return;
+    if (sessionStorage.getItem("notified_overdue_demands")) return;
 
-    const myDemands = demands.filter(d => d.assignees.includes(user.uid) && d.status !== 'concluido' && d.deadline);
+    const myDemands = demands.filter((d) => {
+      if (
+        !d.assignees.includes(user.uid) ||
+        d.status === "concluido" ||
+        !d.deadline
+      )
+        return false;
+      const sprint = sprints.find((s) => s.id === d.sprintId);
+      if (sprint?.status === "paused") return false;
+      return true;
+    });
+
     if (myDemands.length === 0) return;
 
     let hasNotified = false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const overdue = myDemands.filter(d => {
+    const overdue = myDemands.filter((d) => {
       const deadline = new Date(d.deadline!);
       deadline.setHours(0, 0, 0, 0);
       return deadline < today;
     });
 
-    const expiringToday = myDemands.filter(d => {
+    const expiringToday = myDemands.filter((d) => {
       return new Date(d.deadline!).toDateString() === new Date().toDateString();
     });
 
     if (overdue.length > 0) {
-      setTimeout(() => toast.error(`Atenção: Você tem ${overdue.length} demanda(s) em atraso!`), 1000);
+      setTimeout(
+        () =>
+          toast.error(
+            `Atenção: Você tem ${overdue.length} demanda(s) em atraso!`,
+          ),
+        1000,
+      );
       hasNotified = true;
     }
 
     if (expiringToday.length > 0) {
-      setTimeout(() => toast.warning(`Aviso: Você tem ${expiringToday.length} demanda(s) vencendo hoje!`), 1500);
+      setTimeout(
+        () =>
+          toast.warning(
+            `Aviso: Você tem ${expiringToday.length} demanda(s) vencendo hoje!`,
+          ),
+        1500,
+      );
       hasNotified = true;
     }
 
     if (hasNotified) {
-      sessionStorage.setItem('notified_overdue_demands', 'true');
+      sessionStorage.setItem("notified_overdue_demands", "true");
     }
-  }, [user, demands]);
+  }, [user, demands, sprints]);
 
   const handleSignOut = async () => {
     try {
       await signOut();
-      toast.info('Sessão encerrada.');
-      router.push('/auth');
+      toast.info("Sessão encerrada.");
+      router.push("/auth");
     } catch (error) {
-      console.error('Erro ao sair:', error);
+      console.error("Erro ao sair:", error);
     }
   };
 
   const searchResults = useMemo(() => {
     if (!localSearch.trim()) return [];
 
-    const results: Array<{ type: 'demand' | 'sprint' | 'user', id: string, title: string, subtitle: string, icon: React.ElementType }> = [];
+    const results: Array<{
+      type: "demand" | "sprint" | "user";
+      id: string;
+      title: string;
+      subtitle: string;
+      icon: React.ElementType;
+    }> = [];
     const term = localSearch.toLowerCase();
 
     // Demands
-    demands.filter(d => (d.title || '').toLowerCase().includes(term)).forEach(d => {
-      results.push({ type: 'demand', id: d.id, title: d.title || 'Sem título', subtitle: 'Demanda de Projeto', icon: LayoutGrid });
-    });
+    demands
+      .filter((d) => (d.title || "").toLowerCase().includes(term))
+      .forEach((d) => {
+        results.push({
+          type: "demand",
+          id: d.id,
+          title: d.title || "Sem título",
+          subtitle: "Demanda de Projeto",
+          icon: LayoutGrid,
+        });
+      });
 
     // Sprints
-    sprints.filter(s =>
-      (s.title || '').toLowerCase().includes(term) ||
-      (s.objective || '').toLowerCase().includes(term) ||
-      `sprint ${s.number}`.includes(term) ||
-      `#${s.number}`.includes(term) ||
-      s.number.toString() === term
-    ).forEach(s => {
-      results.push({ type: 'sprint', id: s.id, title: s.title || 'Sprint', subtitle: `Sprint #${s.number}`, icon: RefreshCw });
-    });
+    sprints
+      .filter(
+        (s) =>
+          (s.title || "").toLowerCase().includes(term) ||
+          (s.objective || "").toLowerCase().includes(term) ||
+          `sprint ${s.number}`.includes(term) ||
+          `#${s.number}`.includes(term) ||
+          s.number.toString() === term,
+      )
+      .forEach((s) => {
+        results.push({
+          type: "sprint",
+          id: s.id,
+          title: s.title || "Sprint",
+          subtitle: `Sprint #${s.number}`,
+          icon: RefreshCw,
+        });
+      });
 
     // Users
-    users.filter(u => (u.name || '').toLowerCase().includes(term) || (u.area || '').toLowerCase().includes(term)).forEach(u => {
-      results.push({ type: 'user', id: u.uid, title: u.name || 'Usuário', subtitle: (u.title || u.role || '').toUpperCase(), icon: UserIcon });
-    });
+    users
+      .filter(
+        (u) =>
+          (u.name || "").toLowerCase().includes(term) ||
+          (u.area || "").toLowerCase().includes(term),
+      )
+      .forEach((u) => {
+        results.push({
+          type: "user",
+          id: u.uid,
+          title: u.name || "Usuário",
+          subtitle: (u.title || u.role || "").toUpperCase(),
+          icon: UserIcon,
+        });
+      });
 
     return results.slice(0, 8);
   }, [localSearch, demands, sprints, users]);
 
-  const handleResultClick = (result: { type: string, id: string }) => {
-    if (result.type === 'demand') {
-      openDemanda(result.id, 'view');
-    } else if (result.type === 'sprint') {
-      router.push('/sprints');
+  const handleResultClick = (result: { type: string; id: string }) => {
+    if (result.type === "demand") {
+      openDemanda(result.id, "view");
+    } else if (result.type === "sprint") {
+      router.push("/sprints");
       openSprintDetalhes(result.id);
-    } else if (result.type === 'user') {
-      router.push('/membros');
+    } else if (result.type === "user") {
+      router.push("/membros");
     }
-    setLocalSearch('');
+    setLocalSearch("");
     setShowResults(false);
   };
 
@@ -155,15 +233,19 @@ export const Header = () => {
         <div className="w-8 h-8 md:w-10 md:h-10 relative shrink-0">
           <Image
             src="/logo.svg"
-            alt={process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}
+            alt={process.env.NEXT_PUBLIC_COMPANY_NAME || "Empresa Júnior"}
             fill
             sizes="(max-width: 768px) 32px, 40px"
             className="object-contain"
           />
         </div>
         <div className="flex flex-col">
-          <h1 className="text-white font-black text-sm md:text-base leading-none tracking-tight">{process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}</h1>
-          <p className="text-[9px] md:text-[10px] font-bold text-secondary uppercase tracking-[0.1em] mt-0.5 md:mt-1">Gestão de Demandas</p>
+          <h1 className="text-white font-black text-sm md:text-base leading-none tracking-tight">
+            {process.env.NEXT_PUBLIC_COMPANY_NAME || "Empresa Júnior"}
+          </h1>
+          <p className="text-[9px] md:text-[10px] font-bold text-secondary uppercase tracking-[0.1em] mt-0.5 md:mt-1">
+            Gestão de Demandas
+          </p>
         </div>
       </div>
 
@@ -185,17 +267,17 @@ export const Header = () => {
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  'px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all relative whitespace-nowrap group',
+                  "px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all relative whitespace-nowrap group",
                   isActive
-                    ? 'text-secondary'
-                    : 'text-zinc-500 hover:text-zinc-300'
+                    ? "text-secondary"
+                    : "text-zinc-500 hover:text-zinc-300",
                 )}
               >
                 {isActive && (
                   <motion.div
                     layoutId="activeTab"
                     className="absolute inset-0 bg-secondary/10 rounded-xl"
-                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                   />
                 )}
                 <span className="relative z-10">{tab.name}</span>
@@ -203,7 +285,7 @@ export const Header = () => {
                   <motion.span
                     layoutId="activeDot"
                     className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-secondary rounded-full shadow-[0_0_8px_rgba(11,175,77,1)]"
-                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                   />
                 )}
               </Link>
@@ -218,7 +300,7 @@ export const Header = () => {
       {/* Right: Actions */}
       <div className="flex items-center gap-3 md:gap-4 lg:gap-6 shrink-0">
         {/* Nova Demanda Button - Only for Diretores and Gerentes */}
-        {user?.role === 'diretor' && (
+        {user?.role === "diretor" && (
           <Button
             onClick={() => openNovaDemanda()}
             className="gap-2 px-3 md:px-5 h-9 md:h-10 shadow-lg shadow-secondary/20 text-xs"
@@ -256,8 +338,12 @@ export const Header = () => {
               >
                 <div className="p-2">
                   <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
-                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Resultados</span>
-                    <span className="text-[10px] font-bold text-zinc-600">{searchResults.length}</span>
+                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                      Resultados
+                    </span>
+                    <span className="text-[10px] font-bold text-zinc-600">
+                      {searchResults.length}
+                    </span>
                   </div>
 
                   <div className="mt-1 py-1">
@@ -277,8 +363,12 @@ export const Header = () => {
                               <Icon className="w-4 h-4 text-zinc-600 group-hover:text-secondary" />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-zinc-200 group-hover:text-white transition-colors truncate">{result.title}</p>
-                              <p className="text-[10px] text-zinc-500 font-medium tracking-tight mt-0.5">{result.subtitle}</p>
+                              <p className="text-xs font-bold text-zinc-200 group-hover:text-white transition-colors truncate">
+                                {result.title}
+                              </p>
+                              <p className="text-[10px] text-zinc-500 font-medium tracking-tight mt-0.5">
+                                {result.subtitle}
+                              </p>
                             </div>
                           </motion.button>
                         );
@@ -286,7 +376,9 @@ export const Header = () => {
                     ) : (
                       <div className="px-4 py-8 flex flex-col items-center justify-center text-center">
                         <AlertCircle className="w-6 h-6 text-zinc-700 mb-2" />
-                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nada encontrado</p>
+                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+                          Nada encontrado
+                        </p>
                       </div>
                     )}
                   </div>
@@ -310,10 +402,19 @@ export const Header = () => {
               className="border border-zinc-800 group-hover:border-secondary transition-all"
             />
             <div className="hidden lg:flex flex-col items-start text-left">
-              <span className="text-[11px] font-black text-white leading-tight">{user?.name?.split(' ')[0]}</span>
-              <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{user?.role}</span>
+              <span className="text-[11px] font-black text-white leading-tight">
+                {user?.name?.split(" ")[0]}
+              </span>
+              <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                {user?.role}
+              </span>
             </div>
-            <ChevronDown className={cn("hidden lg:block ml-1 w-3.5 h-3.5 text-zinc-600 transition-transform duration-300", showUserMenu && "rotate-180")} />
+            <ChevronDown
+              className={cn(
+                "hidden lg:block ml-1 w-3.5 h-3.5 text-zinc-600 transition-transform duration-300",
+                showUserMenu && "rotate-180",
+              )}
+            />
           </button>
 
           {/* User Dropdown */}

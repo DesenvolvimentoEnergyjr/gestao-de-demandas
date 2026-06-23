@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { tenantConfig } from '@/config/tenant';
+import { tenantConfig } from "@/config/tenant";
 import nodemailer from "nodemailer";
 
 import { getThemeColor } from "@/lib/colors";
@@ -16,16 +16,16 @@ const getPremiumEmail = (
 <html>
 <body style="font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #09090b; margin: 0; padding: 40px 20px; color: #f4f4f5;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #18181b; border-radius: 12px; overflow: hidden; border: 1px solid #27272a; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);">
-    <div style="background: linear-gradient(135deg, ${getThemeColor('secondary')} 0%, ${getThemeColor('secondary-dark')} 100%); padding: 30px 40px; text-align: center;">
-      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">${process.env.NEXT_PUBLIC_COMPANY_NAME || 'EMPRESA JÚNIOR'}</h1>
+    <div style="background: linear-gradient(135deg, ${getThemeColor("secondary")} 0%, ${getThemeColor("secondary-dark")} 100%); padding: 30px 40px; text-align: center;">
+      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">${process.env.NEXT_PUBLIC_COMPANY_NAME || "EMPRESA JÚNIOR"}</h1>
     </div>
     <div style="padding: 40px;">
-      <h2 style="color: ${getThemeColor('secondary')}; font-size: 20px; margin-top: 0; margin-bottom: 8px;">Nova Demanda: ${title}</h2>
+      <h2 style="color: ${getThemeColor("secondary")}; font-size: 20px; margin-top: 0; margin-bottom: 8px;">Nova Demanda: ${title}</h2>
       <p style="font-size: 16px; color: #a1a1aa; margin-top: 0; margin-bottom: 24px;">
         Olá, você foi designado(a) para a ${typeName} <strong>${title}</strong>.
       </p>
 
-      <div style="background-color: #27272a; border-left: 4px solid ${getThemeColor('secondary')}; padding: 20px; border-radius: 6px; margin-bottom: 24px;">
+      <div style="background-color: #27272a; border-left: 4px solid ${getThemeColor("secondary")}; padding: 20px; border-radius: 6px; margin-bottom: 24px;">
         <span style="font-size: 12px; text-transform: uppercase; color: #a1a1aa; font-weight: 700; margin-bottom: 8px; display: block;">
           VOCÊ DEVE
         </span>
@@ -43,12 +43,12 @@ const getPremiumEmail = (
         <span style="font-size: 12px; text-transform: uppercase; color: #71717a; font-weight: 700; margin-bottom: 8px; display: block;">
           DEADLINE
         </span>
-        <p style="font-size: 15px; color: ${getThemeColor('secondary')}; font-weight: 600; margin: 0;">${deadlineStr + 1}</p>
+        <p style="font-size: 15px; color: ${getThemeColor("secondary")}; font-weight: 600; margin: 0;">${deadlineStr}</p>
       </div>
     </div>
     <div style="background-color: #09090b; padding: 30px; text-align: center; border-top: 1px solid #27272a;">
-      <div style="color: ${getThemeColor('secondary')}; font-weight: 800; font-size: 18px; letter-spacing: 2px;">${tenantConfig.phrases.emailFooter}</div>
-      <div style="color: #71717a; font-size: 12px; margin-top: 12px;">Gestão de Demandas • ${process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}</div>
+      <div style="color: ${getThemeColor("secondary")}; font-weight: 800; font-size: 18px; letter-spacing: 2px;">${tenantConfig.phrases.emailFooter}</div>
+      <div style="color: #71717a; font-size: 12px; margin-top: 12px;">Gestão de Demandas • ${process.env.NEXT_PUBLIC_COMPANY_NAME || "Empresa Júnior"}</div>
     </div>
   </div>
 </body>
@@ -58,7 +58,7 @@ const getPremiumEmail = (
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { demand, sprint, emails, newSprintAssignees } = body;
+    const { demand, sprint, emails, newSprintAssignees, action } = body;
 
     // Email
     const SMTP_EMAIL = process.env.SMTP_EMAIL;
@@ -71,29 +71,54 @@ export async function POST(req: Request) {
       });
 
       if (sprint && newSprintAssignees && newSprintAssignees.length > 0) {
-        // Sprint Email
-        const sprintAttachments =
-          sprint.attachments?.length > 0
-            ? sprint.attachments
-              .map(
-                (a: { url: string; name: string }) =>
-                  `<a href="${a.url}" target="_blank" style="color: ${getThemeColor('secondary')}; text-decoration: none;">${a.name}</a>`,
-              )
-              .join("<br/>")
-            : "Nenhum documento anexado.";
+        let htmlBody = "";
+        let subject = sprint.title;
+        let prefix = "NOVA SPRINT";
 
-        const htmlBody = getPremiumEmail(
-          sprint.title,
-          "sprint",
-          sprint.objective || "Nenhuma meta principal informada.",
-          sprintAttachments,
-          new Date(sprint.endDate).toLocaleDateString("pt-BR"),
-        );
+        if (action === "pause") {
+          prefix = "SPRINT PAUSADA";
+          subject = `[PAUSADA] ${sprint.title}`;
+          htmlBody = getPremiumEmail(
+            sprint.title,
+            "sprint",
+            "Atenção: A sprint foi PAUSADA. O tempo parou de contar para os prazos enquanto aguardamos novas definições.",
+            "Nenhum documento aplicável à pausa.",
+            "Prazos congelados",
+          );
+        } else if (action === "resume") {
+          prefix = "SPRINT RETOMADA";
+          subject = `[RETOMADA] ${sprint.title}`;
+          htmlBody = getPremiumEmail(
+            sprint.title,
+            "sprint",
+            "A sprint foi RETOMADA. Os prazos de todas as suas demandas foram automaticamente recalculados e estendidos.",
+            "Nenhum documento aplicável à retomada.",
+            "Prazos recalculados",
+          );
+        } else {
+          const sprintAttachments =
+            sprint.attachments?.length > 0
+              ? sprint.attachments
+                  .map(
+                    (a: { url: string; name: string }) =>
+                      `<a href="${a.url}" target="_blank" style="color: ${getThemeColor("secondary")}; text-decoration: none;">${a.name}</a>`,
+                  )
+                  .join("<br/>")
+              : "Nenhum documento anexado.";
+
+          htmlBody = getPremiumEmail(
+            sprint.title,
+            "sprint",
+            sprint.objective || "Nenhuma meta principal informada.",
+            sprintAttachments,
+            new Date(sprint.endDate).toLocaleDateString("pt-BR"),
+          );
+        }
 
         await transporter.sendMail({
-          from: `NOVA SPRINT <${SMTP_EMAIL}>`,
+          from: `${prefix} <${SMTP_EMAIL}>`,
           to: newSprintAssignees.join(","),
-          subject: sprint.title,
+          subject: subject,
           html: htmlBody,
         });
       } else if (!sprint && emails && emails.length > 0) {
@@ -101,11 +126,11 @@ export async function POST(req: Request) {
         const demandAttachments =
           demand.attachments?.length > 0
             ? demand.attachments
-              .map(
-                (a: { url: string; name: string }) =>
-                  `<a href="${a.url}" target="_blank" style="color: ${getThemeColor('secondary')}; text-decoration: none;">${a.name}</a>`,
-              )
-              .join("<br/>")
+                .map(
+                  (a: { url: string; name: string }) =>
+                    `<a href="${a.url}" target="_blank" style="color: ${getThemeColor("secondary")}; text-decoration: none;">${a.name}</a>`,
+                )
+                .join("<br/>")
             : "Nenhum documento anexado.";
 
         const htmlBody = getPremiumEmail(
@@ -114,7 +139,9 @@ export async function POST(req: Request) {
           demand.description || "Nenhuma descrição detalhada.",
           demandAttachments,
           demand.deadline
-            ? new Date(demand.deadline).toLocaleDateString("pt-BR")
+            ? new Date(demand.deadline).toLocaleDateString("pt-BR", {
+                timeZone: "UTC",
+              })
             : "Sem data",
         );
 

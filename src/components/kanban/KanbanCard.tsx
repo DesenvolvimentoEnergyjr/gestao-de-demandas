@@ -1,15 +1,23 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { Demand, User } from '@/types';
-import { Avatar } from '@/components/ui/Avatar';
-import { Calendar, Clock, MessageSquare, AlertTriangle, Paperclip } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useUIStore } from '@/store/useUIStore';
-import { differenceInDays } from 'date-fns';
-import { motion } from 'framer-motion';
+import React from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Demand, User } from "@/types";
+import { Avatar } from "@/components/ui/Avatar";
+import {
+  Calendar,
+  Clock,
+  MessageSquare,
+  AlertTriangle,
+  Paperclip,
+  CirclePause,
+} from "lucide-react";
+import { useSprintStore } from "@/store/useSprintStore";
+import { cn } from "@/lib/utils";
+import { useUIStore } from "@/store/useUIStore";
+import { differenceInDays } from "date-fns";
+import { motion } from "framer-motion";
 
 interface KanbanCardProps {
   demand: Demand;
@@ -20,15 +28,31 @@ interface KanbanCardProps {
   cardIndex?: number;
 }
 
-import { getTagColor } from '@/components/ui/TagsInput';
-import { tenantConfig } from '@/config/tenant';
-import { getThemeColor, hexToRgba } from '@/lib/colors';
+import { getTagColor } from "@/components/ui/TagsInput";
+import { tenantConfig } from "@/config/tenant";
+import { getThemeColor, hexToRgba } from "@/lib/colors";
 
-export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOverlay, isHighlighted, columnIndex, cardIndex }) => {
+export const KanbanCard: React.FC<KanbanCardProps> = ({
+  demand,
+  users = [],
+  isOverlay,
+  isHighlighted,
+  columnIndex,
+  cardIndex,
+}) => {
+  const { sprints } = useSprintStore();
+  const sprint = sprints.find((s) => s.id === demand.sprintId);
+  const isSprintPaused = sprint?.status === "paused";
   const { openDemanda } = useUIStore();
   const cardRef = React.useRef<HTMLDivElement | null>(null);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: demand.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: demand.id });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -37,14 +61,18 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
 
   React.useEffect(() => {
     if (isHighlighted && cardRef.current) {
-      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      cardRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "center",
+      });
     }
   }, [isHighlighted]);
 
   const handleCardClick = () => {
     // Don't open if dragging
     if (isDragging) return;
-    openDemanda(demand.id, 'view');
+    openDemanda(demand.id, "view");
   };
 
   if (isDragging) {
@@ -57,20 +85,28 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
     );
   }
 
-
   const statusLower = String(demand.status).toLowerCase();
-  const isFinalStatus = statusLower.includes('revisao') || statusLower.includes('concluido');
+  const isFinalStatus =
+    statusLower.includes("revisao") || statusLower.includes("concluido");
 
   // For demands in review or completed, we don't show them as overdue (the clock stops)
-  const isOverdue = demand.deadline &&
+  const isOverdue =
+    !isSprintPaused &&
+    demand.deadline &&
     !isFinalStatus &&
     new Date(demand.deadline) < new Date();
 
-  const daysSinceUpdate = differenceInDays(new Date(), new Date(demand.updatedAt));
-  const isStagnant = demand.status === 'em_progresso' && daysSinceUpdate >= 5;
+  const daysSinceUpdate = differenceInDays(
+    new Date(),
+    new Date(demand.updatedAt),
+  );
+  const isStagnant =
+    !isSprintPaused && demand.status === "em_progresso" && daysSinceUpdate >= 5;
 
-  const configPriority = tenantConfig.priorities.find(p => p.id === demand.priority.toLowerCase());
-  const priorityColor = configPriority?.cardClass ?? 'bg-zinc-700';
+  const configPriority = tenantConfig.priorities.find(
+    (p) => p.id === demand.priority.toLowerCase(),
+  );
+  const priorityColor = configPriority?.cardClass ?? "bg-zinc-700";
 
   const tagLabel = demand.tags[0]
     ? demand.tags[0].toUpperCase()
@@ -78,9 +114,9 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
 
   const tagColor = demand.tags[0]
     ? getTagColor(demand.tags[0])
-    : 'text-zinc-400 bg-zinc-400/10';
+    : "text-zinc-400 bg-zinc-400/10";
 
-  const highlightColor = getThemeColor('secondary');
+  const highlightColor = getThemeColor("secondary");
 
   return (
     <div
@@ -92,8 +128,8 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
       {...attributes}
       {...listeners}
       className={cn(
-        'group cursor-grab active:cursor-grabbing touch-none',
-        isOverlay && 'z-50'
+        "group cursor-grab active:cursor-grabbing touch-none",
+        isOverlay && "z-50",
       )}
       data-kanban-card="true"
       data-col-index={columnIndex}
@@ -102,127 +138,166 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ demand, users = [], isOv
       <motion.div
         initial={false}
         whileHover={{ y: -4, scale: 1.01 }}
-        animate={isHighlighted ? {
-          boxShadow: [
-            `0 0 12px 0px ${hexToRgba(highlightColor, 0.2)}`,
-            `0 0 20px 2px ${hexToRgba(highlightColor, 0.5)}`,
-            `0 0 12px 0px ${hexToRgba(highlightColor, 0.2)}`
-          ],
-          borderColor: [
-            hexToRgba(highlightColor, 0.4),
-            highlightColor,
-            hexToRgba(highlightColor, 0.4)
-          ]
-        } : {
-          boxShadow: `0 0 0px 0px ${hexToRgba(highlightColor, 0)}`,
-          borderColor: 'rgba(255, 255, 255, 0.05)'
-        }}
-        transition={isHighlighted ? {
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut"
-        } : { 
-          duration: 0.3, 
-          ease: 'easeOut'
-        }}
+        animate={
+          isHighlighted
+            ? {
+                boxShadow: [
+                  `0 0 12px 0px ${hexToRgba(highlightColor, 0.2)}`,
+                  `0 0 20px 2px ${hexToRgba(highlightColor, 0.5)}`,
+                  `0 0 12px 0px ${hexToRgba(highlightColor, 0.2)}`,
+                ],
+                borderColor: [
+                  hexToRgba(highlightColor, 0.4),
+                  highlightColor,
+                  hexToRgba(highlightColor, 0.4),
+                ],
+              }
+            : {
+                boxShadow: `0 0 0px 0px ${hexToRgba(highlightColor, 0)}`,
+                borderColor: "rgba(255, 255, 255, 0.05)",
+              }
+        }
+        transition={
+          isHighlighted
+            ? {
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }
+            : {
+                duration: 0.3,
+                ease: "easeOut",
+              }
+        }
         onClick={handleCardClick}
         className={cn(
-          'relative border-2 w-full h-full',
+          "relative border-2 w-full h-full",
           isHighlighted
-            ? 'border-secondary/50'
-            : (isStagnant ? 'border-red-500/30 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]' : 'border-white/5 hover:border-secondary/30'),
-          'rounded-[24px] md:rounded-3xl p-4 md:p-5 flex flex-col gap-3 md:gap-4',
-          isHighlighted ? 'bg-secondary/5' : 'bg-gradient-to-br from-bg-surface to-bg-surface group-hover:from-bg-surface group-hover:to-secondary/5',
-          isOverlay && 'shadow-2xl scale-[1.02]'
+            ? "border-secondary/50"
+            : isStagnant
+              ? "border-red-500/30 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]"
+              : "border-white/5 hover:border-secondary/30",
+          "rounded-[24px] md:rounded-3xl p-4 md:p-5 flex flex-col gap-3 md:gap-4",
+          isHighlighted
+            ? "bg-secondary/5"
+            : "bg-gradient-to-br from-bg-surface to-bg-surface group-hover:from-bg-surface group-hover:to-secondary/5",
+          isOverlay && "shadow-2xl scale-[1.02]",
         )}
       >
-      {/* Clipping container for the priority bar to follow rounded corners */}
-      <div className="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none">
-        <div className={cn("absolute left-0 top-0 bottom-0 w-1", priorityColor)} />
-      </div>
+        {/* Clipping container for the priority bar to follow rounded corners */}
+        <div className="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none">
+          <div
+            className={cn("absolute left-0 top-0 bottom-0 w-1", priorityColor)}
+          />
+        </div>
 
-      <div className="flex items-center justify-between pl-1">
-        <span className={cn('text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded', tagColor)}>
-          {tagLabel}
-        </span>
-      </div>
-
-      <div className="flex flex-col gap-1.5 pl-1">
-        <h4 className="text-sm font-normal text-white leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
-          {demand.title}
-        </h4>
-
-        {isStagnant && (
-          <div className="inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded w-fit">
-            <AlertTriangle className="w-3 h-3 text-red-400" />
-            <span className="text-[9px] font-bold text-red-400 uppercase tracking-widest">
-              Estagnada há {daysSinceUpdate} dias
+        <div className="flex items-center justify-between pl-1">
+          <span
+            className={cn(
+              "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded",
+              tagColor,
+            )}
+          >
+            {tagLabel}
+          </span>
+          {isSprintPaused && (
+            <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20 flex items-center gap-1">
+              <CirclePause className="w-3 h-3" />
+              Pausada
             </span>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
+        <div className="flex flex-col gap-1.5 pl-1">
+          <h4 className="text-sm font-normal text-white leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
+            {demand.title}
+          </h4>
 
-      <div className="flex items-center justify-between mt-auto pt-0.5 pl-1">
-        <div className="flex -space-x-1.5 focus-within:z-10">
-          {demand.assignees.length > 0 ? (
-            demand.assignees.slice(0, 3).map((assigneeId) => {
-              const user = users.find((u) => u.uid === assigneeId);
-              return (
-                <div key={assigneeId} className="relative group/member shrink-0">
-                  <Avatar
-                    src={user?.photoURL}
-                    size="xs"
-                    className="border border-[#1a1a1a] w-6 h-6 hover:translate-y-[-2px] hover:z-20 transition-transform"
-                    fallback={user?.name?.substring(0, 1).toUpperCase() || '?'}
-                  />
-                  {/* Tooltip */}
-                  <div className="absolute bottom-full left-0 mb-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/member:opacity-100 transition-all pointer-events-none z-50 shadow-2xl min-w-[100px] max-w-[200px]">
-                    <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight break-words">{user?.name}</p>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="w-6 h-6 rounded-full border border-dashed border-zinc-600 flex items-center justify-center">
-              <span className="text-[8px] text-zinc-600">?</span>
+          {isStagnant && (
+            <div className="inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded w-fit">
+              <AlertTriangle className="w-3 h-3 text-red-400" />
+              <span className="text-[9px] font-bold text-red-400 uppercase tracking-widest">
+                Estagnada há {daysSinceUpdate} dias
+              </span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {demand.comments.length > 0 && (
-            <span className="text-[10px] text-zinc-500 flex items-center gap-1">
-              <MessageSquare className="w-3 h-3" />
-              {demand.comments.length}
-            </span>
-          )}
-          {demand.attachments && demand.attachments.length > 0 && (
-            <span className="text-[10px] text-zinc-500 flex items-center gap-1" title={`${demand.attachments.length} anexo(s)`}>
-              <Paperclip className="w-3 h-3" />
-              {demand.attachments.length}
-            </span>
-          )}
-          {demand.deadline && (
-            <span className={cn(
-              'text-[10px] flex items-center gap-1 font-medium',
-              isOverdue ? 'text-red-400' : 'text-zinc-500'
-            )}>
-              {isOverdue ? (
-                <><Clock className="w-3 h-3" />Atrasado</>
-              ) : (
-                <>
-                  <Calendar className="w-3 h-3" />
-                  {new Date(demand.deadline).toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: 'short',
-                  })}
-                </>
-              )}
-            </span>
-          )}
+        <div className="flex items-center justify-between mt-auto pt-0.5 pl-1">
+          <div className="flex -space-x-1.5 focus-within:z-10">
+            {demand.assignees.length > 0 ? (
+              demand.assignees.slice(0, 3).map((assigneeId) => {
+                const user = users.find((u) => u.uid === assigneeId);
+                return (
+                  <div
+                    key={assigneeId}
+                    className="relative group/member shrink-0"
+                  >
+                    <Avatar
+                      src={user?.photoURL}
+                      size="xs"
+                      className="border border-[#1a1a1a] w-6 h-6 hover:translate-y-[-2px] hover:z-20 transition-transform"
+                      fallback={
+                        user?.name?.substring(0, 1).toUpperCase() || "?"
+                      }
+                    />
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-0 mb-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl opacity-0 group-hover/member:opacity-100 transition-all pointer-events-none z-50 shadow-2xl min-w-[100px] max-w-[200px]">
+                      <p className="text-[10px] font-black text-white uppercase tracking-widest text-center leading-tight break-words">
+                        {user?.name}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="w-6 h-6 rounded-full border border-dashed border-zinc-600 flex items-center justify-center">
+                <span className="text-[8px] text-zinc-600">?</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {demand.comments.length > 0 && (
+              <span className="text-[10px] text-zinc-500 flex items-center gap-1">
+                <MessageSquare className="w-3 h-3" />
+                {demand.comments.length}
+              </span>
+            )}
+            {demand.attachments && demand.attachments.length > 0 && (
+              <span
+                className="text-[10px] text-zinc-500 flex items-center gap-1"
+                title={`${demand.attachments.length} anexo(s)`}
+              >
+                <Paperclip className="w-3 h-3" />
+                {demand.attachments.length}
+              </span>
+            )}
+            {demand.deadline && (
+              <span
+                className={cn(
+                  "text-[10px] flex items-center gap-1 font-medium",
+                  isOverdue ? "text-red-400" : "text-zinc-500",
+                )}
+              >
+                {isOverdue ? (
+                  <>
+                    <Clock className="w-3 h-3" />
+                    Atrasado
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="w-3 h-3" />
+                    {new Date(demand.deadline).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "short",
+                    })}
+                  </>
+                )}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
       </motion.div>
     </div>
   );

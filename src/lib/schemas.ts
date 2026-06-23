@@ -1,9 +1,15 @@
-import { z } from 'zod';
-import { tenantConfig } from '@/config/tenant';
-import { DemandStatus, Priority } from '@/types';
+import { z } from "zod";
+import { tenantConfig } from "@/config/tenant";
+import { DemandStatus, Priority } from "@/types";
 
-const demandStatusIds = tenantConfig.demandStatuses.map(s => s.id) as [DemandStatus, ...DemandStatus[]];
-const priorityIds = tenantConfig.priorities.map(p => p.id) as [Priority, ...Priority[]];
+const demandStatusIds = tenantConfig.demandStatuses.map((s) => s.id) as [
+  DemandStatus,
+  ...DemandStatus[],
+];
+const priorityIds = tenantConfig.priorities.map((p) => p.id) as [
+  Priority,
+  ...Priority[],
+];
 
 // Attachments
 export const attachmentSchema = z.object({
@@ -20,20 +26,20 @@ export const demandaSchema = z
   .object({
     title: z
       .string()
-      .min(3, 'O título deve ter pelo menos 3 caracteres.')
-      .max(120, 'O título não pode ultrapassar 120 caracteres.'),
+      .min(3, "O título deve ter pelo menos 3 caracteres.")
+      .max(120, "O título não pode ultrapassar 120 caracteres."),
 
     description: z
       .string()
-      .max(5000, 'A descrição não pode ultrapassar 5000 caracteres.')
+      .max(5000, "A descrição não pode ultrapassar 5000 caracteres.")
       .optional()
-      .default(''),
+      .default(""),
 
     status: z.enum(demandStatusIds),
 
     priority: z.enum(priorityIds),
 
-    projectType: z.enum(['Interno', 'Externo'] as const),
+    projectType: z.enum(["Interno", "Externo"] as const),
 
     assignees: z.array(z.string()).optional().default([]),
 
@@ -41,16 +47,16 @@ export const demandaSchema = z
 
     visibleToAssessors: z.boolean().optional().default(true),
 
-    sprintId: z.string().optional().default(''),
+    sprintId: z.string().optional().default(""),
 
-    startDate: z.string().optional().default(''),
+    startDate: z.string().optional().default(""),
 
-    deadline: z.string().optional().default(''),
+    deadline: z.string().optional().default(""),
 
     estimatedHours: z
       .number()
-      .min(0, 'As horas estimadas não podem ser negativas.')
-      .max(999, 'Valor de horas muito alto.'),
+      .min(0, "As horas estimadas não podem ser negativas.")
+      .max(999, "Valor de horas muito alto."),
 
     createdAt: z.string().optional(),
 
@@ -64,23 +70,29 @@ export const demandaSchema = z
       return true;
     },
     {
-      message: 'O deadline deve ser igual ou posterior à data de início.',
-      path: ['deadline'],
-    }
+      message: "O deadline deve ser igual ou posterior à data de início.",
+      path: ["deadline"],
+    },
   )
   .refine(
     (data) => {
       if (!data.startDate) return true;
       return new Date(data.startDate).getFullYear() <= new Date().getFullYear();
     },
-    { message: 'A data de início não pode ser para o ano que vem.', path: ['startDate'] }
+    {
+      message: "A data de início não pode ser para o ano que vem.",
+      path: ["startDate"],
+    },
   )
   .refine(
     (data) => {
       if (!data.deadline) return true;
       return new Date(data.deadline).getFullYear() <= new Date().getFullYear();
     },
-    { message: 'O deadline não pode ser para o ano que vem.', path: ['deadline'] }
+    {
+      message: "O deadline não pode ser para o ano que vem.",
+      path: ["deadline"],
+    },
   );
 
 export type DemandaFormData = z.infer<typeof demandaSchema>;
@@ -90,32 +102,30 @@ export const sprintSchema = z
   .object({
     title: z
       .string()
-      .min(3, 'O título deve ter pelo menos 3 caracteres.')
-      .max(120, 'O título não pode ultrapassar 120 caracteres.'),
+      .min(3, "O título deve ter pelo menos 3 caracteres.")
+      .max(120, "O título não pode ultrapassar 120 caracteres."),
 
     objective: z
       .string()
-      .min(10, 'O objetivo deve ter pelo menos 10 caracteres.')
-      .max(500, 'O objetivo não pode ultrapassar 500 caracteres.'),
+      .min(10, "O objetivo deve ter pelo menos 10 caracteres.")
+      .max(500, "O objetivo não pode ultrapassar 500 caracteres."),
 
     description: z
       .string()
-      .max(5000, 'A descrição não pode ultrapassar 5000 caracteres.')
+      .max(5000, "A descrição não pode ultrapassar 5000 caracteres.")
       .optional()
-      .default(''),
+      .default(""),
 
-    startDate: z.string().min(1, 'A data de início é obrigatória.'),
+    startDate: z.string().min(1, "A data de início é obrigatória."),
 
-    endDate: z.string().min(1, 'A data de término é obrigatória.'),
+    endDate: z.string().min(1, "A data de término é obrigatória."),
 
-    totalPoints: z
-      .number()
-      .min(0)
-      .max(10000)
+    totalPoints: z.number().min(0).max(10000).optional().default(0),
+
+    type: z
+      .enum(["Interno", "Externo"] as const)
       .optional()
-      .default(0),
-
-    type: z.enum(['Interno', 'Externo'] as const).optional().default('Interno'),
+      .default("Interno"),
 
     attachments: z.array(attachmentSchema).optional().default([]),
 
@@ -129,59 +139,84 @@ export const sprintSchema = z
       return true;
     },
     {
-      message: 'A data de término deve ser posterior à data de início.',
-      path: ['endDate'],
-    }
+      message: "A data de término deve ser posterior à data de início.",
+      path: ["endDate"],
+    },
   )
   .refine(
     (data) => {
       if (!data.startDate) return true;
       return new Date(data.startDate).getFullYear() <= new Date().getFullYear();
     },
-    { message: 'A data de início não pode ser para o ano que vem.', path: ['startDate'] }
+    {
+      message: "A data de início não pode ser para o ano que vem.",
+      path: ["startDate"],
+    },
   )
   .refine(
     (data) => {
       if (!data.endDate) return true;
       return new Date(data.endDate).getFullYear() <= new Date().getFullYear();
     },
-    { message: 'A data de término não pode ser para o ano que vem.', path: ['endDate'] }
+    {
+      message: "A data de término não pode ser para o ano que vem.",
+      path: ["endDate"],
+    },
   );
 
-export const sprintUpdateSchema = z.object({
-  title: z.string().min(3).max(120).optional(),
-  objective: z.string().min(10).max(500).optional(),
-  description: z.string().max(2000).optional(),
-  startDate: z.union([z.string(), z.date()]).optional(),
-  endDate: z.union([z.string(), z.date()]).optional(),
-  totalPoints: z.number().min(0).max(10000).optional(),
-  type: z.enum(['Interno', 'Externo'] as const).optional(),
-  attachments: z.array(attachmentSchema).optional(),
-}).refine(
-  (data) => {
-    if (data.startDate && data.endDate) {
-      return new Date(data.endDate) > new Date(data.startDate);
-    }
-    return true;
-  },
-  {
-    message: 'A data de término deve ser posterior à data de início.',
-    path: ['endDate'],
-  }
-)
+export const sprintUpdateSchema = z
+  .object({
+    title: z.string().min(3).max(120).optional(),
+    objective: z.string().min(10).max(500).optional(),
+    description: z.string().max(2000).optional(),
+    startDate: z.union([z.string(), z.date()]).optional(),
+    endDate: z.union([z.string(), z.date()]).optional(),
+    totalPoints: z.number().min(0).max(10000).optional(),
+    type: z.enum(["Interno", "Externo"] as const).optional(),
+    attachments: z.array(attachmentSchema).optional(),
+    status: z.enum(["planned", "active", "paused", "completed"]).optional(),
+    pausedAt: z.union([z.string(), z.date()]).nullable().optional(),
+    totalPausedDays: z.number().min(0).optional(),
+    pauseHistory: z
+      .array(
+        z.object({
+          pausedAt: z.union([z.string(), z.date()]),
+          resumedAt: z.union([z.string(), z.date()]).optional(),
+        }),
+      )
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.startDate && data.endDate) {
+        return new Date(data.endDate) > new Date(data.startDate);
+      }
+      return true;
+    },
+    {
+      message: "A data de término deve ser posterior à data de início.",
+      path: ["endDate"],
+    },
+  )
   .refine(
     (data) => {
       if (!data.startDate) return true;
       return new Date(data.startDate).getFullYear() <= new Date().getFullYear();
     },
-    { message: 'A data de início não pode ser para o ano que vem.', path: ['startDate'] }
+    {
+      message: "A data de início não pode ser para o ano que vem.",
+      path: ["startDate"],
+    },
   )
   .refine(
     (data) => {
       if (!data.endDate) return true;
       return new Date(data.endDate).getFullYear() <= new Date().getFullYear();
     },
-    { message: 'A data de término não pode ser para o ano que vem.', path: ['endDate'] }
+    {
+      message: "A data de término não pode ser para o ano que vem.",
+      path: ["endDate"],
+    },
   );
 
 export type SprintFormData = z.infer<typeof sprintSchema>;

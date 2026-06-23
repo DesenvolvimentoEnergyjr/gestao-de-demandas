@@ -1,15 +1,18 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { Home, ArrowLeft } from 'lucide-react';
+import React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Home, ArrowLeft } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: `404 - Página não encontrada | ${process.env.NEXT_PUBLIC_COMPANY_NAME || "Empresa Júnior"}`,
+};
 
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center p-6 text-center app-glow">
-      <title>404 - Página não encontrada | {process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}</title>
-
       {/* Glow effects are handled by app-glow class in globals.css */}
 
       <div className="relative z-10 flex flex-col items-center max-w-lg w-full">
@@ -18,7 +21,7 @@ export default function NotFound() {
           <div className="relative w-20 h-20 md:w-24 md:h-24 animate-float">
             <Image
               src="/logo.svg"
-              alt={`${process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'} Logo`}
+              alt={`${process.env.NEXT_PUBLIC_COMPANY_NAME || "Empresa Júnior"} Logo`}
               fill
               className="object-contain filter drop-shadow-[0_0_15px_rgba(11,175,77,0.3)]"
               priority
@@ -40,7 +43,8 @@ export default function NotFound() {
         </h2>
 
         <p className="text-text-muted text-lg mb-12 max-w-sm">
-          Parece que você se perdeu no sistema. O link que você seguiu pode estar quebrado ou a página foi movida.
+          Parece que você se perdeu no sistema. O link que você seguiu pode
+          estar quebrado ou a página foi movida.
         </p>
 
         {/* Action Buttons */}
@@ -69,7 +73,8 @@ export default function NotFound() {
       </div>
 
       <footer className="absolute bottom-8 text-text-muted text-sm font-medium">
-        &copy; {new Date().getFullYear()} Energy Júnior - Todos os direitos reservados.
+        &copy; {new Date().getFullYear()} Energy Júnior - Todos os direitos
+        reservados.
       </footer>
     </div>
   );

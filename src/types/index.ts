@@ -1,11 +1,11 @@
-import { tenantConfig } from '@/config/tenant';
+import { tenantConfig } from "@/config/tenant";
 
-export type Role = typeof tenantConfig.roles[number]['id'];
-export type UserStatus = typeof tenantConfig.userStatuses[number]['id'];
-export type Priority = typeof tenantConfig.priorities[number]['id'];
-export type DemandStatus = typeof tenantConfig.demandStatuses[number]['id'];
+export type Role = (typeof tenantConfig.roles)[number]["id"];
+export type UserStatus = (typeof tenantConfig.userStatuses)[number]["id"];
+export type Priority = (typeof tenantConfig.priorities)[number]["id"];
+export type DemandStatus = (typeof tenantConfig.demandStatuses)[number]["id"];
 
-export type NotificationType = 'assignment' | 'system' | 'mention';
+export type NotificationType = "assignment" | "system" | "mention";
 
 export interface AppNotification {
   id: string;
@@ -15,6 +15,7 @@ export interface AppNotification {
   type: NotificationType;
   read: boolean;
   link?: string;
+  actorName?: string;
   createdAt: Date;
 }
 
@@ -51,7 +52,7 @@ export interface Demand {
   description: string;
   status: DemandStatus;
   priority: Priority;
-  projectType: 'Interno' | 'Externo';
+  projectType: "Interno" | "Externo";
   assignees: string[];
   sprintId: string | null;
   visibleToAssessors?: boolean;
@@ -99,22 +100,28 @@ export interface Sprint {
   endDate: Date;
   tags: string[];
   storyPoints: { total: number; completed: number };
-  status: 'planned' | 'active' | 'completed';
+  status: "planned" | "active" | "paused" | "completed";
   demandIds: string[];
   attachments?: Attachment[];
   notifiedUsers?: string[];
+  pausedAt?: Date | null;
+  totalPausedDays?: number;
+  pauseHistory?: {
+    pausedAt: Date;
+    resumedAt?: Date;
+  }[];
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export type MemberTimelineEventType =
-  | 'ingresso'
-  | 'egresso'
-  | 'cargo'
-  | 'projeto'
-  | 'demanda'
-  | 'outro';
+  | "ingresso"
+  | "egresso"
+  | "cargo"
+  | "projeto"
+  | "demanda"
+  | "outro";
 
 export interface MemberTimelineEvent {
   id: string;

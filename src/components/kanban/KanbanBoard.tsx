@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -12,68 +12,74 @@ import {
   useSensors,
   DragStartEvent,
   DragEndEvent,
-} from '@dnd-kit/core';
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { DemandStatus, User } from '@/types';
-import { isDemandVisibleToUser } from '@/lib/utils';
-import { useAuthStore } from '@/store/useAuthStore';
-import { KanbanColumn } from './KanbanColumn';
-import { KanbanCard } from './KanbanCard';
-import { updateDemand } from '@/lib/firestore';
-import { useDemandStore } from '@/store/useDemandStore';
-import { toast } from '@/store/useToastStore';
+} from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { DemandStatus, User } from "@/types";
+import { isDemandVisibleToUser } from "@/lib/utils";
+import { useAuthStore } from "@/store/useAuthStore";
+import { KanbanColumn } from "./KanbanColumn";
+import { KanbanCard } from "./KanbanCard";
+import { updateDemand } from "@/lib/firestore";
+import { useDemandStore } from "@/store/useDemandStore";
+import { toast } from "@/store/useToastStore";
 
-import { tenantConfig } from '@/config/tenant';
+import { tenantConfig } from "@/config/tenant";
 
-const COLUMNS: { id: DemandStatus; title: string; accentClass: string }[] = tenantConfig.demandStatuses.map(s => ({
-  id: s.id as DemandStatus,
-  title: s.label,
-  accentClass: s.accentClass
-}));
+const COLUMNS: { id: DemandStatus; title: string; accentClass: string }[] =
+  tenantConfig.demandStatuses.map((s) => ({
+    id: s.id as DemandStatus,
+    title: s.label,
+    accentClass: s.accentClass,
+  }));
 
 export const KanbanBoard = ({
   users = [],
-  activeFilter = 'todas',
-  selectedSprintId = 'all',
-  highlightedId = null
+  activeFilter = "todas",
+  selectedSprintId = "all",
+  highlightedId = null,
 }: {
   users?: User[];
   activeFilter?: string;
   selectedSprintId?: string;
   highlightedId?: string | null;
 }) => {
-  const { demands, updateDemand: updateStoreDemand, searchQuery } = useDemandStore();
+  const {
+    demands,
+    updateDemand: updateStoreDemand,
+    searchQuery,
+  } = useDemandStore();
   const { user: currentUser } = useAuthStore();
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const filteredDemands = useMemo(
     () =>
-      demands.filter(
-        (d) => {
-          const matchesSearch = (d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            d.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
+      demands.filter((d) => {
+        const matchesSearch =
+          d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          d.tags.some((t) =>
+            t.toLowerCase().includes(searchQuery.toLowerCase()),
+          );
 
-          if (!matchesSearch) return false;
+        if (!matchesSearch) return false;
 
-          if (!isDemandVisibleToUser(d, currentUser, users)) return false;
+        if (!isDemandVisibleToUser(d, currentUser, users)) return false;
 
-          if (activeFilter === 'minhas' && currentUser) {
-            if (!d.assignees.includes(currentUser.uid)) return false;
-          }
-
-          if (activeFilter.startsWith('membro_')) {
-            const memberId = activeFilter.replace('membro_', '');
-            if (!d.assignees.includes(memberId)) return false;
-          }
-
-          if (selectedSprintId !== 'all') {
-            if (d.sprintId !== selectedSprintId) return false;
-          }
-
-          return true;
+        if (activeFilter === "minhas" && currentUser) {
+          if (!d.assignees.includes(currentUser.uid)) return false;
         }
-      ),
-    [demands, searchQuery, currentUser, users, activeFilter, selectedSprintId]
+
+        if (activeFilter.startsWith("membro_")) {
+          const memberId = activeFilter.replace("membro_", "");
+          if (!d.assignees.includes(memberId)) return false;
+        }
+
+        if (selectedSprintId !== "all") {
+          if (d.sprintId !== selectedSprintId) return false;
+        }
+
+        return true;
+      }),
+    [demands, searchQuery, currentUser, users, activeFilter, selectedSprintId],
   );
 
   const sensors = useSensors(
@@ -88,7 +94,7 @@ export const KanbanBoard = ({
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -114,11 +120,17 @@ export const KanbanBoard = ({
     if (activeDemand && activeDemand.status !== newStatus) {
       updateStoreDemand(activeDemandId, { status: newStatus });
       try {
-        await updateDemand(activeDemandId, { status: newStatus });
-        toast.success(`Demanda movida para ${COLUMNS.find(c => c.id === newStatus)?.title}`);
+        await updateDemand(
+          activeDemandId,
+          { status: newStatus },
+          currentUser?.name,
+        );
+        toast.success(
+          `Demanda movida para ${COLUMNS.find((c) => c.id === newStatus)?.title}`,
+        );
       } catch (error) {
-        console.error('Erro ao atualizar status:', error);
-        toast.error('Erro ao atualizar status da demanda.');
+        console.error("Erro ao atualizar status:", error);
+        toast.error("Erro ao atualizar status da demanda.");
       }
     }
   };
@@ -129,24 +141,35 @@ export const KanbanBoard = ({
     if (activeId) return;
 
     const target = e.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+    if (
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.isContentEditable
+    )
+      return;
 
-    if (target.hasAttribute('data-kanban-card')) {
-      const colIndex = parseInt(target.getAttribute('data-col-index') || '0', 10);
-      const cardIndex = parseInt(target.getAttribute('data-card-index') || '0', 10);
+    if (target.hasAttribute("data-kanban-card")) {
+      const colIndex = parseInt(
+        target.getAttribute("data-col-index") || "0",
+        10,
+      );
+      const cardIndex = parseInt(
+        target.getAttribute("data-card-index") || "0",
+        10,
+      );
 
       let nextCol = colIndex;
       let nextCard = cardIndex;
 
-      if (e.key === 'ArrowRight') {
+      if (e.key === "ArrowRight") {
         nextCol += 1;
         nextCard = 0;
-      } else if (e.key === 'ArrowLeft') {
+      } else if (e.key === "ArrowLeft") {
         nextCol -= 1;
         nextCard = 0;
-      } else if (e.key === 'ArrowDown') {
+      } else if (e.key === "ArrowDown") {
         nextCard += 1;
-      } else if (e.key === 'ArrowUp') {
+      } else if (e.key === "ArrowUp") {
         nextCard -= 1;
       } else {
         return;
@@ -154,23 +177,34 @@ export const KanbanBoard = ({
 
       e.preventDefault();
 
-      let nextCardElement = document.querySelector(`[data-kanban-card="true"][data-col-index="${nextCol}"][data-card-index="${nextCard}"]`) as HTMLElement;
+      let nextCardElement = document.querySelector(
+        `[data-kanban-card="true"][data-col-index="${nextCol}"][data-card-index="${nextCard}"]`,
+      ) as HTMLElement;
 
-      if (!nextCardElement && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+      if (
+        !nextCardElement &&
+        (e.key === "ArrowRight" || e.key === "ArrowLeft")
+      ) {
         let fallbackCol = nextCol;
         while (fallbackCol >= 0 && fallbackCol < COLUMNS.length) {
-          const firstCard = document.querySelector(`[data-kanban-card="true"][data-col-index="${fallbackCol}"][data-card-index="0"]`) as HTMLElement;
+          const firstCard = document.querySelector(
+            `[data-kanban-card="true"][data-col-index="${fallbackCol}"][data-card-index="0"]`,
+          ) as HTMLElement;
           if (firstCard) {
             nextCardElement = firstCard;
             break;
           }
-          fallbackCol += e.key === 'ArrowRight' ? 1 : -1;
+          fallbackCol += e.key === "ArrowRight" ? 1 : -1;
         }
       }
 
       if (nextCardElement) {
         nextCardElement.focus();
-        nextCardElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        nextCardElement.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center",
+        });
       }
     }
   };
@@ -187,19 +221,25 @@ export const KanbanBoard = ({
         onDragEnd={handleDragEnd}
       >
         {COLUMNS.map((column, index) => {
-          const columnDemands = filteredDemands.filter((d) => d.status === column.id);
+          const columnDemands = filteredDemands.filter(
+            (d) => d.status === column.id,
+          );
 
           columnDemands.sort((a, b) => {
-            if (column.id === 'concluido') {
+            if (column.id === "concluido") {
               if (!a.deadline && !b.deadline) return 0;
               if (!a.deadline) return 1;
               if (!b.deadline) return -1;
-              return new Date(b.deadline).getTime() - new Date(a.deadline).getTime();
+              return (
+                new Date(b.deadline).getTime() - new Date(a.deadline).getTime()
+              );
             } else {
               if (!a.deadline && !b.deadline) return 0;
               if (!a.deadline) return 1;
               if (!b.deadline) return -1;
-              return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+              return (
+                new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+              );
             }
           });
 
@@ -218,7 +258,9 @@ export const KanbanBoard = ({
         })}
 
         <DragOverlay>
-          {activeDemand ? <KanbanCard demand={activeDemand} users={users} isOverlay /> : null}
+          {activeDemand ? (
+            <KanbanCard demand={activeDemand} users={users} isOverlay />
+          ) : null}
         </DragOverlay>
       </DndContext>
     </div>
