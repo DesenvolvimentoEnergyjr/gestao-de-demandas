@@ -45,13 +45,14 @@ A identidade da organização cliente será substituída nestes pontos exatos:
 - **Cores Principais:** Modifique `primary`, `primary-dark`, `secondary` no `tailwind.config.ts`.
 - **Glows e Efeitos:** Atualize os valores de cor diretamente nas propriedades globais do arquivo `src/app/globals.css` (Seção `:root` nas tags `--color-primary`, `--color-secondary` e `--color-secondary-dark`).
 
-*Essas únicas mudanças refletirão por botões, timelines, gráficos de burn-up, modais e e-mails de todo o sistema graças à arquitetura Tailwind + CSS color-mix que adotamos.*
+_Essas únicas mudanças refletirão por botões, timelines, gráficos de burn-up, modais e e-mails de todo o sistema graças à arquitetura Tailwind + CSS color-mix que adotamos._
 
 ## 4. Regras de Negócio e Textos (Tenant Config)
 
 As regras de negócio do cliente ficam centralizadas em um único arquivo: `src/config/tenant.ts`.
 
 Neste arquivo, personalize:
+
 - **Departamentos:** Adapte o organograma do cliente (ex: Vendas, Marketing, RH, Projetos).
 - **Tipos de Projeto:** ("Serviços Externos", "Operações", etc).
 - **Cargos (Roles):** ("Diretor", "Assessor", "Trainee", etc).
@@ -61,16 +62,12 @@ Não esqueça de alterar a variável `NEXT_PUBLIC_COMPANY_NAME` no seu `.env.loc
 
 ## 5. Integrações Avançadas (Diferenciais)
 
-O sistema automatiza e-mails e agenda eventos. Para isso, ative as integrações externas para a organização destino:
+O sistema automatiza e-mails. Para isso, ative as integrações externas para a organização destino:
 
-1. **Notificações por E-mail (SMTP):**
-   - Gere uma senha de app em um Gmail da empresa destino (ex: `sistema@ejcliente.com.br`).
-   - Insira nas variáveis `SMTP_EMAIL` e `SMTP_PASSWORD`.
-2. **Integração Google Calendar API:**
-   - Acesse o Google Cloud Platform e ative a **Google Calendar API**.
-   - Crie uma Conta de Serviço (Service Account) e baixe o arquivo JSON com a chave.
-   - Preencha `GCP_CLIENT_EMAIL` e `GCP_PRIVATE_KEY`.
-   - Adicione o e-mail da Service Account gerada como convidado na Agenda/Calendário do Cliente com permissão de edição e pegue o `CALENDAR_ID`.
+**Notificações por E-mail (SMTP):**
+
+- Gere uma senha de app em um Gmail da empresa destino (ex: `sistema@ejcliente.com.br`).
+- Insira nas variáveis `SMTP_EMAIL` e `SMTP_PASSWORD`.
 
 ## 6. Deploy e Hospedagem (Opções de Venda)
 
@@ -79,19 +76,21 @@ Com o repositório customizado e o banco no ar, é hora de colocar o sistema no 
 Recomendamos oferecer à EJ cliente duas modalidades de entrega no seu contrato:
 
 ### Opção A: Entrega Básica (Custo Zero de Infra)
+
 - **Hospedagem:** O deploy é feito de forma gratuita na Netlify ou Vercel.
 - **Domínio:** O sistema ganha um link padrão da plataforma, como `https://gestaodemandas-[ej].netlify.app`.
 - **Ideal para:** EJs que precisam economizar e não se importam com a marca na URL.
 
 ### Opção B: Entrega Profissional (Domínio Próprio)
+
 - **Hospedagem:** O deploy é feito na Netlify/Vercel.
 - **Domínio:** A EJ cliente adquire um domínio próprio (ex: através do Registro.br, Hostinger, etc.). O custo de aquisição e renovação anual do domínio (cerca de R$40/ano) **fica sob responsabilidade do cliente**.
 - **Ideal para:** EJs que querem transmitir mais credibilidade, utilizando um link como `https://demandas.ejcliente.com.br` ou `https://sistema.ejcliente.com.br`.
 
 **Passo a Passo Padrão do Deploy (Exemplo na Netlify):**
+
 1. Faça login na [Netlify](https://netlify.com/) vinculando a sua conta do GitHub.
 2. Clique em "Add new site" -> "Import an existing project" e selecione o repositório privado `gestao-de-demandas-[nome-da-ej]`.
 3. Na seção **Environment Variables** (Variáveis de Ambiente), cadastre todas as variáveis do seu `.env.local`.
-4. Clique em "Deploy". 
+4. Clique em "Deploy".
 5. Se o cliente optou pela **Opção B**, acesse "Domain Management", adicione o domínio customizado da EJ e configure os apontamentos de DNS onde o domínio foi comprado.
-
