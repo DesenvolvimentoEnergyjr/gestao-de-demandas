@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   X,
@@ -94,6 +94,14 @@ const itemVariants: Variants = {
   },
 };
 
+const FORM_FIELD_ORDER: (keyof Sprint)[] = [
+  "title",
+  "startDate",
+  "endDate",
+  "objective",
+  "description",
+];
+
 export const SprintDetalhesModal = () => {
   const { sprintDetalhesOpen, closeSprintDetalhes, selectedSprintId } =
     useUIStore();
@@ -114,6 +122,7 @@ export const SprintDetalhesModal = () => {
   const [isResuming, setIsResuming] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const modalContentRef = useRef<HTMLDivElement>(null);
 
   // Chart states
   const [chartMode, setChartMode] = useState<"hours" | "demands">("hours");
@@ -274,9 +283,16 @@ export const SprintDetalhesModal = () => {
       const weekStart = getActiveDate(start, i * 7);
       const weekEnd = getActiveDate(start, Math.min(activeDays - 1, i * 7 + 6));
 
+      const weekEndOfDay = new Date(weekEnd);
+      weekEndOfDay.setHours(23, 59, 59, 999);
+
       const demandsInWeek = sprintDemands.filter((d) => {
-        const dDate = d.deadline || d.startDate || d.createdAt;
-        return dDate >= weekStart && dDate <= weekEnd;
+        const dDateRaw = d.deadline || d.startDate || d.createdAt;
+        if (!dDateRaw) return false;
+        const dDate = new Date(dDateRaw);
+
+        const clamped = dDate < start ? start : dDate > end ? end : dDate;
+        return clamped >= weekStart && clamped <= weekEndOfDay;
       });
 
       return {
@@ -325,12 +341,12 @@ export const SprintDetalhesModal = () => {
           actualValue = 0;
           actualProgress = 0;
         } else {
-          const completedDemands = sprintDemands.filter(
-            (d) =>
-              d.status === "concluido" &&
-              d.updatedAt &&
-              new Date(d.updatedAt) <= pointDate,
-          );
+          const completedDemands = sprintDemands.filter((d) => {
+            if (d.status !== "concluido") return false;
+
+            const completedDate = d.completedAt || d.updatedAt;
+            return completedDate && new Date(completedDate) <= pointDate;
+          });
 
           if (chartMode === "hours") {
             actualValue = completedDemands.reduce(
@@ -392,6 +408,15 @@ export const SprintDetalhesModal = () => {
         if (field && !fieldErrors[field]) fieldErrors[field] = issue.message;
       });
       setFormErrors(fieldErrors);
+
+      const firstErrorField = FORM_FIELD_ORDER.find((field) => fieldErrors[field]);
+      if (firstErrorField) {
+        requestAnimationFrame(() => {
+          modalContentRef.current
+            ?.querySelector(`[data-field="${firstErrorField}"]`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      }
       return;
     }
     setFormErrors({});
@@ -508,6 +533,7 @@ export const SprintDetalhesModal = () => {
           />
 
           <motion.div
+            ref={modalContentRef}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -537,7 +563,7 @@ export const SprintDetalhesModal = () => {
                         className="p-6 md:p-10 pb-6 flex items-start justify-between relative z-10 gap-4"
                       >
                         <div className="space-y-4 min-w-0">
-                          <div className="min-w-0">
+                          <div className="min-w-0" data-field="title">
                             {isEditMode ? (
                               <>
                                 <Input
@@ -746,7 +772,7 @@ export const SprintDetalhesModal = () => {
                       >
                         {isEditMode && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 bg-white/[0.02] border border-white/5 rounded-[32px] p-6 md:p-8">
-                            <div className="space-y-3">
+                            <div className="space-y-3" data-field="startDate">
                               <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                                 Início do Ciclo
                               </label>
@@ -775,7 +801,7 @@ export const SprintDetalhesModal = () => {
                                 </p>
                               )}
                             </div>
-                            <div className="space-y-3">
+                            <div className="space-y-3" data-field="endDate">
                               <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                                 Previsão de Término
                               </label>
@@ -859,6 +885,7 @@ export const SprintDetalhesModal = () => {
 
                           <motion.div
                             variants={itemVariants}
+                            data-field="objective"
                             className={cn(
                               "bg-secondary/5 border border-secondary/10 rounded-[2rem] md:rounded-[32px] p-6 md:p-8 flex flex-col justify-center",
                               isEditMode && "ring-2 ring-secondary",
@@ -1247,7 +1274,7 @@ export const SprintDetalhesModal = () => {
                               : "grid-cols-1",
                           )}
                         >
-                          <div className="space-y-4">
+                          <div className="space-y-4" data-field="description">
                             <div className="flex items-center gap-2">
                               <Layers className="w-4 h-4 text-zinc-500" />
                               <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">

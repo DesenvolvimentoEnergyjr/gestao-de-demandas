@@ -2,14 +2,23 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { updateUser, getUsers, createMemberTimelineEvent } from '@/lib/firestore';
+import {
+  updateUser,
+  getUsers,
+  createMemberTimelineEvent,
+  getInstitutionalAccounts,
+  createInstitutionalAccount,
+  updateInstitutionalAccount,
+  deleteInstitutionalAccount,
+} from '@/lib/firestore';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
+import { Select } from '@/components/ui/Select';
 import { DatePicker } from '@/components/ui/DatePicker';
-import { Camera, Check, Loader2, UserX, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
-import { User, Role } from '@/types';
+import { Camera, Check, Loader2, UserX, AlertCircle, ChevronDown, ChevronRight, Trash2, Lock } from 'lucide-react';
+import { User, Role, InstitutionalAccount } from '@/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -29,6 +38,10 @@ export default function ConfiguracoesPage() {
   // Member Management State
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [mgmtLoading, setMgmtLoading] = useState(false);
+
+  // Institutional Accounts State
+  const [institutionalAccounts, setInstitutionalAccounts] = useState<InstitutionalAccount[]>([]);
+  const [iaLoading, setIaLoading] = useState(false);
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState<User | null>(null);
   const [activeFilter, setActiveFilter] = useState<'todos' | 'pos_junior' | 'gestao_atual'>('gestao_atual');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ 'Gestão Atual': true });
@@ -102,6 +115,7 @@ export default function ConfiguracoesPage() {
 
       if (user.role === 'diretor') {
         fetchUsers();
+        fetchInstitutionalAccounts();
       }
     }
   }, [user]);
@@ -115,6 +129,61 @@ export default function ConfiguracoesPage() {
       console.error('Error fetching users:', error);
     } finally {
       setMgmtLoading(false);
+    }
+  };
+
+  const fetchInstitutionalAccounts = async () => {
+    setIaLoading(true);
+    try {
+      const data = await getInstitutionalAccounts();
+      setInstitutionalAccounts(data);
+    } catch (error) {
+      console.error('Error fetching institutional accounts:', error);
+    } finally {
+      setIaLoading(false);
+    }
+  };
+
+  const handleAddInstitutionalAccount = async () => {
+    try {
+      const id = await createInstitutionalAccount({ email: '', label: '', assignedUserId: null });
+      setInstitutionalAccounts((prev) => [
+        ...prev,
+        { id, email: '', label: '', assignedUserId: null, createdAt: new Date(), updatedAt: new Date() },
+      ]);
+    } catch (error) {
+      console.error('Error creating institutional account:', error);
+    }
+  };
+
+  const updateLocalInstitutionalAccount = (id: string, field: 'email' | 'label', value: string) => {
+    setInstitutionalAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, [field]: value } : a)));
+  };
+
+  const persistInstitutionalAccountField = async (id: string, field: 'email' | 'label', value: string) => {
+    try {
+      await updateInstitutionalAccount(id, { [field]: value });
+    } catch (error) {
+      console.error('Error updating institutional account:', error);
+    }
+  };
+
+  const handleAssignInstitutionalAccount = async (id: string, uid: string) => {
+    const assignedUserId = uid || null;
+    setInstitutionalAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, assignedUserId } : a)));
+    try {
+      await updateInstitutionalAccount(id, { assignedUserId });
+    } catch (error) {
+      console.error('Error assigning institutional account:', error);
+    }
+  };
+
+  const handleDeleteInstitutionalAccount = async (id: string) => {
+    setInstitutionalAccounts((prev) => prev.filter((a) => a.id !== id));
+    try {
+      await deleteInstitutionalAccount(id);
+    } catch (error) {
+      console.error('Error deleting institutional account:', error);
     }
   };
 
@@ -384,6 +453,114 @@ export default function ConfiguracoesPage() {
 
         </div>
       </div>
+
+      {user?.role === 'diretor' && (
+        <div className="pb-6 md:pb-12">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-black text-white tracking-tight">Contas Institucionais</h2>
+              <p className="text-zinc-500 text-xs font-medium uppercase tracking-widest mt-1">Logins compartilhados bloqueados</p>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={handleAddInstitutionalAccount}
+                className="text-[10px] font-black text-white bg-secondary/20 hover:bg-secondary/40 px-4 py-2.5 rounded-xl transition-colors flex items-center gap-2 shrink-0"
+              >
+                <span className="text-secondary">+</span> Adicionar Conta
+              </button>
+              {iaLoading && <Loader2 className="w-5 h-5 text-secondary animate-spin" />}
+            </div>
+          </div>
+
+          <Card className="border-white/5 rounded-[32px] bg-white/[0.01]">
+            {institutionalAccounts.length === 0 ? (
+              <div className="text-center py-10 px-6">
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Nenhuma conta institucional cadastrada</p>
+                <p className="text-xs text-zinc-600 mt-2 max-w-md mx-auto leading-relaxed">
+                  Cadastre e-mails compartilhados (ex: presidencia@energyjr.com) para bloquear o login por eles e sugerir o e-mail pessoal de quem ocupa o cargo hoje.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/[0.03]">
+                {institutionalAccounts.map((account) => {
+                  const assignedUser = allUsers.find((u) => u.uid === account.assignedUserId);
+
+                  return (
+                    <div key={account.id} className="p-4 md:p-6 flex flex-col md:flex-row md:items-center gap-4">
+                      <div className="w-11 h-11 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                        <Lock className="w-4 h-4 text-red-400" />
+                      </div>
+
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest px-1">Cargo</label>
+                          <Input
+                            value={account.label}
+                            onChange={(e) => updateLocalInstitutionalAccount(account.id, 'label', e.target.value)}
+                            onBlur={(e) => persistInstitutionalAccountField(account.id, 'label', e.target.value)}
+                            placeholder="Ex: Presidência"
+                            className="h-10 text-xs bg-zinc-950 border-white/[0.03]"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest px-1">E-mail bloqueado</label>
+                          <Input
+                            value={account.email}
+                            onChange={(e) => updateLocalInstitutionalAccount(account.id, 'email', e.target.value)}
+                            onBlur={(e) => persistInstitutionalAccountField(account.id, 'email', e.target.value)}
+                            placeholder="Ex: presidencia@energyjr.com"
+                            className="h-10 text-xs bg-zinc-950 border-white/[0.03]"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest px-1">Responsável Atual</label>
+                          <div className="flex items-center gap-2">
+                            {assignedUser && (
+                              <Avatar
+                                src={assignedUser.photoURL}
+                                alt={assignedUser.name}
+                                size="sm"
+                                className="shrink-0 border border-secondary/30"
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <Select
+                                value={account.assignedUserId || ''}
+                                onChange={(e) => handleAssignInstitutionalAccount(account.id, e.target.value)}
+                                placeholder="Quem ocupa hoje?"
+                                className="h-10 text-xs bg-zinc-950 border-white/[0.03]"
+                              >
+                                <option value="">Ninguém vinculado</option>
+                                {allUsers
+                                  .filter((u) => u.status === 'ativo')
+                                  .map((u) => (
+                                    <option key={u.uid} value={u.uid}>
+                                      {u.name}
+                                    </option>
+                                  ))}
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteInstitutionalAccount(account.id)}
+                        className="w-10 h-10 shrink-0 self-center flex items-center justify-center text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
 
       {user?.role === 'diretor' && (
         <div className="pb-20">

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   CheckCheck,
@@ -35,24 +36,20 @@ const NotificationItem = ({
   notif,
   index,
   mounted,
-  onMarkRead,
+  onOpen,
 }: {
   notif: AppNotification;
   index: number;
   mounted: boolean;
-  onMarkRead: (id: string) => void;
+  onOpen: (notif: AppNotification) => void;
 }) => {
   const [expanded, setExpanded] = useState(false);
   // Determine if the message is long enough to need expansion
   const isLongMessage = notif.message.length > 80;
 
-  const handleClick = () => {
-    if (isLongMessage) {
-      setExpanded((prev) => !prev);
-    }
-    if (!notif.read) {
-      onMarkRead(notif.id);
-    }
+  const handleToggleExpand = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpanded((prev) => !prev);
   };
 
   return (
@@ -61,7 +58,7 @@ const NotificationItem = ({
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.04 }}
-      onClick={handleClick}
+      onClick={() => onOpen(notif)}
       className={cn(
         "w-full text-left p-4 hover:bg-white/[0.03] transition-all flex items-start gap-3 group relative",
         !notif.read && "bg-secondary/[0.03]",
@@ -133,7 +130,11 @@ const NotificationItem = ({
         </motion.div>
         {/* Expand/collapse indicator for long messages */}
         {isLongMessage && (
-          <div className="flex items-center gap-1 mt-1.5">
+          <button
+            type="button"
+            onClick={handleToggleExpand}
+            className="flex items-center gap-1 mt-1.5"
+          >
             <motion.div
               animate={{ rotate: expanded ? 180 : 0 }}
               transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
@@ -143,7 +144,7 @@ const NotificationItem = ({
             <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-wider">
               {expanded ? "Recolher" : "Ler mais"}
             </span>
-          </div>
+          </button>
         )}
       </div>
     </motion.button>
@@ -156,6 +157,7 @@ export const FloatingNotificationButton = () => {
   const { notifications, unreadCount, loading } = useNotificationStore();
   const { user } = useAuthStore();
   const containerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
@@ -171,9 +173,14 @@ export const FloatingNotificationButton = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleNotificationRead = async (id: string) => {
-    await markNotificationAsRead(id);
+  const handleNotificationOpen = async (notif: AppNotification) => {
+    if (!notif.read) {
+      await markNotificationAsRead(notif.id);
+    }
     setIsOpen(false);
+    if (notif.link) {
+      router.push(notif.link);
+    }
   };
 
   const handleMarkAllRead = async () => {
@@ -248,7 +255,7 @@ export const FloatingNotificationButton = () => {
                       notif={notif}
                       index={i}
                       mounted={mounted}
-                      onMarkRead={handleNotificationRead}
+                      onOpen={handleNotificationOpen}
                     />
                   ))}
                 </div>

@@ -106,7 +106,10 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
   const configPriority = tenantConfig.priorities.find(
     (p) => p.id === demand.priority.toLowerCase(),
   );
-  const priorityColor = configPriority?.cardClass ?? "bg-zinc-700";
+  const displayPriority = isSprintPaused
+    ? tenantConfig.priorities[0]
+    : configPriority;
+  const priorityColor = displayPriority?.cardClass ?? "bg-zinc-700";
 
   const tagLabel = demand.tags[0]
     ? demand.tags[0].toUpperCase()

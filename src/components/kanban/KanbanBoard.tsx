@@ -21,6 +21,7 @@ import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard } from "./KanbanCard";
 import { updateDemand } from "@/lib/firestore";
 import { useDemandStore } from "@/store/useDemandStore";
+import { useSprintStore } from "@/store/useSprintStore";
 import { toast } from "@/store/useToastStore";
 
 import { tenantConfig } from "@/config/tenant";
@@ -49,7 +50,13 @@ export const KanbanBoard = ({
     searchQuery,
   } = useDemandStore();
   const { user: currentUser } = useAuthStore();
+  const { sprints } = useSprintStore();
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  const pausedSprintIds = useMemo(
+    () => new Set(sprints.filter((s) => s.status === "paused").map((s) => s.id)),
+    [sprints],
+  );
 
   const filteredDemands = useMemo(
     () =>
@@ -226,6 +233,10 @@ export const KanbanBoard = ({
           );
 
           columnDemands.sort((a, b) => {
+            const aPaused = a.sprintId ? pausedSprintIds.has(a.sprintId) : false;
+            const bPaused = b.sprintId ? pausedSprintIds.has(b.sprintId) : false;
+            if (aPaused !== bPaused) return aPaused ? 1 : -1;
+
             if (column.id === "concluido") {
               if (!a.deadline && !b.deadline) return 0;
               if (!a.deadline) return 1;

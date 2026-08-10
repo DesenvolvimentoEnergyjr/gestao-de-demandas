@@ -23,13 +23,14 @@ const navigation = [
   { name: 'Kanban', href: '/kanban', icon: LayoutGrid },
   { name: 'Timeline', href: '/timeline', icon: TrendingUp },
   { name: 'Sprints', href: '/sprints', icon: RefreshCw },
-  { name: 'Membros', href: '/membros', icon: Users },
+  { name: 'Membros', href: '/membros', icon: Users, directorOnly: true },
 ];
 
 export const Sidebar = () => {
   const pathname = usePathname();
   const { openNovaDemanda, setSidebarOpen } = useUIStore();
-  const { logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const visibleNavigation = navigation.filter((item) => !item.directorOnly || user?.role === 'diretor');
 
   const handleLogout = async () => {
     try {
@@ -84,7 +85,7 @@ export const Sidebar = () => {
 
       {/* Nav */}
       <nav className="flex-1 px-4 pt-8 space-y-1">
-        {navigation.map((item) => {
+        {visibleNavigation.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link

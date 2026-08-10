@@ -204,7 +204,8 @@ export function TimelineView({ demands, users }: TimelineViewProps) {
     filteredUsers.sort((a, b) => a.name.localeCompare(b.name));
 
     const filteredDemands = demands.filter((d) =>
-      d.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      (d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))) &&
       isDemandVisibleToUser(d, currentUser, users)
     );
 

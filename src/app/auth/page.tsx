@@ -3,7 +3,7 @@
 import React, { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { signInWithGoogle, createUserDoc, getUserDoc, setSessionCookie } from '@/lib/auth';
+import { signInWithGoogle, createUserDoc, getUserDoc, setSessionCookie, BlockedInstitutionalAccountError } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { toast } from '@/store/useToastStore';
@@ -43,6 +43,15 @@ function AuthContent() {
       console.error(error);
       if (error instanceof Error && error.message === 'access-denied') {
         toast.error(`Acesso restrito a membros da ${process.env.NEXT_PUBLIC_COMPANY_NAME || 'Empresa Júnior'}.`);
+      } else if (error instanceof BlockedInstitutionalAccountError) {
+        const suggestedUser = error.suggestedUserId
+          ? await getUserDoc(error.suggestedUserId)
+          : null;
+        toast.error(
+          suggestedUser?.email
+            ? `A conta ${error.accountLabel} é compartilhada e não pode ser usada para login. Entre com seu e-mail pessoal: ${suggestedUser.email}`
+            : `A conta ${error.accountLabel} é compartilhada e não pode ser usada para login. Entre com seu e-mail pessoal de assessor.`,
+        );
       } else {
         toast.error('Erro ao realizar login com Google.');
       }

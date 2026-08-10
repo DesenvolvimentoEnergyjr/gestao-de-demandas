@@ -61,6 +61,7 @@ export interface Demand {
   deadline: Date | null;
   estimatedHours: number;
   completedHours: number;
+  completedAt?: Date | null;
   subtasks: Subtask[];
   comments: Comment[];
   activityLog: ActivityEntry[];
@@ -130,6 +131,15 @@ export interface MemberTimelineEvent {
   type: MemberTimelineEventType;
   title: string;
   description: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface InstitutionalAccount {
+  id: string;
+  email: string;
+  label: string;
+  assignedUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

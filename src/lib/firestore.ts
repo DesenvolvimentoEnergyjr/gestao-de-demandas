@@ -25,6 +25,7 @@ import {
   User,
   AppNotification,
   MemberTimelineEvent,
+  InstitutionalAccount,
 } from "@/types";
 
 const toDate = (val: unknown): Date =>
@@ -68,6 +69,7 @@ export const subscribeToDemands = (
         deadline: toDateOrNull(d.data().deadline),
         createdAt: toDate(d.data().createdAt),
         updatedAt: toDate(d.data().updatedAt),
+        completedAt: toDateOrNull(d.data().completedAt),
         attachments:
           d.data().attachments?.map((a: { addedAt: unknown }) => ({
             ...a,
@@ -159,6 +161,7 @@ export const getDemands = async (filters?: {
     deadline: toDateOrNull(d.data().deadline),
     createdAt: toDate(d.data().createdAt),
     updatedAt: toDate(d.data().updatedAt),
+    completedAt: toDateOrNull(d.data().completedAt),
     attachments:
       d.data().attachments?.map((a: { addedAt: unknown }) => ({
         ...a,
@@ -178,6 +181,7 @@ export const getDemandById = async (id: string): Promise<Demand | null> => {
     deadline: toDateOrNull(d.deadline),
     createdAt: toDate(d.createdAt),
     updatedAt: toDate(d.updatedAt),
+    completedAt: toDateOrNull(d.completedAt),
     attachments:
       d.attachments?.map((a: { addedAt: unknown }) => ({
         ...a,
@@ -225,7 +229,7 @@ export const createDemand = async (
           title: "Nova demanda designada",
           message: `Você foi designado para a demanda "${data.title}"`,
           type: "assignment",
-          link: `/kanban`,
+          link: `/kanban?demandId=${newId.id}`,
           ...(actorName && { actorName }),
         }),
       ),
@@ -242,9 +246,20 @@ export const updateDemand = async (
 ) => {
   const demandDoc = doc(db, "demands", id);
   const oldSnap = await getDoc(demandDoc);
+  let completedAtUpdate: Record<string, unknown> = {};
 
   if (oldSnap.exists()) {
     const oldData = oldSnap.data() as Demand;
+
+    if (data.status === "concluido" && oldData.status !== "concluido") {
+      completedAtUpdate = { completedAt: serverTimestamp() };
+    } else if (
+      data.status &&
+      data.status !== "concluido" &&
+      oldData.status === "concluido"
+    ) {
+      completedAtUpdate = { completedAt: null };
+    }
 
     // If updating assignees, notify only the new ones
     if (data.assignees) {
@@ -260,7 +275,7 @@ export const updateDemand = async (
               title: "Nova designação",
               message: `Você foi designado para a demanda "${data.title || oldData.title}"`,
               type: "assignment",
-              link: `/kanban`,
+              link: `/kanban?demandId=${id}`,
               ...(actorName && { actorName }),
             }),
           ),
@@ -276,7 +291,7 @@ export const updateDemand = async (
           title: "Demanda Concluída",
           message: `Excelente! A demanda "${oldData.title}" que você criou foi concluída!`,
           type: "system",
-          link: `/kanban`,
+          link: `/kanban?demandId=${id}`,
           ...(actorName && { actorName }),
         });
       }
@@ -310,7 +325,7 @@ export const updateDemand = async (
           title: "Atualização de Status",
           message: `A demanda "${oldData.title}" foi movida para ${newStatusStr}.`,
           type: "system",
-          link: `/kanban`,
+          link: `/kanban?demandId=${id}`,
           ...(actorName && { actorName }),
         });
       }
@@ -319,6 +334,7 @@ export const updateDemand = async (
 
   await updateDoc(demandDoc, {
     ...data,
+    ...completedAtUpdate,
     updatedAt: serverTimestamp(),
   });
 };
@@ -356,7 +372,7 @@ export const addCommentToDemand = async (
           title: "Você foi mencionado",
           message: `Você foi mencionado em um comentário na demanda "${demandTitle}"`,
           type: "mention",
-          link: `/kanban`,
+          link: `/kanban?demandId=${demandId}`,
           ...(authorName && { actorName: authorName }),
         }),
       ),
@@ -631,6 +647,67 @@ export const updateUser = async (uid: string, data: Partial<User>) => {
     ...data,
     updatedAt: serverTimestamp(),
   });
+};
+
+const institutionalAccountFromDoc = (
+  id: string,
+  d: Record<string, unknown>,
+): InstitutionalAccount => ({
+  id,
+  email: d.email as string,
+  label: d.label as string,
+  assignedUserId: (d.assignedUserId as string) ?? null,
+  createdAt: toDate(d.createdAt),
+  updatedAt: toDate(d.updatedAt),
+});
+
+export const getInstitutionalAccounts = async (): Promise<
+  InstitutionalAccount[]
+> => {
+  const snapshot = await getDocs(collection(db, "institutionalAccounts"));
+  return snapshot.docs.map((d) => institutionalAccountFromDoc(d.id, d.data()));
+};
+
+export const getInstitutionalAccountByEmail = async (
+  email: string,
+): Promise<InstitutionalAccount | null> => {
+  const q = query(
+    collection(db, "institutionalAccounts"),
+    where("email", "==", email.toLowerCase()),
+  );
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  const docSnap = snapshot.docs[0];
+  return institutionalAccountFromDoc(docSnap.id, docSnap.data());
+};
+
+export const createInstitutionalAccount = async (data: {
+  email: string;
+  label: string;
+  assignedUserId: string | null;
+}): Promise<string> => {
+  const docRef = await addDoc(collection(db, "institutionalAccounts"), {
+    ...data,
+    email: data.email.toLowerCase(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return docRef.id;
+};
+
+export const updateInstitutionalAccount = async (
+  id: string,
+  data: Partial<Omit<InstitutionalAccount, "id" | "createdAt" | "updatedAt">>,
+) => {
+  await updateDoc(doc(db, "institutionalAccounts", id), {
+    ...data,
+    ...(data.email && { email: data.email.toLowerCase() }),
+    updatedAt: serverTimestamp(),
+  });
+};
+
+export const deleteInstitutionalAccount = async (id: string) => {
+  await deleteDoc(doc(db, "institutionalAccounts", id));
 };
 
 // Member Timeline

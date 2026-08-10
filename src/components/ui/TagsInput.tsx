@@ -36,13 +36,15 @@ interface TagsInputProps {
   tags: string[];
   onChange: (tags: string[]) => void;
   disabled?: boolean;
+  suggestions?: string[];
 }
 
-export const TagsInput: React.FC<TagsInputProps> = ({ tags, onChange, disabled }) => {
+export const TagsInput: React.FC<TagsInputProps> = ({ tags, onChange, disabled, suggestions = [] }) => {
   const [inputValue, setInputValue] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const handleAddTag = () => {
-    const trimmed = inputValue.trim().toLowerCase();
+  const handleAddTag = (value?: string) => {
+    const trimmed = (value ?? inputValue).trim().toLowerCase();
     if (trimmed && !tags.includes(trimmed)) {
       onChange([...tags, trimmed]);
     }
@@ -61,6 +63,10 @@ export const TagsInput: React.FC<TagsInputProps> = ({ tags, onChange, disabled }
   const handleRemoveTag = (tagToRemove: string) => {
     onChange(tags.filter((t) => t !== tagToRemove));
   };
+
+  const filteredSuggestions = suggestions
+    .filter((s) => !tags.includes(s) && s.includes(inputValue.trim().toLowerCase()))
+    .slice(0, 8);
 
   return (
     <div className="flex flex-col gap-3">
@@ -100,17 +106,42 @@ export const TagsInput: React.FC<TagsInputProps> = ({ tags, onChange, disabled }
       </div>
 
       {!disabled && (
-        <div className="relative flex items-center">
-          <Tag className="absolute left-3 w-4 h-4 text-zinc-500" />
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={handleAddTag}
-            placeholder="Adicionar tag"
-            className="w-full h-11 bg-zinc-950 border border-white/5 rounded-xl pl-10 pr-4 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-colors"
-          />
+        <div className="relative">
+          <div className="relative flex items-center">
+            <Tag className="absolute left-3 w-4 h-4 text-zinc-500" />
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => {
+                setShowSuggestions(false);
+                handleAddTag();
+              }}
+              placeholder="Adicionar tag"
+              className="w-full h-11 bg-zinc-950 border border-white/5 rounded-xl pl-10 pr-4 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-secondary transition-colors"
+            />
+          </div>
+
+          {showSuggestions && filteredSuggestions.length > 0 && (
+            <div className="absolute z-10 top-[calc(100%+6px)] left-0 right-0 bg-zinc-950 border border-white/10 rounded-xl p-2 flex flex-wrap gap-1.5 shadow-xl">
+              {filteredSuggestions.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleAddTag(tag)}
+                  className={cn(
+                    "flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border transition-transform hover:scale-105",
+                    getTagColor(tag)
+                  )}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

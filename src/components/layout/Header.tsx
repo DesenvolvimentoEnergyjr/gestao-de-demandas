@@ -38,7 +38,7 @@ const tabs = [
 
 export const Header = () => {
   const { user } = useAuthStore();
-  const { demands, setDemands } = useDemandStore();
+  const { demands, setDemands, setSearchQuery } = useDemandStore();
   const { sprints, setSprints } = useSprintStore();
   const { openNovaDemanda, openDemanda, setSidebarOpen, openSprintDetalhes } =
     useUIStore();
@@ -77,6 +77,11 @@ export const Header = () => {
     if (demands.length === 0)
       getDemands().then(setDemands).catch(console.error);
   }, [sprints.length, setSprints, demands.length, setDemands]);
+
+  // Feeds Kanban/Timeline live filtering (by title or tag) as the user types
+  useEffect(() => {
+    setSearchQuery(localSearch);
+  }, [localSearch, setSearchQuery]);
 
   useEffect(() => {
     if (!user || demands.length === 0) return;
@@ -160,18 +165,20 @@ export const Header = () => {
     }> = [];
     const term = localSearch.toLowerCase();
 
-    // Demands
-    demands
-      .filter((d) => (d.title || "").toLowerCase().includes(term))
-      .forEach((d) => {
-        results.push({
-          type: "demand",
-          id: d.id,
-          title: d.title || "Sem título",
-          subtitle: "Demanda de Projeto",
-          icon: LayoutGrid,
-        });
+    // Demands (by title or tag)
+    demands.forEach((d) => {
+      const titleMatches = (d.title || "").toLowerCase().includes(term);
+      const matchedTag = d.tags?.find((t) => t.toLowerCase().includes(term));
+      if (!titleMatches && !matchedTag) return;
+
+      results.push({
+        type: "demand",
+        id: d.id,
+        title: d.title || "Sem título",
+        subtitle: !titleMatches && matchedTag ? `Tag: ${matchedTag}` : "Demanda de Projeto",
+        icon: LayoutGrid,
       });
+    });
 
     // Sprints
     sprints

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, Variants, AnimatePresence } from 'framer-motion';
 import { getUsers, getDemands, getSprints } from '@/lib/firestore';
 import { User, Demand, Sprint } from '@/types';
@@ -81,6 +82,7 @@ const cardVariants: Variants = {
   }
 };
 export default function AssessoresPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [demands, setDemands] = useState<Demand[]>([]);
   const [sprints, setSprints] = useState<Sprint[]>([]);
@@ -88,7 +90,13 @@ export default function AssessoresPage() {
   const [mounted, setMounted] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showEditModal, setShowEditModal] = useState<User | null>(null);
-  const { user: currentUser } = useAuthStore();
+  const { user: currentUser, loading: authLoading } = useAuthStore();
+
+  useEffect(() => {
+    if (!authLoading && currentUser && currentUser.role !== 'diretor') {
+      router.push('/kanban');
+    }
+  }, [authLoading, currentUser, router]);
 
   useEffect(() => {
     setMounted(true);
@@ -299,6 +307,10 @@ export default function AssessoresPage() {
       </motion.div>
     );
   };
+
+  if (!authLoading && currentUser && currentUser.role !== 'diretor') {
+    return null;
+  }
 
   return (
     <div className="h-full flex flex-col gap-6 md:gap-10 overflow-y-auto no-scrollbar pb-12 px-4 sm:px-6 lg:px-8">

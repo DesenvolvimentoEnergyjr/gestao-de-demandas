@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import {
   X,
@@ -17,6 +17,7 @@ import {
 import { useUIStore } from "@/store/useUIStore";
 import { useSprintStore } from "@/store/useSprintStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useDemandStore } from "@/store/useDemandStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -76,6 +77,14 @@ const DemandFormSkeleton = () => (
 
 type FormData = DemandaFormData;
 
+const FORM_FIELD_ORDER: (keyof FormData)[] = [
+  "title",
+  "description",
+  "estimatedHours",
+  "startDate",
+  "deadline",
+];
+
 const initialFormData = (status: DemandStatus): FormData => ({
   title: "",
   description: "",
@@ -106,6 +115,13 @@ export const NovaDemandaModal = () => {
   const { sprints } = useSprintStore();
 
   const { user: currentUser } = useAuthStore();
+  const { demands: allDemands } = useDemandStore();
+
+  const tagSuggestions = useMemo(() => {
+    const unique = new Set<string>();
+    allDemands.forEach((d) => d.tags?.forEach((t) => unique.add(t)));
+    return Array.from(unique).sort();
+  }, [allDemands]);
 
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -114,6 +130,7 @@ export const NovaDemandaModal = () => {
   const [formData, setFormData] = useState<FormData>(
     initialFormData("backlog"),
   );
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Link Attachment State
   const [showLinkInput, setShowLinkInput] = useState(false);
@@ -244,6 +261,15 @@ export const NovaDemandaModal = () => {
         if (field && !fieldErrors[field]) fieldErrors[field] = issue.message;
       });
       setFormErrors(fieldErrors);
+
+      const firstErrorField = FORM_FIELD_ORDER.find((field) => fieldErrors[field]);
+      if (firstErrorField) {
+        requestAnimationFrame(() => {
+          formRef.current
+            ?.querySelector(`[data-field="${firstErrorField}"]`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      }
       return;
     }
     setFormErrors({});
@@ -260,7 +286,7 @@ export const NovaDemandaModal = () => {
             priority: formData.priority,
             assignees: formData.assignees,
             sprintId: formData.sprintId || null,
-            tags: [],
+            tags: formData.tags || [],
             startDate: formData.startDate
               ? new Date(`${formData.startDate}T00:00:00`)
               : new Date(),
@@ -340,6 +366,7 @@ export const NovaDemandaModal = () => {
           priority: formData.priority,
           assignees: formData.assignees,
           sprintId: formData.sprintId || null,
+          tags: formData.tags || [],
           startDate: formData.startDate
             ? new Date(`${formData.startDate}T00:00:00`)
             : null,
@@ -460,6 +487,7 @@ export const NovaDemandaModal = () => {
             </div>
 
             <form
+              ref={formRef}
               onSubmit={handleSubmit}
               className="p-6 md:p-8 pt-4 md:pt-6 space-y-6 md:space-y-8 flex-1 overflow-y-auto no-scrollbar"
             >
@@ -483,7 +511,7 @@ export const NovaDemandaModal = () => {
                     className="space-y-6 md:space-y-8"
                   >
                     {/* Title Section */}
-                    <div className="space-y-3">
+                    <div className="space-y-3" data-field="title">
                       <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                         Título da Demanda
                       </label>
@@ -518,7 +546,7 @@ export const NovaDemandaModal = () => {
                     </div>
 
                     {/* Description Section */}
-                    <div className="space-y-3">
+                    <div className="space-y-3" data-field="description">
                       <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                         Descrição
                       </label>
@@ -951,6 +979,7 @@ export const NovaDemandaModal = () => {
                           setFormData((prev) => ({ ...prev, tags: newTags }))
                         }
                         disabled={isView}
+                        suggestions={tagSuggestions}
                       />
                     </div>
 
@@ -981,7 +1010,7 @@ export const NovaDemandaModal = () => {
                         </Select>
                       )}
 
-                      <div className="space-y-3">
+                      <div className="space-y-3" data-field="estimatedHours">
                         <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                           Horas Estimadas
                         </label>
@@ -1062,7 +1091,7 @@ export const NovaDemandaModal = () => {
 
                     {/* Dates */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
-                      <div className="space-y-3">
+                      <div className="space-y-3" data-field="startDate">
                         <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                           Início
                         </label>
@@ -1082,8 +1111,13 @@ export const NovaDemandaModal = () => {
                             error={!!formErrors.startDate}
                           />
                         )}
+                        {!isView && formErrors.startDate && (
+                          <p className="text-[10px] text-red-400 font-semibold ml-1 mt-1">
+                            {formErrors.startDate}
+                          </p>
+                        )}
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-3" data-field="deadline">
                         <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-1">
                           Fim (Deadline)
                         </label>

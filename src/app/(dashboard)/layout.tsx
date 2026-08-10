@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { onAuthChange, getUserDoc, createUserDoc, setSessionCookie, clearSessionCookie } from '@/lib/auth';
+import { onAuthChange, getUserDoc, createUserDoc, setSessionCookie, clearSessionCookie, getBlockedInstitutionalAccount } from '@/lib/auth';
 import { subscribeToDemands, subscribeToSprints } from '@/lib/firestore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDemandStore } from '@/store/useDemandStore';
@@ -51,6 +51,14 @@ export default function DashboardLayout({
 
     const unsubscribeAuth = onAuthChange(async (firebaseUser) => {
       if (firebaseUser) {
+        if (await getBlockedInstitutionalAccount(firebaseUser.email)) {
+          console.error('Acesso negado: conta institucional compartilhada.');
+          await clearSessionCookie();
+          setUser(null);
+          router.push('/auth');
+          return;
+        }
+
         unsubscribeNotifications = subscribeNotifications(firebaseUser.uid);
 
         unsubscribeDemands = subscribeToDemands((data) => {

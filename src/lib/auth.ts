@@ -6,11 +6,33 @@ import {
   User as FirebaseUser,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { createMemberTimelineEvent } from "./firestore";
+import { createMemberTimelineEvent, getInstitutionalAccountByEmail } from "./firestore";
 import { auth, db } from "./firebase";
 import { User } from "@/types";
 
 const googleProvider = new GoogleAuthProvider();
+
+export class BlockedInstitutionalAccountError extends Error {
+  accountLabel: string;
+  suggestedUserId: string | null;
+
+  constructor(accountLabel: string, suggestedUserId: string | null) {
+    super("blocked-institutional-account");
+    this.name = "BlockedInstitutionalAccountError";
+    this.accountLabel = accountLabel;
+    this.suggestedUserId = suggestedUserId;
+  }
+}
+
+export const getBlockedInstitutionalAccount = async (email?: string | null) => {
+  if (!email) return null;
+  try {
+    return await getInstitutionalAccountByEmail(email);
+  } catch (error) {
+    console.error("Erro ao verificar conta institucional bloqueada:", error);
+    return null;
+  }
+};
 
 export const signInWithGoogle = async () => {
   const result = await signInWithPopup(auth, googleProvider);
@@ -23,6 +45,15 @@ export const signInWithGoogle = async () => {
   if (!isAllowedDomain) {
     await firebaseSignOut(auth);
     throw new Error("access-denied");
+  }
+
+  const blockedAccount = await getBlockedInstitutionalAccount(email);
+  if (blockedAccount) {
+    await firebaseSignOut(auth);
+    throw new BlockedInstitutionalAccountError(
+      blockedAccount.label,
+      blockedAccount.assignedUserId,
+    );
   }
 
   return result.user;
